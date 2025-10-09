@@ -690,14 +690,6 @@ pytest tests/
 
 ---
 
-## 📞 지원 및 커뮤니티
-
-- **이슈 리포트**: [GitHub Issues](https://github.com/your-username/unified-agent-framework/issues)
-- **토론**: [GitHub Discussions](https://github.com/your-username/unified-agent-framework/discussions)
-- **이메일**: support@example.com
-
----
-
 <div align="center">
 
 **⭐ 이 프로젝트가 도움이 되었다면 Star를 눌러주세요! ⭐**
