@@ -56,6 +56,71 @@ from opentelemetry.sdk.resources import Resource
 
 
 # ============================================================================
+# 설정 (Configuration)
+# ============================================================================
+
+# 🆕 LLM 모델 중앙 설정
+DEFAULT_LLM_MODEL = "gpt-4.1"  # 또는 "gpt-4o-mini" 등 원하는 모델명
+DEFAULT_API_VERSION = "2024-08-01-preview"
+
+
+# ============================================================================
+# 유틸리티 & 인프라 (New)
+# ============================================================================
+
+class StructuredLogger:
+    """
+    JSON 형태의 구조화된 로깅
+    """
+    def __init__(self, name: str):
+        self.logger = logging.getLogger(name)
+
+    def info(self, message: str, **kwargs):
+        self._log(logging.INFO, message, **kwargs)
+
+    def error(self, message: str, **kwargs):
+        self._log(logging.ERROR, message, **kwargs)
+
+    def warning(self, message: str, **kwargs):
+        self._log(logging.WARNING, message, **kwargs)
+
+    def _log(self, level: int, message: str, **kwargs):
+        log_data = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "message": message,
+            **kwargs
+        }
+        # 실제 환경에서는 json.dumps 사용, 여기서는 가독성을 위해 포맷팅
+        self.logger.log(level, f"[{level}] {json.dumps(log_data, ensure_ascii=False)}")
+
+async def retry_with_backoff(
+    func: Callable,
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+    max_delay: float = 60.0,
+    exponential_base: float = 2.0,
+    *args,
+    **kwargs
+) -> Any:
+    """
+    지수 백오프 재시도 로직
+    """
+    retries = 0
+    while True:
+        try:
+            return await func(*args, **kwargs)
+        except Exception as e:
+            retries += 1
+            if retries > max_retries:
+                raise e
+
+            delay = min(base_delay * (exponential_base ** (retries - 1)), max_delay)
+            logging.warning(f"⚠️ 재시도 {retries}/{max_retries} ({delay:.2f}s 후): {e}")
+            await asyncio.sleep(delay)
+
+
+
+# ============================================================================
 # 핵심 데이터 모델
 # ============================================================================
 
@@ -312,8 +377,10 @@ class ApprovalRequiredAIFunction(AIFunction):
         안전한 작업인지 확인 (예: 읽기 전용)
 
         [신규] 자동 승인 로직
-        실제 구현에서는 복잡한 로직 추가 가능
         """
+        # 읽기 전용 작업은 자동 승인 (예: get_, read_, list_ 로 시작)
+        if self.base_function.name.startswith(("get_", "read_", "list_")):
+            return True
         return False
 
 
@@ -321,44 +388,60 @@ class ApprovalRequiredAIFunction(AIFunction):
 # MCP (Model Context Protocol) 통합
 # ============================================================================
 
+# ============================================================================
+# MCP (Model Context Protocol) 통합
+# ============================================================================
+
+class MockMCPClient:
+    """
+    [신규] MCP 클라이언트 모의 구현 (데모용)
+    """
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+        self.tools = {
+            "calculator": {
+                "name": "calculator",
+                "description": "Perform basic calculations",
+                "parameters": {"type": "object", "properties": {"expression": {"type": "string"}}}
+            },
+            "web_search": {
+                "name": "web_search",
+                "description": "Search the web for information",
+                "parameters": {"type": "object", "properties": {"query": {"type": "string"}}}
+            }
+        }
+
+    async def list_tools(self) -> List[Dict[str, Any]]:
+        return list(self.tools.values())
+
+    async def call_tool(self, name: str, arguments: Dict[str, Any]) -> Any:
+        if name == "calculator":
+            return f"Calculated: {arguments.get('expression')} = 42 (Mock)"
+        elif name == "web_search":
+            return f"Search results for '{arguments.get('query')}': [Mock Result 1, Mock Result 2]"
+        return f"Tool {name} executed with {arguments}"
+
 class MCPTool:
     """
     MCP 서버와 통합하는 도구
-
-    [신규] Microsoft Agent Framework의 MCP 통합 패턴
-
-    참조: https://github.com/microsoft/agent-framework/blob/main/python/samples/getting_started/mcp/agent_as_mcp_server.py
-
-    MCP (Model Context Protocol):
-    - AI 에이전트가 외부 도구/서비스와 통신하는 표준 프로토콜
-    - GitHub, ClickHouse, Slack 등 다양한 MCP 서버 존재
-    - 도구의 동적 발견 및 호출 지원
-
-    사용 예시:
-    mcp_tool = MCPTool(
-        name="github_mcp",
-        server_config={"url": "http://localhost:3000"}
-    )
-    await mcp_tool.connect()
-    tools = await mcp_tool.get_available_tools()
     """
 
     def __init__(self, name: str, server_config: Dict[str, Any]):
         self.name = name
         self.server_config = server_config
         self.connected = False
-        self.available_tools: List[AIFunction] = []
+        self.client: Optional[MockMCPClient] = None
+        self.available_tools: List[Dict[str, Any]] = []
 
     async def connect(self):
         """
         MCP 서버 연결
-
-        [신규] 실제 구현에서는 MCP 클라이언트 라이브러리 사용
         """
         try:
             logging.info(f"🔌 MCP 서버 연결 시도: {self.name}")
-            # 실제 MCP 클라이언트 연결 로직
-            # await self._initialize_mcp_client()
+            # 실제 구현에서는 mcp.Client 사용
+            self.client = MockMCPClient(self.server_config)
+            self.available_tools = await self.client.list_tools()
             self.connected = True
             logging.info(f"✅ MCP 서버 연결 성공: {self.name}")
         except Exception as e:
@@ -370,13 +453,12 @@ class MCPTool:
         if self.connected:
             logging.info(f"🔌 MCP 서버 연결 해제: {self.name}")
             self.connected = False
+            self.client = None
 
-    async def get_available_tools(self) -> List[AIFunction]:
+    async def get_available_tools(self) -> List[Dict[str, Any]]:
         """사용 가능한 도구 목록"""
         if not self.connected:
             await self.connect()
-
-        # MCP 서버에서 도구 목록 가져오기
         return self.available_tools
 
     async def invoke_tool(self, tool_name: str, **kwargs) -> Any:
@@ -385,8 +467,7 @@ class MCPTool:
             raise RuntimeError("MCP 서버가 연결되지 않았습니다")
 
         logging.info(f"🛠️ MCP 도구 호출: {tool_name}")
-        # 실제 도구 호출 로직
-        return {"status": "success", "tool": tool_name, "args": kwargs}
+        return await self.client.call_tool(tool_name, kwargs)
 
 
 # ============================================================================
@@ -688,7 +769,7 @@ class Agent(ABC):
         name: str,
         role: AgentRole = AgentRole.ASSISTANT,
         system_prompt: str = "You are a helpful AI assistant.",
-        model: str = "gpt-4o-mini",
+        model: str = DEFAULT_LLM_MODEL,  # 🆕 중앙 설정 사용
         temperature: float = 0.7,
         max_tokens: int = 1000,
         enable_streaming: bool = False,  # 🆕 스트리밍 옵션
@@ -710,6 +791,9 @@ class Agent(ABC):
             max_tokens=max_tokens,
             service_id=model
         )
+
+        # 🆕 구조화된 로거
+        self.logger = StructuredLogger(f"agent.{name}")
 
         # 🆕 메트릭
         self.total_executions = 0
@@ -749,7 +833,10 @@ class Agent(ABC):
         if use_streaming and self.enable_streaming:
             return await self._get_streaming_response(chat_completion, history, settings, kernel)
         else:
-            response = await chat_completion.get_chat_message_content(
+            # 🆕 재시도 로직 적용
+            response = await retry_with_backoff(
+                chat_completion.get_chat_message_content,
+                max_retries=3,
                 chat_history=history,
                 settings=settings,
                 kernel=kernel
@@ -1031,43 +1118,84 @@ class SupervisorAgent(Agent):
             responses = []
             current_round = 0
 
+            # Agent 이름 목록
+            agent_names = list(self.sub_agents.keys())
+            agent_list_str = ", ".join(agent_names)
+
             while current_round < self.max_rounds:
                 current_round += 1
                 logging.info(f"🎯 Supervisor Round {current_round}/{self.max_rounds}")
 
-                # 각 서브 에이전트 실행
-                for agent_name, agent in self.sub_agents.items():
-                    logging.info(f"  ➤ {agent_name} 실행 중...")
+                # 1. 다음 실행할 Agent 결정 (LLM 사용)
+                history_text = "\n".join(responses[-3:]) if responses else "No history yet."
 
-                    result = await agent.execute(state, kernel)
+                decision_prompt = f"""
+You are a Supervisor managing these agents: {agent_list_str}.
+Current goal: {state.messages[-1].content if state.messages else 'Unknown'}
 
-                    # 🆕 실행 로그 기록
-                    execution_record = {
-                        "round": current_round,
-                        "agent": agent_name,
-                        "output": result.output,
-                        "success": result.success,
-                        "duration_ms": result.duration_ms
-                    }
-                    self.execution_log.append(execution_record)
+Recent history:
+{history_text}
 
-                    if result.success:
-                        responses.append(f"[Round {current_round} - {agent_name}]\n{result.output}")
+Decide the next step:
+1. Select the next agent to act (respond with agent name).
+2. If the task is complete, respond with "TERMINATE".
 
-                    # 🆕 조기 종료 조건
-                    if "TERMINATE" in result.output.upper() or "완료" in result.output:
-                        logging.info(f"✅ 조기 종료: {agent_name}")
+Respond with ONLY the agent name or "TERMINATE".
+"""
+                temp_messages = [Message(role=AgentRole.SYSTEM, content=decision_prompt)]
+                decision = await self._get_llm_response(kernel, temp_messages)
+                decision = decision.strip()
+
+                logging.info(f"🤔 Supervisor Decision: {decision}")
+
+                if "TERMINATE" in decision.upper():
+                    logging.info("✅ Supervisor decided to terminate.")
+                    break
+
+                # 선택된 Agent 실행
+                selected_agent_name = None
+                for name in agent_names:
+                    if name.lower() in decision.lower():
+                        selected_agent_name = name
                         break
 
-                # 모든 에이전트가 완료되었는지 확인
-                if responses and ("TERMINATE" in responses[-1].upper() or "완료" in responses[-1]):
+                if not selected_agent_name:
+                    # 매칭 실패 시 기본적으로 첫 번째 또는 라운드 로빈 등 대안 필요
+                    # 여기서는 로깅 후 계속 진행 (혹은 종료)
+                    logging.warning(f"⚠️ Unknown agent selected: {decision}. Stopping.")
+                    break
+
+                agent = self.sub_agents[selected_agent_name]
+                logging.info(f"  ➤ {selected_agent_name} 실행 중...")
+
+                result = await agent.execute(state, kernel)
+
+                # 🆕 실행 로그 기록
+                execution_record = {
+                    "round": current_round,
+                    "agent": selected_agent_name,
+                    "output": result.output,
+                    "success": result.success,
+                    "duration_ms": result.duration_ms
+                }
+                self.execution_log.append(execution_record)
+
+                if result.success:
+                    response_text = f"[Round {current_round} - {selected_agent_name}]\n{result.output}"
+                    responses.append(response_text)
+                    # 상태에 중간 결과 추가 (선택 사항)
+                    # state.add_message(AgentRole.FUNCTION, result.output, selected_agent_name)
+
+                # Agent가 명시적으로 종료 요청한 경우
+                if "TERMINATE" in result.output.upper():
+                    logging.info(f"✅ 조기 종료 요청 by {selected_agent_name}")
                     break
 
             final_output = "\n\n".join(responses)
             duration_ms = (time.time() - start_time) * 1000
 
             # 최종 요약
-            summary = f"Supervisor 실행 완료: {current_round}라운드, {len(self.sub_agents)}개 에이전트"
+            summary = f"Supervisor 실행 완료: {current_round}라운드"
             state.add_message(AgentRole.SUPERVISOR, summary, self.name)
 
             return NodeResult(
@@ -1078,7 +1206,7 @@ class SupervisorAgent(Agent):
                 metadata={
                     "rounds": current_round,
                     "agents": len(self.sub_agents),
-                    "execution_log": self.execution_log  # 🆕 상세 로그
+                    "execution_log": self.execution_log
                 }
             )
         except Exception as e:
@@ -1743,7 +1871,7 @@ async def demo_simple_chat(framework: UnifiedAgentFramework):
     assistant = SimpleAgent(
         name="assistant",
         system_prompt="You are a helpful AI assistant. Answer questions clearly and concisely.",
-        model="gpt-4.1",
+        model=DEFAULT_LLM_MODEL,
         enable_streaming=False,
         event_bus=framework.event_bus
     )
@@ -1777,7 +1905,7 @@ async def demo_routing_workflow(framework: UnifiedAgentFramework):
     router = RouterAgent(
         name="router",
         system_prompt="Classify user intent accurately.",
-        model="gpt-4.1",
+        model=DEFAULT_LLM_MODEL,
         routes={
             "order": "order_agent",
             "support": "support_agent",
@@ -1790,21 +1918,21 @@ async def demo_routing_workflow(framework: UnifiedAgentFramework):
     order_agent = SimpleAgent(
         name="order_agent",
         system_prompt="You are an order specialist. Help with ordering and purchases.",
-        model="gpt-4.1",
+        model=DEFAULT_LLM_MODEL,
         event_bus=framework.event_bus
     )
 
     support_agent = SimpleAgent(
         name="support_agent",
         system_prompt="You are a support specialist. Help troubleshoot and resolve issues.",
-        model="gpt-4.1",
+        model=DEFAULT_LLM_MODEL,
         event_bus=framework.event_bus
     )
 
     general_agent = SimpleAgent(
         name="general_agent",
         system_prompt="You are a general assistant. Answer various questions.",
-        model="gpt-4.1",
+        model=DEFAULT_LLM_MODEL,
         event_bus=framework.event_bus
     )
 
@@ -1844,14 +1972,14 @@ async def demo_supervisor_workflow(framework: UnifiedAgentFramework):
     research_agent = SimpleAgent(
         name="researcher",
         system_prompt="You are a research specialist. Gather and analyze information.",
-        model="gpt-4.1",
+        model=DEFAULT_LLM_MODEL,
         event_bus=framework.event_bus
     )
 
     writer_agent = SimpleAgent(
         name="writer",
         system_prompt="You are a content writer. Create clear, engaging content.",
-        model="gpt-4.1",
+        model=DEFAULT_LLM_MODEL,
         event_bus=framework.event_bus
     )
 
@@ -1859,7 +1987,7 @@ async def demo_supervisor_workflow(framework: UnifiedAgentFramework):
     supervisor = SupervisorAgent(
         name="supervisor",
         system_prompt="Coordinate research and writing tasks.",
-        model="gpt-4.1",
+        model=DEFAULT_LLM_MODEL,
         sub_agents=[research_agent, writer_agent],
         max_rounds=2,
         event_bus=framework.event_bus
@@ -1894,21 +2022,21 @@ async def demo_conditional_workflow(framework: UnifiedAgentFramework):
     analyzer = SimpleAgent(
         name="analyzer",
         system_prompt="Analyze the complexity of the user's question. Respond with SIMPLE or COMPLEX.",
-        model="gpt-4.1",
+        model=DEFAULT_LLM_MODEL,
         event_bus=framework.event_bus
     )
 
     simple_handler = SimpleAgent(
         name="simple_handler",
         system_prompt="Answer simple questions directly and briefly.",
-        model="gpt-4.1",
+        model=DEFAULT_LLM_MODEL,
         event_bus=framework.event_bus
     )
 
     complex_handler = SimpleAgent(
         name="complex_handler",
         system_prompt="Provide detailed, comprehensive answers to complex questions.",
-        model="gpt-4.1",
+        model=DEFAULT_LLM_MODEL,
         max_tokens=2000,
         event_bus=framework.event_bus
     )
@@ -1993,8 +2121,8 @@ async def main():
         deployment_name=deployment_name,
         api_key=api_key,
         endpoint=endpoint,
-        service_id="gpt-4.1",
-        api_version="2024-08-01-preview"
+        service_id=DEFAULT_LLM_MODEL,  # 🆕 중앙 설정 사용
+        api_version=DEFAULT_API_VERSION
     )
     kernel.add_service(chat_service)
 
