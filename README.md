@@ -8,13 +8,16 @@
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-Enabled-purple.svg)](https://opentelemetry.io/)
 [![Skills](https://img.shields.io/badge/Anthropic_Skills-Integrated-red.svg)](https://github.com/anthropics/skills)
 [![AgentCore](https://img.shields.io/badge/AWS_AgentCore_Patterns-Integrated-yellow.svg)](https://github.com/awslabs/amazon-bedrock-agentcore-samples)
+[![GPT-5](https://img.shields.io/badge/GPT--5_Series-Supported-brightgreen.svg)](https://openai.com/)
 
-> **v2.0** - Memory Hook Provider, Session Manager, Enhanced Supervisor (Investigation Plan) 패턴 추가
+> **v2.2** - 중앙 설정(Settings) 클래스, GPT-5/o-series 모델 지원, UTF-8 기본 인코딩, Memory Hook Provider, Session Manager, Enhanced Supervisor (Investigation Plan) 패턴 추가
 
 ## 📖 목차
 
 - [개요](#-개요)
 - [핵심 기능](#-핵심-기능)
+- [중앙 설정 (Settings)](#-중앙-설정-settings-new)
+- [GPT-5 및 모델 지원](#-gpt-5-및-모델-지원-new)
 - [Skills 시스템](#-skills-시스템)
 - [Memory Hook Provider](#-memory-hook-provider-new)
 - [Session Manager](#-session-manager-new)
@@ -54,6 +57,12 @@ Unified Agent Framework는 다음 6가지 최고의 AI Agent 프레임워크의 
 # - 프로덕션 준비 미흡
 
 # ✅ Unified Agent Framework: 간단하고 강력
+from Unified_agent_framework import UnifiedAgentFramework, Settings
+
+# 중앙 설정으로 모델 변경 (한 곳에서 관리)
+Settings.DEFAULT_MODEL = "gpt-5.2"
+Settings.DEFAULT_TEMPERATURE = 0.7
+
 framework = UnifiedAgentFramework.create()  # 환경변수 자동 로드
 response = await framework.smart_chat("파이썬 코드 작성해줘")  # 스킬 자동 감지
 
@@ -135,6 +144,207 @@ router = RouterAgent(
 # O(1) 조회 성능
 memory_store = CachedMemoryStore()
 ```
+
+### ⚙️ 중앙 설정 (Settings 클래스)
+```python
+from Unified_agent_framework import Settings
+
+# 모든 설정을 한 곳에서 관리
+Settings.DEFAULT_MODEL = "gpt-5.2"      # 기본 모델
+Settings.DEFAULT_TEMPERATURE = 0.7      # 온도
+Settings.MAX_SUPERVISOR_ROUNDS = 5      # Supervisor 라운드
+Settings.ENABLE_MEMORY_HOOKS = True     # Memory Hook 활성화
+```
+
+### 🤖 GPT-5 및 o-series 모델 지원
+```python
+# GPT-5 계열 (temperature 자동 비활성화)
+Settings.DEFAULT_MODEL = "gpt-5.2"
+
+# o-series (Reasoning 모델)
+Settings.DEFAULT_MODEL = "o3"  # temperature 자동 비활성화
+```
+
+---
+
+## ⚙️ 중앙 설정 (Settings) (NEW!)
+
+모든 프레임워크 설정을 한 곳에서 관리하는 `Settings` 클래스입니다.
+
+### Settings 클래스 구조
+
+```python
+class Settings:
+    """프레임워크 전역 설정 - 모든 설정을 한 곳에서 관리"""
+
+    # ─────────────────────────────────────────────────────────────────
+    # LLM 모델 설정
+    # ─────────────────────────────────────────────────────────────────
+    DEFAULT_MODEL: str = "gpt-5.2"           # 기본 모델
+    DEFAULT_API_VERSION: str = "2024-08-01-preview"
+    DEFAULT_TEMPERATURE: float = 0.7         # GPT-4 계열만 적용
+    DEFAULT_MAX_TOKENS: int = 1000
+
+    # ─────────────────────────────────────────────────────────────────
+    # 지원 모델 목록
+    # ─────────────────────────────────────────────────────────────────
+    SUPPORTED_MODELS: list = [
+        # GPT-4 계열
+        "gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
+        # GPT-5 계열
+        "gpt-5", "gpt-5.1", "gpt-5.2",
+        # o-시리즈 (Reasoning)
+        "o1", "o1-mini", "o1-preview", "o3", "o3-mini", "o4-mini"
+    ]
+
+    # Temperature 미지원 모델 (자동으로 temperature 파라미터 제외)
+    MODELS_WITHOUT_TEMPERATURE: list = [
+        "gpt-5", "gpt-5.1", "gpt-5.2",
+        "o1", "o1-mini", "o1-preview", "o3", "o3-mini", "o4-mini"
+    ]
+
+    # ─────────────────────────────────────────────────────────────────
+    # 프레임워크 설정
+    # ─────────────────────────────────────────────────────────────────
+    CHECKPOINT_DIR: str = "./checkpoints"
+    ENABLE_TELEMETRY: bool = True
+    ENABLE_EVENTS: bool = True
+    ENABLE_STREAMING: bool = False
+    MAX_CACHE_SIZE: int = 100
+
+    # ─────────────────────────────────────────────────────────────────
+    # Memory 설정 (AWS AgentCore 패턴)
+    # ─────────────────────────────────────────────────────────────────
+    ENABLE_MEMORY_HOOKS: bool = True
+    MEMORY_NAMESPACE: str = "/conversation"
+    MAX_MEMORY_TURNS: int = 20
+    SESSION_TTL_HOURS: int = 24
+
+    # ─────────────────────────────────────────────────────────────────
+    # Supervisor 설정 (SRE Agent 패턴)
+    # ─────────────────────────────────────────────────────────────────
+    AUTO_APPROVE_SIMPLE_PLANS: bool = True
+    MAX_SUPERVISOR_ROUNDS: int = 5
+
+    # ─────────────────────────────────────────────────────────────────
+    # 로깅 설정
+    # ─────────────────────────────────────────────────────────────────
+    LOG_LEVEL: str = "INFO"
+    LOG_FILE: str = "agent_framework.log"
+```
+
+### 사용법
+
+```python
+from Unified_agent_framework import Settings, UnifiedAgentFramework
+
+# 1. 모델 변경
+Settings.DEFAULT_MODEL = "gpt-4.1"  # 전역 적용
+
+# 2. 설정 확인
+print(f"현재 모델: {Settings.DEFAULT_MODEL}")
+print(f"지원 모델: {Settings.SUPPORTED_MODELS}")
+
+# 3. 메모리 설정
+Settings.MAX_MEMORY_TURNS = 50
+Settings.SESSION_TTL_HOURS = 48
+
+# 4. Supervisor 설정
+Settings.MAX_SUPERVISOR_ROUNDS = 10
+Settings.AUTO_APPROVE_SIMPLE_PLANS = False
+
+# 5. 프레임워크 생성 (Settings 값 자동 적용)
+framework = UnifiedAgentFramework.create()
+```
+
+### 설정 카테고리
+
+| 카테고리 | 설정 | 설명 |
+|---------|------|------|
+| **LLM 모델** | `DEFAULT_MODEL` | 기본 LLM 모델 |
+| | `DEFAULT_API_VERSION` | Azure API 버전 |
+| | `DEFAULT_TEMPERATURE` | 기본 온도 (GPT-4만) |
+| | `DEFAULT_MAX_TOKENS` | 최대 토큰 수 |
+| | `SUPPORTED_MODELS` | 지원 모델 목록 |
+| | `MODELS_WITHOUT_TEMPERATURE` | 온도 미지원 모델 |
+| **프레임워크** | `CHECKPOINT_DIR` | 체크포인트 저장 경로 |
+| | `ENABLE_TELEMETRY` | 텔레메트리 활성화 |
+| | `ENABLE_STREAMING` | 스트리밍 응답 활성화 |
+| **메모리** | `ENABLE_MEMORY_HOOKS` | 메모리 훅 활성화 |
+| | `MAX_MEMORY_TURNS` | 최대 대화 턴 수 |
+| | `SESSION_TTL_HOURS` | 세션 만료 시간 |
+| **Supervisor** | `AUTO_APPROVE_SIMPLE_PLANS` | 간단한 계획 자동 승인 |
+| | `MAX_SUPERVISOR_ROUNDS` | 최대 라운드 수 |
+| **로깅** | `LOG_LEVEL` | 로그 레벨 |
+| | `LOG_FILE` | 로그 파일 경로 |
+
+---
+
+## 🤖 GPT-5 및 모델 지원 (NEW!)
+
+프레임워크는 GPT-5 시리즈와 o-series (Reasoning) 모델을 완전히 지원합니다.
+
+### 지원 모델
+
+| 모델 시리즈 | 모델 | Temperature | 비고 |
+|------------|------|-------------|------|
+| **GPT-4** | gpt-4, gpt-4o, gpt-4o-mini | ✅ 지원 | 기본 모델 |
+| **GPT-4.1** | gpt-4.1, gpt-4.1-mini, gpt-4.1-nano | ✅ 지원 | 개선된 성능 |
+| **GPT-5** | gpt-5, gpt-5.1, gpt-5.2 | ❌ 자동 생략 | 최신 모델 |
+| **o-series** | o1, o1-mini, o1-preview | ❌ 자동 생략 | Reasoning 특화 |
+| **o3-series** | o3, o3-mini, o4-mini | ❌ 자동 생략 | 고급 추론 |
+
+### 사용법
+
+```python
+from Unified_agent_framework import Settings, UnifiedAgentFramework
+
+# GPT-5.2 사용
+Settings.DEFAULT_MODEL = "gpt-5.2"
+framework = UnifiedAgentFramework.create()
+
+# o3 사용 (Reasoning 모델)
+Settings.DEFAULT_MODEL = "o3"
+framework = UnifiedAgentFramework.create()
+```
+
+### CLI에서 모델 변경
+
+```bash
+# 프레임워크 실행
+python Unified-agent_framework.py
+
+# 모델 변경 명령
+> model gpt-5.2
+🔄 모델 변경: gpt-4.1 → gpt-5.2
+
+> model o3
+🔄 모델 변경: gpt-5.2 → o3
+
+# 현재 모델 확인
+> model
+📋 현재 모델: o3
+📋 지원 모델: gpt-4, gpt-4o, gpt-4o-mini, gpt-4.1, gpt-5, gpt-5.1, gpt-5.2, o1, o3, ...
+```
+
+### Temperature 자동 처리
+
+```python
+def supports_temperature(model: str) -> bool:
+    """모델이 temperature를 지원하는지 확인"""
+    model_lower = model.lower()
+    for unsupported in Settings.MODELS_WITHOUT_TEMPERATURE:
+        if unsupported in model_lower:
+            return False
+    return True
+
+# 사용 예시
+print(supports_temperature("gpt-4.1"))  # True
+print(supports_temperature("gpt-5.2"))  # False
+print(supports_temperature("o3"))       # False
+```
+
+> 💡 **자동 처리**: GPT-5, o1, o3 계열 모델 사용 시 `temperature` 파라미터가 자동으로 생략되어 오류를 방지합니다.
 
 ---
 
@@ -449,8 +659,13 @@ matched_skills = framework.skill_manager.match_skills(
 ### CLI에서 스킬 관리
 
 ```bash
-# 실행
-python Semantic-agent_framework.py
+# 실행 (UTF-8 기본 인코딩)
+python Unified-agent_framework.py
+
+# 모델 명령어 (NEW!)
+model                  # 현재 모델 확인
+model gpt-5.2          # 모델 변경
+model o3               # o-series 모델 변경
 
 # 스킬 명령어
 skills list            # 등록된 스킬 목록
@@ -471,6 +686,9 @@ demo router            # 라우팅 데모
 demo orchestrator      # 멀티에이전트 데모
 demo all               # 전체 데모
 
+# 설정 확인 (NEW!)
+settings               # 현재 Settings 확인
+
 # 종료
 exit
 ```
@@ -478,8 +696,17 @@ exit
 ### CLI 사용 예시
 
 ```
-🚀 Unified Agent Framework CLI
-Commands: chat, smart, demo, skills, workflow, exit
+🚀 Unified Agent Framework CLI (v2.2)
+Commands: chat, smart, demo, skills, model, settings, workflow, exit
+Current Model: gpt-5.2
+
+> model
+📋 현재 모델: gpt-5.2
+📋 지원 모델: gpt-4, gpt-4o, gpt-4o-mini, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano,
+              gpt-5, gpt-5.1, gpt-5.2, o1, o1-mini, o1-preview, o3, o3-mini, o4-mini
+
+> model gpt-4.1
+🔄 모델 변경: gpt-5.2 → gpt-4.1
 
 > skills list
 📚 등록된 스킬:
@@ -495,6 +722,13 @@ import pandas as pd
 df = pd.read_csv('data.csv')
 print(df.describe())
 ...
+
+> settings
+⚙️ 현재 Settings:
+  DEFAULT_MODEL: gpt-4.1
+  DEFAULT_TEMPERATURE: 0.7
+  ENABLE_MEMORY_HOOKS: True
+  MAX_SUPERVISOR_ROUNDS: 5
 
 > exit
 👋 안녕히 가세요!
@@ -525,14 +759,28 @@ AZURE_OPENAI_API_VERSION=2025-05-01
 
 ### 지원 모델
 
-| 모델 | Temperature | 비고 |
-|------|-------------|------|
-| GPT-4, GPT-4o, GPT-4.1 | ✅ 지원 | 기본 모델 |
-| GPT-5, GPT-5.1, GPT-5.2 | ❌ 미지원 | 자동 생략 |
-| o1, o1-mini, o1-preview | ❌ 미지원 | 자동 생략 |
-| o3, o3-mini | ❌ 미지원 | 자동 생략 |
+| 모델 시리즈 | 모델 | Temperature | 비고 |
+|------------|------|-------------|------|
+| **GPT-4** | gpt-4, gpt-4o, gpt-4o-mini | ✅ 지원 | 범용 모델 |
+| **GPT-4.1** | gpt-4.1, gpt-4.1-mini, gpt-4.1-nano | ✅ 지원 | 성능 개선 |
+| **GPT-5** | gpt-5, gpt-5.1, gpt-5.2 | ❌ 자동 생략 | 최신 모델 |
+| **o1** | o1, o1-mini, o1-preview | ❌ 자동 생략 | Reasoning |
+| **o3/o4** | o3, o3-mini, o4-mini | ❌ 자동 생략 | 고급 추론 |
 
-> 💡 GPT-5 및 o1/o3 계열 모델은 temperature 파라미터를 지원하지 않으므로, 프레임워크가 자동으로 해당 파라미터를 생략합니다.
+> 💡 **자동 Temperature 처리**: GPT-5 및 o-series 모델은 temperature 파라미터를 지원하지 않습니다. 프레임워크가 자동으로 해당 파라미터를 생략하여 오류를 방지합니다.
+
+### UTF-8 인코딩
+
+프레임워크는 **UTF-8 인코딩을 기본으로 사용**합니다. Windows 환경에서도 별도의 `-X utf8` 옵션 없이 실행할 수 있습니다.
+
+```python
+# 내장 UTF-8 설정 (자동 적용)
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+```
 
 ---
 
@@ -542,7 +790,10 @@ AZURE_OPENAI_API_VERSION=2025-05-01
 
 ```python
 import asyncio
-from Semantic_agent_framework import UnifiedAgentFramework
+from Unified_agent_framework import UnifiedAgentFramework, Settings
+
+# Settings에서 모델 설정 (선택적)
+Settings.DEFAULT_MODEL = "gpt-5.2"
 
 async def main():
     # 환경변수 자동 로드하여 프레임워크 생성
@@ -562,9 +813,13 @@ asyncio.run(main())
 ### 커스텀 설정으로 시작
 
 ```python
-from Semantic_agent_framework import FrameworkConfig, UnifiedAgentFramework
+from Unified_agent_framework import FrameworkConfig, UnifiedAgentFramework, Settings
 
 async def main():
+    # Settings로 전역 기본값 변경 (선택적)
+    Settings.DEFAULT_MODEL = "gpt-4o"
+
+    # 또는 FrameworkConfig로 개별 설정
     config = FrameworkConfig(
         model="gpt-4o",
         temperature=0.5,
@@ -604,7 +859,10 @@ asyncio.run(main())
 ### 헬퍼 함수 (가장 간단한 방법)
 
 ```python
-from Semantic_agent_framework import quick_run, create_framework
+from Unified_agent_framework import quick_run, create_framework, Settings
+
+# 모델 설정 (선택적)
+Settings.DEFAULT_MODEL = "gpt-5.2"
 
 # 한 줄로 질의응답 (환경변수 자동 로드)
 response = quick_run("Hello, AI!")
@@ -664,25 +922,52 @@ framework = create_framework()
 
 ## 🔧 주요 컴포넌트
 
-### 0. FrameworkConfig (중앙 설정)
+### 0. FrameworkConfig (설정 관리)
 
-모든 설정을 하나의 객체로 관리합니다:
+`FrameworkConfig`는 `Settings` 클래스의 값을 기본값으로 사용합니다:
 
 ```python
-from Semantic_agent_framework import FrameworkConfig
+from Unified_agent_framework import FrameworkConfig, Settings
 
+# Settings에서 전역 기본값 변경
+Settings.DEFAULT_MODEL = "gpt-5.2"
+Settings.DEFAULT_TEMPERATURE = 0.5
+
+# FrameworkConfig는 Settings 값을 자동 참조
+config = FrameworkConfig()  # Settings.DEFAULT_MODEL 적용
+print(config.model)  # "gpt-5.2"
+
+# 또는 개별 설정 오버라이드
 config = FrameworkConfig(
-    model="gpt-4o",           # 기본 모델
-    temperature=0.7,          # 응답 다양성
-    max_tokens=2000,          # 최대 토큰
+    model="gpt-4o",           # Settings보다 우선
+    temperature=0.7,
+    max_tokens=2000,
     checkpoint_dir="./checkpoints",
     enable_telemetry=True
 )
 
-# 환경변수에서 자동 로드
-config.api_key = os.getenv("AZURE_OPENAI_API_KEY")
-config.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-config.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+# 환경변수에서 자동 로드 (권장)
+config = FrameworkConfig.from_env()
+```
+
+### FrameworkConfig와 Settings 관계
+
+```
+┌─────────────────────────────────────────┐
+│           Settings 클래스              │  ← 전역 기본값 (한 곳에서 관리)
+│  DEFAULT_MODEL = "gpt-5.2"            │
+│  DEFAULT_TEMPERATURE = 0.7            │
+│  ...                                   │
+└─────────────────────────────────────────┘
+                   │
+                   │ 참조
+                   ▼
+┌─────────────────────────────────────────┐
+│        FrameworkConfig 인스턴스         │  ← 실행 시 설정
+│  model = Settings.DEFAULT_MODEL        │
+│  temperature = Settings.DEFAULT_TEMPERATURE │
+│  ...                                   │
+└─────────────────────────────────────────┘
 ```
 
 ### 1. Agent 클래스
@@ -1206,6 +1491,7 @@ Unified-agent-framework/
 - [Microsoft Agent Framework](https://github.com/microsoft/agent-framework)
 - [LangGraph](https://github.com/langchain-ai/langgraph)
 - [Anthropic Skills](https://github.com/anthropics/skills) - Skills 시스템 패턴
+- [AWS AgentCore Samples](https://github.com/awslabs/amazon-bedrock-agentcore-samples) - Memory Hook, Session Manager, Investigation Plan 패턴
 
 ---
 
@@ -1213,8 +1499,9 @@ Unified-agent-framework/
 
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|-------------|
+| 2.2.0 | 2026-01 | **Settings 클래스** (중앙 설정 통합), GPT-5.2/o3/o4-mini 모델 추가, UTF-8 기본 인코딩, CLI `model` 명령 추가 |
 | 2.1.0 | 2025-12 | SKILL.md 파일 기반 스킬 관리, GPT-5/o1 모델 temperature 자동 분기 |
-| 2.0.0 | 2025-01 | Skills 시스템 통합, FrameworkConfig 추가, Factory Pattern |
+| 2.0.0 | 2025-01 | Skills 시스템 통합, FrameworkConfig 추가, Factory Pattern, AWS AgentCore 패턴 (Memory Hook, Session Manager, Investigation Plan) |
 | 1.0.0 | 2024-12 | 초기 릴리스, 5개 프레임워크 통합 |
 
 ---

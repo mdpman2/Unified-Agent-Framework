@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Unified Agent Framework - Enterprise Edition
 Microsoft Agent Framework 패턴 통합 (MCP, Approval, Streaming 지원)
@@ -90,6 +92,7 @@ pip install semantic-kernel python-dotenv opentelemetry-api opentelemetry-sdk py
 """
 
 import os
+import sys
 import asyncio
 import json
 import logging
@@ -104,6 +107,12 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 import time
+
+# UTF-8 인코딩 기본 설정 (Windows 환경 지원)
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if sys.stderr and hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
 
 try:
     import yaml
@@ -131,16 +140,97 @@ from opentelemetry.sdk.resources import Resource
 
 
 # ============================================================================
-# 설정 (Configuration)
+# 🎯 중앙 설정 (CENTRAL CONFIGURATION)
+# ============================================================================
+# 🚨 모든 설정은 여기서만 변경하세요!
+# ============================================================================
+
+class Settings:
+    """
+    프레임워크 전역 설정 - 모든 설정을 한 곳에서 관리
+
+    사용법:
+        # 모델 변경
+        Settings.DEFAULT_MODEL = "gpt-4.1"
+
+        # 설정 확인
+        print(Settings.DEFAULT_MODEL)
+    """
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # LLM 모델 설정
+    # ─────────────────────────────────────────────────────────────────────────
+    DEFAULT_MODEL: str = "gpt-5.2"           # 기본 모델
+    DEFAULT_API_VERSION: str = "2024-08-01-preview"  # API 버전
+    DEFAULT_TEMPERATURE: float = 0.7         # 기본 Temperature (GPT-4 계열만)
+    DEFAULT_MAX_TOKENS: int = 1000           # 기본 최대 토큰 수
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 지원 모델 목록
+    # ─────────────────────────────────────────────────────────────────────────
+    SUPPORTED_MODELS: list = [
+        # GPT-4 계열
+        "gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
+        # GPT-5 계열
+        "gpt-5", "gpt-5.1", "gpt-5.2",
+        # o-시리즈 (Reasoning)
+        "o1", "o1-mini", "o1-preview", "o3", "o3-mini", "o4-mini"
+    ]
+
+    # Temperature 미지원 모델 (자동으로 temperature 파라미터 제외)
+    MODELS_WITHOUT_TEMPERATURE: list = [
+        "gpt-5", "gpt-5.1", "gpt-5.2",
+        "o1", "o1-mini", "o1-preview", "o3", "o3-mini", "o4-mini"
+    ]
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 프레임워크 설정
+    # ─────────────────────────────────────────────────────────────────────────
+    CHECKPOINT_DIR: str = "./checkpoints"    # 체크포인트 저장 경로
+    ENABLE_TELEMETRY: bool = True            # OpenTelemetry 활성화
+    ENABLE_EVENTS: bool = True               # 이벤트 시스템 활성화
+    ENABLE_STREAMING: bool = False           # 스트리밍 응답 활성화
+    MAX_CACHE_SIZE: int = 100                # 메모리 캐시 최대 크기
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Memory 설정 (AWS AgentCore 패턴)
+    # ─────────────────────────────────────────────────────────────────────────
+    ENABLE_MEMORY_HOOKS: bool = True         # Memory Hook 활성화
+    MEMORY_NAMESPACE: str = "/conversation"  # 메모리 네임스페이스
+    MAX_MEMORY_TURNS: int = 20               # 최대 대화 턴 수
+    SESSION_TTL_HOURS: int = 24              # 세션 만료 시간 (시간)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Supervisor 설정 (SRE Agent 패턴)
+    # ─────────────────────────────────────────────────────────────────────────
+    AUTO_APPROVE_SIMPLE_PLANS: bool = True   # 간단한 계획 자동 승인
+    MAX_SUPERVISOR_ROUNDS: int = 5           # Supervisor 최대 라운드
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 로깅 설정
+    # ─────────────────────────────────────────────────────────────────────────
+    LOG_LEVEL: str = "INFO"                  # 로그 레벨
+    LOG_FILE: str = "agent_framework.log"    # 로그 파일 경로
+
+
+# 하위 호환성을 위한 전역 변수 (Settings 클래스 참조)
+DEFAULT_LLM_MODEL = Settings.DEFAULT_MODEL
+DEFAULT_API_VERSION = Settings.DEFAULT_API_VERSION
+SUPPORTED_MODELS = Settings.SUPPORTED_MODELS
+MODELS_WITHOUT_TEMPERATURE = Settings.MODELS_WITHOUT_TEMPERATURE
+
+
+# ============================================================================
+# 설정 클래스 (Configuration Class)
 # ============================================================================
 
 @dataclass
 class FrameworkConfig:
     """
-    프레임워크 전역 설정
+    프레임워크 설정 - Settings 클래스의 값을 기본값으로 사용
 
     사용법:
-        # 기본 설정 사용
+        # 기본 설정 사용 (Settings 클래스 값 적용)
         config = FrameworkConfig()
 
         # 커스텀 설정
@@ -153,37 +243,37 @@ class FrameworkConfig:
         # 환경변수에서 자동 로드
         config = FrameworkConfig.from_env()
     """
-    # LLM 설정
-    model: str = "gpt-4.1"
-    api_version: str = "2024-08-01-preview"
-    temperature: float = 0.7
-    max_tokens: int = 1000
+    # LLM 설정 - Settings 클래스 참조
+    model: str = field(default_factory=lambda: Settings.DEFAULT_MODEL)
+    api_version: str = field(default_factory=lambda: Settings.DEFAULT_API_VERSION)
+    temperature: float = field(default_factory=lambda: Settings.DEFAULT_TEMPERATURE)
+    max_tokens: int = field(default_factory=lambda: Settings.DEFAULT_MAX_TOKENS)
 
     # Azure 설정 (환경변수에서 로드)
     api_key: Optional[str] = None
     endpoint: Optional[str] = None
     deployment_name: Optional[str] = None
 
-    # 프레임워크 설정
-    checkpoint_dir: str = "./checkpoints"
-    enable_telemetry: bool = True
-    enable_events: bool = True
-    enable_streaming: bool = False
-    max_cache_size: int = 100
+    # 프레임워크 설정 - Settings 클래스 참조
+    checkpoint_dir: str = field(default_factory=lambda: Settings.CHECKPOINT_DIR)
+    enable_telemetry: bool = field(default_factory=lambda: Settings.ENABLE_TELEMETRY)
+    enable_events: bool = field(default_factory=lambda: Settings.ENABLE_EVENTS)
+    enable_streaming: bool = field(default_factory=lambda: Settings.ENABLE_STREAMING)
+    max_cache_size: int = field(default_factory=lambda: Settings.MAX_CACHE_SIZE)
 
-    # Memory 설정 (AgentCore 패턴)
-    enable_memory_hooks: bool = True
-    memory_namespace: str = "/conversation"
-    max_memory_turns: int = 20
-    session_ttl_hours: int = 24
+    # Memory 설정 - Settings 클래스 참조
+    enable_memory_hooks: bool = field(default_factory=lambda: Settings.ENABLE_MEMORY_HOOKS)
+    memory_namespace: str = field(default_factory=lambda: Settings.MEMORY_NAMESPACE)
+    max_memory_turns: int = field(default_factory=lambda: Settings.MAX_MEMORY_TURNS)
+    session_ttl_hours: int = field(default_factory=lambda: Settings.SESSION_TTL_HOURS)
 
-    # Supervisor 설정 (SRE Agent 패턴)
-    auto_approve_simple_plans: bool = True
-    max_supervisor_rounds: int = 5
+    # Supervisor 설정 - Settings 클래스 참조
+    auto_approve_simple_plans: bool = field(default_factory=lambda: Settings.AUTO_APPROVE_SIMPLE_PLANS)
+    max_supervisor_rounds: int = field(default_factory=lambda: Settings.MAX_SUPERVISOR_ROUNDS)
 
-    # 로깅 설정
-    log_level: str = "INFO"
-    log_file: Optional[str] = "agent_framework.log"
+    # 로깅 설정 - Settings 클래스 참조
+    log_level: str = field(default_factory=lambda: Settings.LOG_LEVEL)
+    log_file: Optional[str] = field(default_factory=lambda: Settings.LOG_FILE)
 
     @classmethod
     def from_env(cls, dotenv_path: Optional[str] = None) -> 'FrameworkConfig':
@@ -225,8 +315,8 @@ class FrameworkConfig:
             api_key=api_key,
             endpoint=endpoint,
             deployment_name=deployment_name,
-            model=os.getenv("AZURE_OPENAI_MODEL", "gpt-4.1"),
-            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview"),
+            model=os.getenv("AZURE_OPENAI_MODEL", Settings.DEFAULT_MODEL),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION", Settings.DEFAULT_API_VERSION),
         )
 
     def validate(self) -> bool:
@@ -246,14 +336,6 @@ class FrameworkConfig:
                 "\n\n💡 .env 파일을 생성하거나 환경변수를 설정하세요."
             )
         return True
-
-
-# 전역 기본 설정 (하위 호환성 유지)
-DEFAULT_LLM_MODEL = "gpt-4.1"
-DEFAULT_API_VERSION = "2024-08-01-preview"
-
-# Temperature를 지원하지 않는 모델 목록
-MODELS_WITHOUT_TEMPERATURE = ["gpt-5", "gpt-5.1", "gpt-5.2", "o1", "o1-mini", "o1-preview", "o3", "o3-mini"]
 
 
 def supports_temperature(model: str) -> bool:
@@ -3595,6 +3677,7 @@ async def main():
     print("  exit          - 종료")
     print("  quick         - 빠른 질의응답 (예: quick 안녕하세요)")
     print("  smart         - 스킬 자동 감지 질의응답 (예: smart 파이썬 코드 작성)")
+    print("  model         - 모델 변경 (예: model gpt-5, model list)")
     print("  skills        - 스킬 관리 (예: skills list, skills info python-expert)")
     print("  switch        - 워크플로우 전환 (예: switch routing_workflow)")
     print("  list          - 사용 가능한 워크플로우 목록")
@@ -3627,6 +3710,57 @@ async def main():
             if cmd == "exit":
                 print("\n👋 종료합니다...")
                 break
+
+            elif cmd == "model":
+                # 모델 변경
+                subcmd = args[0].lower() if args else "info"
+
+                if subcmd == "list":
+                    print("\n📋 지원하는 모델 목록:")
+                    print("\n  [GPT-4 계열]")
+                    for m in ["gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano"]:
+                        marker = "👉" if m == framework.config.model else "  "
+                        temp_info = "(temp ✓)" if supports_temperature(m) else "(temp ✗)"
+                        print(f"  {marker} {m} {temp_info}")
+                    print("\n  [GPT-5 계열] - NEW!")
+                    for m in ["gpt-5", "gpt-5.1", "gpt-5.2"]:
+                        marker = "👉" if m == framework.config.model else "  "
+                        temp_info = "(temp ✓)" if supports_temperature(m) else "(temp ✗)"
+                        print(f"  {marker} {m} {temp_info}")
+                    print("\n  [o-시리즈 (Reasoning)]")
+                    for m in ["o1", "o1-mini", "o1-preview", "o3", "o3-mini", "o4-mini"]:
+                        marker = "👉" if m == framework.config.model else "  "
+                        temp_info = "(temp ✓)" if supports_temperature(m) else "(temp ✗)"
+                        print(f"  {marker} {m} {temp_info}")
+                    print("\n  ※ (temp ✗) = temperature 파라미터 미지원")
+
+                elif subcmd == "info":
+                    print(f"\n📊 현재 모델 정보:")
+                    print(f"   모델: {framework.config.model}")
+                    print(f"   배포명: {framework.config.deployment_name}")
+                    print(f"   Temperature 지원: {'예' if supports_temperature(framework.config.model) else '아니오'}")
+                    print(f"   Temperature: {framework.config.temperature}")
+                    print(f"   Max Tokens: {framework.config.max_tokens}")
+
+                elif subcmd in SUPPORTED_MODELS:
+                    old_model = framework.config.model
+                    framework.config.model = subcmd
+                    framework.config.deployment_name = subcmd
+
+                    # 커널 재생성
+                    framework.kernel = framework._create_kernel()
+
+                    temp_info = "" if supports_temperature(subcmd) else " (temperature 미지원)"
+                    print(f"\n✅ 모델 변경: {old_model} → {subcmd}{temp_info}")
+
+                    # 워크플로우 재생성 (새 모델 적용)
+                    await demo_simple_chat(framework)
+                    print(f"   워크플로우 업데이트 완료")
+
+                else:
+                    print(f"\n❌ 알 수 없는 모델: {subcmd}")
+                    print("   'model list'로 지원하는 모델을 확인하세요.")
+                continue
 
             elif cmd == "quick":
                 # 빠른 질의응답
@@ -3858,7 +3992,7 @@ async def quick_run(message: str, system_prompt: str = "You are a helpful assist
 
 
 def create_framework(
-    model: str = "gpt-4.1",
+    model: str = None,  # None이면 DEFAULT_LLM_MODEL 사용
     temperature: float = 0.7,
     **kwargs
 ) -> UnifiedAgentFramework:
@@ -3873,7 +4007,8 @@ def create_framework(
     ```
     """
     config = FrameworkConfig.from_env()
-    config.model = model
+    if model is not None:
+        config.model = model
     config.temperature = temperature
 
     for key, value in kwargs.items():
