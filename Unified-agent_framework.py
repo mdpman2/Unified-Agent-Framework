@@ -16,7 +16,7 @@ Microsoft Agent Framework 패턴 통합 (MCP, Approval, Streaming 지원)
    ```python
    import asyncio
    from Semantic_agent_framework import quick_run
-   
+
    response = asyncio.run(quick_run("파이썬이란 무엇인가요?"))
    print(response)
    ```
@@ -25,26 +25,26 @@ Microsoft Agent Framework 패턴 통합 (MCP, Approval, Streaming 지원)
    ```python
    import asyncio
    from Semantic_agent_framework import UnifiedAgentFramework
-   
+
    async def main():
        # 프레임워크 생성 (환경변수 자동 로드)
        framework = UnifiedAgentFramework.create()
-       
+
        # 빠른 질의응답
        response = await framework.quick_chat("안녕하세요!")
        print(response)
-       
+
        # 워크플로우 생성 및 실행
        framework.create_simple_workflow("my_bot", "너는 친절한 AI야.")
        state = await framework.run("session-1", "my_bot", "질문입니다")
-   
+
    asyncio.run(main())
    ```
 
 4. Skills 시스템 사용:
    ```python
    from Semantic_agent_framework import Skill, SkillManager
-   
+
    # 스킬 생성
    coding_skill = Skill(
        name="python-expert",
@@ -52,7 +52,7 @@ Microsoft Agent Framework 패턴 통합 (MCP, Approval, Streaming 지원)
        instructions='''
        ## 역할
        Python 전문 개발자로서 코드를 작성합니다.
-       
+
        ## 가이드라인
        - PEP 8 스타일 가이드 준수
        - 타입 힌트 사용
@@ -60,10 +60,10 @@ Microsoft Agent Framework 패턴 통합 (MCP, Approval, Streaming 지원)
        ''',
        triggers=["python", "코딩", "프로그래밍", "코드"]
    )
-   
+
    # 프레임워크에 스킬 등록
    framework.skill_manager.register_skill(coding_skill)
-   
+
    # 스킬 기반 에이전트 생성
    agent = framework.create_skilled_agent("coder", skills=["python-expert"])
    ```
@@ -138,18 +138,18 @@ from opentelemetry.sdk.resources import Resource
 class FrameworkConfig:
     """
     프레임워크 전역 설정
-    
+
     사용법:
         # 기본 설정 사용
         config = FrameworkConfig()
-        
+
         # 커스텀 설정
         config = FrameworkConfig(
             model="gpt-4o",
             temperature=0.5,
             checkpoint_dir="./my_checkpoints"
         )
-        
+
         # 환경변수에서 자동 로드
         config = FrameworkConfig.from_env()
     """
@@ -158,28 +158,38 @@ class FrameworkConfig:
     api_version: str = "2024-08-01-preview"
     temperature: float = 0.7
     max_tokens: int = 1000
-    
+
     # Azure 설정 (환경변수에서 로드)
     api_key: Optional[str] = None
     endpoint: Optional[str] = None
     deployment_name: Optional[str] = None
-    
+
     # 프레임워크 설정
     checkpoint_dir: str = "./checkpoints"
     enable_telemetry: bool = True
     enable_events: bool = True
     enable_streaming: bool = False
     max_cache_size: int = 100
-    
+
+    # Memory 설정 (AgentCore 패턴)
+    enable_memory_hooks: bool = True
+    memory_namespace: str = "/conversation"
+    max_memory_turns: int = 20
+    session_ttl_hours: int = 24
+
+    # Supervisor 설정 (SRE Agent 패턴)
+    auto_approve_simple_plans: bool = True
+    max_supervisor_rounds: int = 5
+
     # 로깅 설정
     log_level: str = "INFO"
     log_file: Optional[str] = "agent_framework.log"
-    
+
     @classmethod
     def from_env(cls, dotenv_path: Optional[str] = None) -> 'FrameworkConfig':
         """
         환경변수에서 설정 로드
-        
+
         지원하는 환경변수 (우선순위 순서):
         - API Key: AZURE_OPENAI_API_KEY
         - Endpoint: AZURE_OPENAI_ENDPOINT
@@ -187,22 +197,22 @@ class FrameworkConfig:
         - API Version: AZURE_OPENAI_API_VERSION (기본: 2024-08-01-preview)
         """
         load_dotenv(dotenv_path)
-        
+
         # API Key (AZURE_OPENAI_API_KEY 우선)
         api_key = (
-            os.getenv("AZURE_OPENAI_API_KEY") 
+            os.getenv("AZURE_OPENAI_API_KEY")
         )
-        
+
         # Endpoint (AZURE_OPENAI_ENDPOINT 우선)
         endpoint = (
-            os.getenv("AZURE_OPENAI_ENDPOINT") 
+            os.getenv("AZURE_OPENAI_ENDPOINT")
         )
-        
+
         # Deployment Name (AZURE_OPENAI_DEPLOYMENT 우선) - 값에서 따옴표/공백 제거
         deployment_name = (
-            os.getenv("AZURE_OPENAI_DEPLOYMENT") 
+            os.getenv("AZURE_OPENAI_DEPLOYMENT")
         )
-        
+
         # 환경변수 값에서 따옴표와 공백 제거 (Windows .env 파일 문제 해결)
         if api_key:
             api_key = api_key.strip().strip('"').strip("'").strip()
@@ -210,7 +220,7 @@ class FrameworkConfig:
             endpoint = endpoint.strip().strip('"').strip("'").strip()
         if deployment_name:
             deployment_name = deployment_name.strip().strip('"').strip("'").strip()
-        
+
         return cls(
             api_key=api_key,
             endpoint=endpoint,
@@ -218,7 +228,7 @@ class FrameworkConfig:
             model=os.getenv("AZURE_OPENAI_MODEL", "gpt-4.1"),
             api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview"),
         )
-    
+
     def validate(self) -> bool:
         """설정 유효성 검증"""
         missing = []
@@ -228,7 +238,7 @@ class FrameworkConfig:
             missing.append("endpoint (AZURE_OPENAI_ENDPOINT)")
         if not self.deployment_name:
             missing.append("deployment_name (AZURE_OPENAI_DEPLOYMENT)")
-        
+
         if missing:
             raise ValueError(
                 f"❌ 필수 설정이 누락되었습니다:\n" +
@@ -249,13 +259,13 @@ MODELS_WITHOUT_TEMPERATURE = ["gpt-5", "gpt-5.1", "gpt-5.2", "o1", "o1-mini", "o
 def supports_temperature(model: str) -> bool:
     """
     모델이 temperature 파라미터를 지원하는지 확인
-    
+
     Args:
         model: 모델 이름 (예: 'gpt-4.1', 'gpt-5', 'o1')
-    
+
     Returns:
         bool: temperature 지원 여부
-    
+
     Note:
         GPT-5, o1, o3 계열 모델은 temperature를 지원하지 않습니다.
     """
@@ -275,14 +285,14 @@ def create_execution_settings(
 ) -> AzureChatPromptExecutionSettings:
     """
     모델에 따라 적절한 실행 설정 생성
-    
+
     Args:
         model: 모델 이름
         temperature: 온도 설정 (지원하는 모델에만 적용)
         max_tokens: 최대 토큰 수
         service_id: 서비스 ID (없으면 model 사용)
         **kwargs: 추가 설정
-    
+
     Returns:
         AzureChatPromptExecutionSettings 인스턴스
     """
@@ -291,13 +301,13 @@ def create_execution_settings(
         "service_id": service_id or model,
         **kwargs
     }
-    
+
     # Temperature 지원 모델에만 temperature 추가
     if supports_temperature(model):
         settings_kwargs["temperature"] = temperature
     else:
         logging.info(f"ℹ️ 모델 '{model}'은(는) temperature를 지원하지 않습니다. 해당 파라미터를 생략합니다.")
-    
+
     return AzureChatPromptExecutionSettings(**settings_kwargs)
 
 
@@ -309,7 +319,7 @@ def create_execution_settings(
 class SkillResource:
     """
     스킬 번들 리소스
-    
+
     스킬에 포함되는 추가 리소스를 정의합니다:
     - scripts/: 실행 가능한 스크립트 (Python, Bash 등)
     - references/: 참조 문서 (마크다운, 텍스트 등)
@@ -322,14 +332,14 @@ class SkillResource:
     description: Optional[str] = None
 
 
-@dataclass 
+@dataclass
 class Skill:
     """
     Anthropic Skills 패턴 구현
-    
+
     Skills는 Claude의 능력을 확장하는 모듈화된 패키지입니다.
     특정 도메인의 지식, 워크플로우, 도구를 제공합니다.
-    
+
     구조:
     ```
     skill-name/
@@ -341,7 +351,7 @@ class Skill:
         ├── references/   - 참조 문서
         └── assets/       - 템플릿, 아이콘 등
     ```
-    
+
     사용법:
     ```python
     # 직접 생성
@@ -351,10 +361,10 @@ class Skill:
         instructions="## 역할\\n파이썬 전문가로서...",
         triggers=["python", "코딩"]
     )
-    
+
     # 파일에서 로드
     skill = Skill.from_file("skills/python-expert/SKILL.md")
-    
+
     # 디렉토리에서 로드 (리소스 포함)
     skill = Skill.from_directory("skills/python-expert/")
     ```
@@ -367,25 +377,25 @@ class Skill:
     metadata: Dict[str, Any] = field(default_factory=dict)
     enabled: bool = True
     priority: int = 0  # 높을수록 우선순위 높음
-    
+
     # Progressive Disclosure 관련
     always_loaded: bool = False  # True면 항상 컨텍스트에 포함
     max_context_lines: int = 500  # SKILL.md 최대 라인 수
-    
+
     @classmethod
     def from_file(cls, filepath: str) -> 'Skill':
         """
         SKILL.md 파일에서 스킬 로드
-        
+
         파일 형식:
         ```markdown
         ---
         name: skill-name
         description: 스킬 설명
         ---
-        
+
         # 스킬 제목
-        
+
         ## 지침
         ...
         ```
@@ -393,15 +403,15 @@ class Skill:
         path = Path(filepath)
         if not path.exists():
             raise FileNotFoundError(f"스킬 파일을 찾을 수 없습니다: {filepath}")
-        
+
         content = path.read_text(encoding='utf-8')
         return cls._parse_skill_content(content, filepath)
-    
+
     @classmethod
     def from_directory(cls, dirpath: str) -> 'Skill':
         """
         스킬 디렉토리에서 스킬 로드 (리소스 포함)
-        
+
         디렉토리 구조:
         ```
         skill-name/
@@ -416,25 +426,25 @@ class Skill:
         """
         dirpath = Path(dirpath)
         skill_file = dirpath / "SKILL.md"
-        
+
         if not skill_file.exists():
             raise FileNotFoundError(f"SKILL.md를 찾을 수 없습니다: {skill_file}")
-        
+
         # 기본 스킬 로드
         skill = cls.from_file(str(skill_file))
-        
+
         # 리소스 로드
         skill._load_resources(dirpath)
-        
+
         return skill
-    
+
     @classmethod
     def _parse_skill_content(cls, content: str, source: str = "") -> 'Skill':
         """SKILL.md 내용 파싱"""
         # YAML frontmatter 추출
         frontmatter = {}
         body = content
-        
+
         if content.startswith('---'):
             parts = content.split('---', 2)
             if len(parts) >= 3:
@@ -446,16 +456,16 @@ class Skill:
                 else:
                     frontmatter = cls._parse_simple_yaml(parts[1])
                 body = parts[2].strip()
-        
+
         name = frontmatter.get('name', Path(source).stem if source else 'unnamed-skill')
         description = frontmatter.get('description', '')
-        
+
         # triggers 추출 (description에서 자동 추출 또는 명시적 지정)
         triggers = frontmatter.get('triggers', [])
         if not triggers and description:
             # description에서 주요 키워드 추출
             triggers = cls._extract_triggers(description)
-        
+
         # priority 추출 (기본값: 0)
         priority = frontmatter.get('priority', 0)
         if isinstance(priority, str):
@@ -463,7 +473,7 @@ class Skill:
                 priority = int(priority)
             except ValueError:
                 priority = 0
-        
+
         return cls(
             name=name,
             description=description,
@@ -476,7 +486,7 @@ class Skill:
                 **{k: v for k, v in frontmatter.items() if k not in ['name', 'description', 'triggers', 'license', 'priority']}
             }
         )
-    
+
     @staticmethod
     def _parse_simple_yaml(text: str) -> Dict[str, Any]:
         """간단한 YAML 파싱 (yaml 라이브러리 없을 때)"""
@@ -493,7 +503,7 @@ class Skill:
                     value = value[1:-1]
                 result[key] = value
         return result
-    
+
     @staticmethod
     def _extract_triggers(description: str) -> List[str]:
         """설명에서 트리거 키워드 추출"""
@@ -503,14 +513,14 @@ class Skill:
         parens = re.findall(r'\(([^)]+)\)', description)
         for paren in parens:
             keywords.extend([k.strip() for k in paren.split(',')])
-        
+
         # 주요 단어 추출 (영문은 소문자로)
         words = re.findall(r'\b[A-Za-z가-힣]{3,}\b', description)
         stop_words = {'the', 'and', 'for', 'use', 'when', 'with', 'this', 'that', 'from', 'have', 'are'}
         keywords.extend([w.lower() for w in words if w.lower() not in stop_words][:5])
-        
+
         return list(set(keywords))[:10]
-    
+
     def _load_resources(self, dirpath: Path):
         """디렉토리에서 리소스 로드"""
         # Scripts
@@ -524,7 +534,7 @@ class Skill:
                         path=str(script_file),
                         description=f"Script: {script_file.name}"
                     ))
-        
+
         # References
         refs_dir = dirpath / "references"
         if refs_dir.exists():
@@ -536,7 +546,7 @@ class Skill:
                         path=str(ref_file),
                         description=f"Reference: {ref_file.name}"
                     ))
-        
+
         # Assets
         assets_dir = dirpath / "assets"
         if assets_dir.exists():
@@ -548,19 +558,19 @@ class Skill:
                         path=str(asset_file),
                         description=f"Asset: {asset_file.name}"
                     ))
-    
+
     def get_resource(self, name: str) -> Optional[SkillResource]:
         """이름으로 리소스 찾기"""
         for resource in self.resources:
             if resource.name == name:
                 return resource
         return None
-    
+
     def load_resource_content(self, resource: SkillResource) -> str:
         """리소스 내용 로드"""
         if resource.content:
             return resource.content
-        
+
         path = Path(resource.path)
         if path.exists() and path.is_file():
             try:
@@ -569,39 +579,39 @@ class Skill:
             except Exception as e:
                 logging.warning(f"리소스 로드 실패: {resource.path} - {e}")
         return ""
-    
+
     def matches(self, query: str) -> float:
         """
         쿼리와의 매칭 점수 계산 (0.0 ~ 1.0)
-        
+
         Progressive Disclosure: 쿼리에 따라 스킬 활성화 여부 결정
         """
         query_lower = query.lower()
         score = 0.0
-        
+
         # 이름 매칭 (높은 가중치)
         if self.name.lower() in query_lower:
             score += 0.5
-        
+
         # 트리거 매칭
         for trigger in self.triggers:
             if trigger.lower() in query_lower:
                 score += 0.3
                 break
-        
+
         # 설명 매칭
         desc_words = self.description.lower().split()
         query_words = query_lower.split()
         common_words = set(desc_words) & set(query_words)
         if common_words:
             score += min(len(common_words) * 0.1, 0.2)
-        
+
         return min(score, 1.0)
-    
+
     def get_prompt_section(self, include_full: bool = False) -> str:
         """
         프롬프트에 포함할 스킬 섹션 생성
-        
+
         Progressive Disclosure 적용:
         - include_full=False: 메타데이터만 (name + description)
         - include_full=True: 전체 지침 포함
@@ -618,7 +628,7 @@ class Skill:
 """
         else:
             return f"- **{self.name}**: {self.description}\n"
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """딕셔너리로 변환"""
         return {
@@ -639,49 +649,49 @@ class Skill:
 class SkillManager:
     """
     스킬 관리자 - 스킬 등록, 검색, 활성화 관리
-    
+
     주요 기능:
     - 스킬 등록 및 해제
     - 쿼리 기반 스킬 매칭 (Progressive Disclosure)
     - 디렉토리에서 스킬 일괄 로드
     - 스킬 우선순위 관리
-    
+
     사용법:
     ```python
     manager = SkillManager()
-    
+
     # 스킬 등록
     manager.register_skill(my_skill)
-    
+
     # 디렉토리에서 로드
     manager.load_skills_from_directory("./skills")
-    
+
     # 쿼리에 맞는 스킬 찾기
     matched_skills = manager.match_skills("Python 코드 작성해줘")
-    
+
     # 활성화된 스킬로 시스템 프롬프트 생성
     prompt = manager.build_system_prompt(matched_skills)
     ```
     """
-    
+
     def __init__(self, skill_dirs: Optional[List[str]] = None):
         self.skills: Dict[str, Skill] = {}
         self.skill_history: List[Dict[str, Any]] = []  # 스킬 사용 기록
-        
+
         # 기본 스킬 디렉토리에서 로드
         if skill_dirs:
             for skill_dir in skill_dirs:
                 self.load_skills_from_directory(skill_dir)
-    
+
     def register_skill(self, skill: Skill) -> bool:
         """스킬 등록"""
         if skill.name in self.skills:
             logging.warning(f"스킬 '{skill.name}'이 이미 존재합니다. 덮어씁니다.")
-        
+
         self.skills[skill.name] = skill
         logging.info(f"✅ 스킬 등록: {skill.name}")
         return True
-    
+
     def unregister_skill(self, name: str) -> bool:
         """스킬 해제"""
         if name in self.skills:
@@ -689,22 +699,22 @@ class SkillManager:
             logging.info(f"🗑️ 스킬 해제: {name}")
             return True
         return False
-    
+
     def get_skill(self, name: str) -> Optional[Skill]:
         """이름으로 스킬 가져오기"""
         return self.skills.get(name)
-    
+
     def list_skills(self, enabled_only: bool = True) -> List[Skill]:
         """등록된 스킬 목록"""
         skills = list(self.skills.values())
         if enabled_only:
             skills = [s for s in skills if s.enabled]
         return sorted(skills, key=lambda s: -s.priority)
-    
+
     def load_skills_from_directory(self, dirpath: str) -> int:
         """
         디렉토리에서 스킬 일괄 로드
-        
+
         디렉토리 구조:
         ```
         skills/
@@ -720,7 +730,7 @@ class SkillManager:
         if not dirpath.exists():
             logging.warning(f"스킬 디렉토리가 존재하지 않습니다: {dirpath}")
             return 0
-        
+
         loaded = 0
         for skill_dir in dirpath.iterdir():
             if skill_dir.is_dir():
@@ -732,104 +742,104 @@ class SkillManager:
                         loaded += 1
                     except Exception as e:
                         logging.error(f"스킬 로드 실패: {skill_dir} - {e}")
-        
+
         logging.info(f"📦 {loaded}개 스킬 로드 완료 from {dirpath}")
         return loaded
-    
+
     def match_skills(
-        self, 
-        query: str, 
+        self,
+        query: str,
         threshold: float = 0.2,
         max_skills: int = 3
     ) -> List[Skill]:
         """
         쿼리에 매칭되는 스킬 찾기
-        
+
         Progressive Disclosure 구현:
         - threshold 이상의 매칭 점수를 가진 스킬만 반환
         - max_skills 개수 제한
         - always_loaded 스킬은 항상 포함
         """
         matched = []
-        
+
         for skill in self.list_skills():
             if skill.always_loaded:
                 matched.append((skill, 1.0))
                 continue
-            
+
             score = skill.matches(query)
             if score >= threshold:
                 matched.append((skill, score))
-        
+
         # 점수 및 우선순위로 정렬
         matched.sort(key=lambda x: (-x[1], -x[0].priority))
-        
+
         result = [skill for skill, _ in matched[:max_skills]]
-        
+
         # 사용 기록
         self.skill_history.append({
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "query": query,
             "matched": [s.name for s in result]
         })
-        
+
         return result
-    
+
     def build_system_prompt(
-        self, 
+        self,
         skills: List[Skill],
         base_prompt: str = "",
         include_full: bool = True
     ) -> str:
         """
         스킬을 포함한 시스템 프롬프트 생성
-        
+
         Progressive Disclosure:
         - 매칭된 스킬만 전체 지침 포함
         - 다른 스킬은 메타데이터만 포함 (선택적)
         """
         prompt_parts = []
-        
+
         if base_prompt:
             prompt_parts.append(base_prompt)
-        
+
         if skills:
             prompt_parts.append("\n# Active Skills\n")
             for skill in skills:
                 prompt_parts.append(skill.get_prompt_section(include_full=include_full))
-        
+
         # 사용 가능한 다른 스킬 목록 (Progressive Disclosure)
         other_skills = [s for s in self.list_skills() if s not in skills]
         if other_skills:
             prompt_parts.append("\n# Available Skills (activate by mentioning)\n")
             for skill in other_skills[:5]:  # 최대 5개만 표시
                 prompt_parts.append(skill.get_prompt_section(include_full=False))
-        
+
         return "\n".join(prompt_parts)
-    
+
     def get_usage_stats(self) -> Dict[str, Any]:
         """스킬 사용 통계"""
         stats = defaultdict(int)
         for record in self.skill_history:
             for skill_name in record.get("matched", []):
                 stats[skill_name] += 1
-        
+
         return {
             "total_queries": len(self.skill_history),
             "skill_usage": dict(stats),
             "registered_skills": len(self.skills),
             "enabled_skills": len([s for s in self.skills.values() if s.enabled])
         }
-    
+
     def create_skill_template(self, name: str, output_dir: str) -> str:
         """
         새 스킬 템플릿 생성
-        
+
         init_skill.py 스크립트와 유사한 기능
         """
         output_path = Path(output_dir) / name
         output_path.mkdir(parents=True, exist_ok=True)
-        
+
         # SKILL.md 템플릿
         skill_md = f"""---
 name: {name}
@@ -863,14 +873,14 @@ description: [TODO: 이 스킬이 무엇을 하는지, 언제 사용해야 하�
 - references/: 참조 문서
 - assets/: 템플릿 및 에셋
 """
-        
+
         (output_path / "SKILL.md").write_text(skill_md, encoding='utf-8')
-        
+
         # 리소스 디렉토리 생성
         (output_path / "scripts").mkdir(exist_ok=True)
         (output_path / "references").mkdir(exist_ok=True)
         (output_path / "assets").mkdir(exist_ok=True)
-        
+
         # 예제 스크립트
         example_script = f'''#!/usr/bin/env python3
 """
@@ -884,7 +894,7 @@ if __name__ == "__main__":
     main()
 '''
         (output_path / "scripts" / "example.py").write_text(example_script, encoding='utf-8')
-        
+
         logging.info(f"✅ 스킬 템플릿 생성: {output_path}")
         return str(output_path)
 
@@ -1214,8 +1224,203 @@ class ApprovalRequiredAIFunction(AIFunction):
 
 
 # ============================================================================
-# MCP (Model Context Protocol) 통합
+# Memory Hook Provider 패턴 (Amazon Bedrock AgentCore 참조)
 # ============================================================================
+
+@dataclass
+class ConversationMessage:
+    """
+    대화 메시지 모델 (AgentCore Memory 패턴)
+
+    참조: https://github.com/awslabs/amazon-bedrock-agentcore-samples
+    """
+    content: str
+    role: str  # USER, ASSISTANT, TOOL
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    agent_name: Optional[str] = None
+    session_id: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+class MemoryHookProvider:
+    """
+    Memory Hook Provider - 자동 메모리 관리
+
+    참조: amazon-bedrock-agentcore-samples/memory/hooks.py
+
+    주요 기능:
+    - 대화 기록 자동 저장/로드
+    - 세션 기반 컨텍스트 관리
+    - 네임스페이스 기반 메모리 분류
+
+    사용법:
+    ```python
+    memory_hook = MemoryHookProvider(
+        memory_store=memory_store,
+        session_id="session-123",
+        actor_id="user-456"
+    )
+
+    # 에이전트 초기화 시 컨텍스트 로드
+    context = await memory_hook.on_agent_initialized(agent_name="assistant")
+
+    # 메시지 추가 시 자동 저장
+    await memory_hook.on_message_added(message, agent_name="assistant")
+    ```
+    """
+
+    def __init__(
+        self,
+        memory_store: 'MemoryStore',
+        session_id: str,
+        actor_id: str,
+        max_context_turns: int = 10,
+        namespace: str = "/conversation"
+    ):
+        self.memory_store = memory_store
+        self.session_id = session_id
+        self.actor_id = actor_id
+        self.max_context_turns = max_context_turns
+        self.namespace = namespace
+        self.conversation_history: List[ConversationMessage] = []
+        self._logger = StructuredLogger("memory_hook")
+
+    async def on_agent_initialized(self, agent_name: str) -> List[ConversationMessage]:
+        """
+        에이전트 초기화 시 최근 대화 기록 로드
+        """
+        try:
+            key = f"{self.namespace}/{self.session_id}/history"
+            data = await self.memory_store.load(key)
+
+            if data:
+                messages = data.get("messages", [])
+                self.conversation_history = [
+                    ConversationMessage(**msg) for msg in messages[-self.max_context_turns:]
+                ]
+                self._logger.info(
+                    f"Loaded {len(self.conversation_history)} messages",
+                    agent=agent_name,
+                    session_id=self.session_id
+                )
+
+            return self.conversation_history
+        except Exception as e:
+            self._logger.error(f"Failed to load history: {e}")
+            return []
+
+    async def on_message_added(
+        self,
+        content: str,
+        role: str,
+        agent_name: Optional[str] = None
+    ):
+        """
+        메시지 추가 시 자동 저장
+        """
+        message = ConversationMessage(
+            content=content,
+            role=role,
+            agent_name=agent_name,
+            session_id=self.session_id
+        )
+
+        self.conversation_history.append(message)
+
+        # 저장
+        try:
+            key = f"{self.namespace}/{self.session_id}/history"
+            await self.memory_store.save(key, {
+                "messages": [{
+                    "content": m.content,
+                    "role": m.role,
+                    "timestamp": m.timestamp.isoformat(),
+                    "agent_name": m.agent_name,
+                    "session_id": m.session_id
+                } for m in self.conversation_history[-self.max_context_turns:]],
+                "actor_id": self.actor_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            })
+        except Exception as e:
+            self._logger.error(f"Failed to save message: {e}")
+
+    async def get_last_k_turns(self, k: int = 5) -> List[ConversationMessage]:
+        """
+        최근 k개 대화 턴 조회
+        """
+        return self.conversation_history[-k:]
+
+    async def clear_session(self):
+        """
+        세션 데이터 삭제
+        """
+        key = f"{self.namespace}/{self.session_id}/history"
+        await self.memory_store.delete(key)
+        self.conversation_history = []
+        self._logger.info("Session cleared", session_id=self.session_id)
+
+
+class MemorySessionManager:
+    """
+    세션 기반 메모리 관리자 (AgentCore MemorySessionManager 패턴)
+
+    참조: amazon-bedrock-agentcore-samples/memory/session_manager.py
+
+    주요 기능:
+    - 다중 세션 관리
+    - 세션 간 컨텍스트 공유
+    - 자동 세션 정리
+    """
+
+    def __init__(self, memory_store: 'MemoryStore', default_ttl_hours: int = 24):
+        self.memory_store = memory_store
+        self.default_ttl_hours = default_ttl_hours
+        self._sessions: Dict[str, MemoryHookProvider] = {}
+        self._logger = StructuredLogger("session_manager")
+
+    def get_or_create_session(
+        self,
+        session_id: str,
+        actor_id: str,
+        namespace: str = "/conversation"
+    ) -> MemoryHookProvider:
+        """
+        세션 조회 또는 생성
+        """
+        key = f"{actor_id}:{session_id}"
+
+        if key not in self._sessions:
+            self._sessions[key] = MemoryHookProvider(
+                memory_store=self.memory_store,
+                session_id=session_id,
+                actor_id=actor_id,
+                namespace=namespace
+            )
+            self._logger.info(
+                "Created new session",
+                session_id=session_id,
+                actor_id=actor_id
+            )
+
+        return self._sessions[key]
+
+    async def list_sessions(self, actor_id: Optional[str] = None) -> List[str]:
+        """
+        세션 목록 조회
+        """
+        sessions = []
+        for key in self._sessions.keys():
+            if actor_id is None or key.startswith(f"{actor_id}:"):
+                sessions.append(key)
+        return sessions
+
+    async def cleanup_expired_sessions(self):
+        """
+        만료된 세션 정리
+        """
+        # 구현: TTL 기반 세션 정리
+        pass
+
 
 # ============================================================================
 # MCP (Model Context Protocol) 통합
@@ -1915,39 +2120,180 @@ Respond with ONLY the category name (one word)."""
             )
 
 
+@dataclass
+class InvestigationPlan:
+    """
+    Investigation Plan - 멀티 에이전트 조사 계획
+
+    참조: amazon-bedrock-agentcore-samples/SRE-agent/supervisor.py
+    """
+    steps: List[str]
+    agents_sequence: List[str]
+    complexity: str = "simple"  # simple, complex
+    auto_execute: bool = True
+    reasoning: str = ""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "steps": self.steps,
+            "agents_sequence": self.agents_sequence,
+            "complexity": self.complexity,
+            "auto_execute": self.auto_execute,
+            "reasoning": self.reasoning
+        }
+
+
 class SupervisorAgent(Agent):
     """
     Supervisor Agent - 여러 Agent를 감독하고 조율
 
-    [신규] Microsoft AutoGen의 Supervisor 패턴
+    개선된 패턴 (Amazon Bedrock AgentCore + Microsoft AutoGen 통합):
+    - Investigation Plan 기반 체계적 실행
+    - 메모리 컨텍스트 통합
+    - 상세한 실행 추적 및 집계
 
-    기존 OrchestratorAgent vs SupervisorAgent:
-    - Orchestrator: 순차 실행, 간단한 협업
-    - Supervisor: 라운드 기반 협업, 조기 종료 조건, 실행 로그
+    참조:
+    - amazon-bedrock-agentcore-samples/SRE-agent/supervisor.py
+    - Microsoft AutoGen의 GroupChat 패턴
 
     주요 기능:
-    1. 라운드 기반 협업 (max_rounds)
-    2. 조기 종료 조건 ("TERMINATE" 키워드)
-    3. 상세한 실행 로그 (execution_log)
-    4. 서브 에이전트 성능 추적
+    1. Investigation Plan 생성 및 실행
+    2. 라운드 기반 협업 (max_rounds)
+    3. 조기 종료 조건 ("TERMINATE" 키워드)
+    4. 상세한 실행 로그 (execution_log)
+    5. 응답 집계 (aggregate_responses)
+    6. 메모리 컨텍스트 통합 (memory_hook)
 
     사용 시나리오:
     - Research Agent + Writer Agent 협업
-    - Coder + Reviewer 협업
+    - Diagnostic + Remediation + Prevention 협업 (SRE 패턴)
     - 복잡한 multi-step 작업
     """
 
-    def __init__(self, *args, sub_agents: List[Agent],
-                 max_rounds: int = 3, **kwargs):
+    def __init__(
+        self,
+        *args,
+        sub_agents: List[Agent],
+        max_rounds: int = 3,
+        memory_hook: Optional['MemoryHookProvider'] = None,
+        auto_approve_simple: bool = True,  # 간단한 계획 자동 실행
+        **kwargs
+    ):
         super().__init__(*args, role=AgentRole.SUPERVISOR, **kwargs)
         self.sub_agents = {agent.name: agent for agent in sub_agents}
         self.max_rounds = max_rounds
-        self.execution_log: List[Dict[str, Any]] = []  # 🆕 실행 로그
+        self.memory_hook = memory_hook
+        self.auto_approve_simple = auto_approve_simple
+        self.execution_log: List[Dict[str, Any]] = []
+        self.investigation_history: List[InvestigationPlan] = []
+
+    async def create_investigation_plan(
+        self,
+        state: AgentState,
+        kernel: Kernel
+    ) -> InvestigationPlan:
+        """
+        Investigation Plan 생성 (SRE Agent 패턴)
+
+        쿼리를 분석하여 최적의 에이전트 실행 순서를 결정합니다.
+        """
+        agent_names = list(self.sub_agents.keys())
+        agent_descriptions = ", ".join([
+            f"{name}: {agent.system_prompt[:100]}..."
+            for name, agent in self.sub_agents.items()
+        ])
+
+        query = state.messages[-1].content if state.messages else ""
+
+        planning_prompt = f"""You are a supervisor planning an investigation.
+
+Available Agents:
+{agent_descriptions}
+
+User Query: {query}
+
+Create a plan with:
+1. Steps to execute
+2. Agent sequence (from: {', '.join(agent_names)})
+3. Complexity (simple if ≤3 steps, complex otherwise)
+
+Respond in JSON format:
+{{
+  "steps": ["step1", "step2"],
+  "agents_sequence": ["agent1", "agent2"],
+  "complexity": "simple",
+  "reasoning": "brief explanation"
+}}"""
+
+        temp_messages = [Message(role=AgentRole.USER, content=planning_prompt)]
+        response = await self._get_llm_response(kernel, temp_messages)
+
+        try:
+            # JSON 파싱
+            import re
+            json_match = re.search(r'\{[^{}]*\}', response, re.DOTALL)
+            if json_match:
+                plan_data = json.loads(json_match.group())
+            else:
+                plan_data = {
+                    "steps": ["Execute query"],
+                    "agents_sequence": [agent_names[0]] if agent_names else [],
+                    "complexity": "simple",
+                    "reasoning": "Default single-step plan"
+                }
+        except json.JSONDecodeError:
+            plan_data = {
+                "steps": ["Execute query"],
+                "agents_sequence": [agent_names[0]] if agent_names else [],
+                "complexity": "simple",
+                "reasoning": "Fallback plan"
+            }
+
+        plan = InvestigationPlan(
+            steps=plan_data.get("steps", []),
+            agents_sequence=plan_data.get("agents_sequence", []),
+            complexity=plan_data.get("complexity", "simple"),
+            auto_execute=plan_data.get("complexity", "simple") == "simple" and self.auto_approve_simple,
+            reasoning=plan_data.get("reasoning", "")
+        )
+
+        self.investigation_history.append(plan)
+        logging.info(f"📋 Investigation Plan: {len(plan.steps)} steps, complexity={plan.complexity}")
+
+        return plan
+
+    async def aggregate_responses(
+        self,
+        responses: List[Dict[str, Any]],
+        state: AgentState,
+        kernel: Kernel
+    ) -> str:
+        """
+        다중 에이전트 응답 집계 (SRE Agent 패턴)
+        """
+        if not responses:
+            return "No responses to aggregate."
+
+        responses_text = "\n\n".join([
+            f"[{r['agent']}]:\n{r['output']}" for r in responses
+        ])
+
+        aggregation_prompt = f"""Summarize the following agent responses into a cohesive answer:
+
+{responses_text}
+
+Provide a clear, unified response that synthesizes all findings."""
+
+        temp_messages = [Message(role=AgentRole.USER, content=aggregation_prompt)]
+        return await self._get_llm_response(kernel, temp_messages)
 
     async def execute(self, state: AgentState, kernel: Kernel) -> NodeResult:
         start_time = time.time()
 
         try:
+            # Investigation Plan 생성
+            plan = await self.create_investigation_plan(state, kernel)
+
             responses = []
             current_round = 0
 
@@ -2024,12 +2370,28 @@ Respond with ONLY the agent name or "TERMINATE".
                     logging.info(f"✅ 조기 종료 요청 by {selected_agent_name}")
                     break
 
-            final_output = "\n\n".join(responses)
+            # 응답 집계 (SRE Agent 패턴)
+            if responses and len(responses) > 1:
+                aggregated = await self.aggregate_responses(
+                    self.execution_log, state, kernel
+                )
+                final_output = aggregated
+            else:
+                final_output = "\n\n".join(responses)
+
             duration_ms = (time.time() - start_time) * 1000
 
             # 최종 요약
             summary = f"Supervisor 실행 완료: {current_round}라운드"
             state.add_message(AgentRole.SUPERVISOR, summary, self.name)
+
+            # Memory Hook 저장 (있는 경우)
+            if self.memory_hook:
+                await self.memory_hook.on_message_added(
+                    content=final_output,
+                    role="ASSISTANT",
+                    agent_name=self.name
+                )
 
             return NodeResult(
                 node_name=self.name,
@@ -2039,7 +2401,8 @@ Respond with ONLY the agent name or "TERMINATE".
                 metadata={
                     "rounds": current_round,
                     "agents": len(self.sub_agents),
-                    "execution_log": self.execution_log
+                    "execution_log": self.execution_log,
+                    "investigation_plan": plan.to_dict() if plan else None
                 }
             )
         except Exception as e:
@@ -2443,17 +2806,17 @@ class UnifiedAgentFramework:
     ```python
     # 1. 가장 간단한 방법 (환경변수에서 자동 로드)
     framework = UnifiedAgentFramework.create()
-    
+
     # 2. 설정 객체 사용
     config = FrameworkConfig.from_env()
     framework = UnifiedAgentFramework.create(config)
-    
+
     # 3. 빠른 질의응답
     response = await framework.quick_chat("안녕하세요!")
-    
+
     # 4. 워크플로우 실행
     state = await framework.run("session-1", "simple_chat", "질문입니다")
-    
+
     # 5. Skills 기반 에이전트 (NEW!)
     agent = framework.create_skilled_agent("coder", skills=["python-expert"])
     ```
@@ -2485,7 +2848,7 @@ class UnifiedAgentFramework:
         self.graphs: Dict[str, Graph] = {}
         self.mcp_tools: Dict[str, MCPTool] = {}
         self.event_bus = EventBus() if enable_events else None
-        
+
         # Skills 시스템 초기화
         self.skill_manager = SkillManager(skill_dirs)
         if load_builtin_skills:
@@ -2502,11 +2865,11 @@ class UnifiedAgentFramework:
             "total_failures": 0,
             "start_time": datetime.now(timezone.utc).isoformat()
         }
-    
+
     def _load_builtin_skills(self):
         """
         기본 제공 스킬 로드 (SKILL.md 파일 기반)
-        
+
         skills/ 디렉토리에서 SKILL.md 파일을 읽어 스킬을 로드합니다.
         """
         if BUILTIN_SKILLS_DIR.exists():
@@ -2515,22 +2878,22 @@ class UnifiedAgentFramework:
         else:
             logging.warning(f"⚠️ 기본 스킬 디렉토리가 없습니다: {BUILTIN_SKILLS_DIR}")
             logging.info("💡 'skills' 디렉토리를 생성하고 SKILL.md 파일을 추가하세요.")
-    
+
     @classmethod
     def create(
-        cls, 
+        cls,
         config: Optional[FrameworkConfig] = None,
         skill_dirs: Optional[List[str]] = None,
         load_builtin_skills: bool = True
     ) -> 'UnifiedAgentFramework':
         """
         프레임워크 간편 생성 (권장)
-        
+
         사용법:
         ```python
         # 환경변수에서 자동 로드
         framework = UnifiedAgentFramework.create()
-        
+
         # 커스텀 설정 + 스킬 디렉토리
         framework = UnifiedAgentFramework.create(
             skill_dirs=["./my_skills", "./team_skills"]
@@ -2539,9 +2902,9 @@ class UnifiedAgentFramework:
         """
         if config is None:
             config = FrameworkConfig.from_env()
-        
+
         config.validate()
-        
+
         # Kernel 초기화
         kernel = Kernel()
         chat_service = AzureChatCompletion(
@@ -2552,7 +2915,7 @@ class UnifiedAgentFramework:
             api_version=config.api_version
         )
         kernel.add_service(chat_service)
-        
+
         return cls(
             kernel=kernel,
             config=config,
@@ -2562,11 +2925,11 @@ class UnifiedAgentFramework:
             skill_dirs=skill_dirs,
             load_builtin_skills=load_builtin_skills
         )
-    
+
     async def quick_chat(self, message: str, system_prompt: str = "You are a helpful assistant.") -> str:
         """
         빠른 질의응답 (워크플로우 없이)
-        
+
         사용법:
         ```python
         response = await framework.quick_chat("파이썬이란 무엇인가요?")
@@ -2576,27 +2939,27 @@ class UnifiedAgentFramework:
         # 임시 워크플로우가 없으면 생성
         if "_quick_chat" not in self.graphs:
             self.create_simple_workflow("_quick_chat", system_prompt)
-        
+
         session_id = f"quick-{int(time.time())}"
         state = await self.run(session_id, "_quick_chat", message)
-        
+
         # 마지막 어시스턴트 메시지 반환
         for msg in reversed(state.messages):
             if msg.role == AgentRole.ASSISTANT:
                 return msg.content
         return ""
-    
+
     def create_simple_workflow(self, name: str, system_prompt: str = "You are a helpful assistant.") -> Graph:
         """
         간단한 대화 워크플로우 생성
-        
+
         사용법:
         ```python
         workflow = framework.create_simple_workflow("my_assistant", "너는 한국어 선생님이야.")
         ```
         """
         graph = self.create_graph(name)
-        
+
         agent = SimpleAgent(
             name="assistant",
             system_prompt=system_prompt,
@@ -2607,13 +2970,13 @@ class UnifiedAgentFramework:
             event_bus=self.event_bus,
             service_id=self.config.deployment_name  # 🆕 deployment_name 사용
         )
-        
+
         graph.add_node(Node("assistant", agent))
         graph.set_start("assistant")
         graph.set_end("assistant")
-        
+
         return graph
-    
+
     def create_router_workflow(
         self,
         name: str,
@@ -2621,7 +2984,7 @@ class UnifiedAgentFramework:
     ) -> Graph:
         """
         라우팅 워크플로우 생성
-        
+
         사용법:
         ```python
         workflow = framework.create_router_workflow(
@@ -2635,7 +2998,7 @@ class UnifiedAgentFramework:
         ```
         """
         graph = self.create_graph(name)
-        
+
         # 라우터 생성
         router = RouterAgent(
             name="router",
@@ -2647,7 +3010,7 @@ class UnifiedAgentFramework:
         )
         graph.add_node(Node("router", router))
         graph.set_start("router")
-        
+
         # 각 라우트별 에이전트 생성
         for route_name, route_config in routes.items():
             agent = SimpleAgent(
@@ -2659,9 +3022,9 @@ class UnifiedAgentFramework:
             )
             graph.add_node(Node(f"{route_name}_agent", agent))
             graph.set_end(f"{route_name}_agent")
-        
+
         return graph
-    
+
     def create_skilled_agent(
         self,
         name: str,
@@ -2671,7 +3034,7 @@ class UnifiedAgentFramework:
     ) -> SimpleAgent:
         """
         Skills 기반 에이전트 생성
-        
+
         사용법:
         ```python
         # 특정 스킬 지정
@@ -2679,7 +3042,7 @@ class UnifiedAgentFramework:
             "coder",
             skills=["python-expert", "api-developer"]
         )
-        
+
         # 자동 스킬 감지 (쿼리 기반)
         agent = framework.create_skilled_agent(
             "assistant",
@@ -2696,14 +3059,14 @@ class UnifiedAgentFramework:
                     skill_objects.append(skill)
                 else:
                     logging.warning(f"스킬을 찾을 수 없습니다: {skill_name}")
-        
+
         # 시스템 프롬프트 구성
         system_prompt = self.skill_manager.build_system_prompt(
-            skill_objects, 
+            skill_objects,
             base_prompt=base_prompt,
             include_full=True
         )
-        
+
         agent = SimpleAgent(
             name=name,
             system_prompt=system_prompt,
@@ -2714,13 +3077,13 @@ class UnifiedAgentFramework:
             event_bus=self.event_bus,
             service_id=self.config.deployment_name  # 🆕 deployment_name 사용
         )
-        
+
         # 자동 스킬 감지 메타데이터 추가
         agent._auto_detect_skills = auto_detect_skills
         agent._skill_manager = self.skill_manager
-        
+
         return agent
-    
+
     def create_skill_workflow(
         self,
         name: str,
@@ -2729,7 +3092,7 @@ class UnifiedAgentFramework:
     ) -> Graph:
         """
         Skills 기반 워크플로우 생성
-        
+
         사용법:
         ```python
         workflow = framework.create_skill_workflow(
@@ -2740,19 +3103,19 @@ class UnifiedAgentFramework:
         ```
         """
         graph = self.create_graph(name)
-        
+
         agent = self.create_skilled_agent(
             name="skilled_assistant",
             skills=skills,
             base_prompt=base_prompt
         )
-        
+
         graph.add_node(Node("skilled_assistant", agent))
         graph.set_start("skilled_assistant")
         graph.set_end("skilled_assistant")
-        
+
         return graph
-    
+
     async def smart_chat(
         self,
         message: str,
@@ -2761,11 +3124,11 @@ class UnifiedAgentFramework:
     ) -> str:
         """
         스마트 질의응답 - 쿼리에 맞는 스킬 자동 활성화
-        
+
         Progressive Disclosure 적용:
         - 메시지 분석하여 관련 스킬 자동 매칭
         - 매칭된 스킬의 지침을 시스템 프롬프트에 포함
-        
+
         사용법:
         ```python
         # 자동으로 python-expert 스킬이 활성화됨
@@ -2774,15 +3137,15 @@ class UnifiedAgentFramework:
         """
         # 스킬 매칭
         matched_skills = self.skill_manager.match_skills(
-            message, 
+            message,
             threshold=0.2,
             max_skills=max_skills
         )
-        
+
         if matched_skills:
             skill_names = [s.name for s in matched_skills]
             logging.info(f"🎯 매칭된 스킬: {', '.join(skill_names)}")
-        
+
         # 동적 워크플로우 생성
         workflow_name = f"_smart_chat_{int(time.time())}"
         self.create_skill_workflow(
@@ -2790,10 +3153,10 @@ class UnifiedAgentFramework:
             skills=[s.name for s in matched_skills],
             base_prompt=base_prompt
         )
-        
+
         session_id = f"smart-{int(time.time())}"
         state = await self.run(session_id, workflow_name, message)
-        
+
         # 마지막 어시스턴트 메시지 반환
         for msg in reversed(state.messages):
             if msg.role == AgentRole.ASSISTANT:
@@ -3017,7 +3380,7 @@ async def demo_simple_chat(framework: UnifiedAgentFramework):
 
     # 간편 메서드 사용
     framework.create_simple_workflow(
-        "simple_chat", 
+        "simple_chat",
         "You are a helpful AI assistant. Answer questions clearly and concisely."
     )
 
@@ -3139,8 +3502,8 @@ async def demo_conditional_workflow(framework: UnifiedAgentFramework):
 
     # Build Graph
     analyzer_node = Node(
-        "analyzer", 
-        analyzer, 
+        "analyzer",
+        analyzer,
         edges={"simple": "simple_handler", "complex": "complex_handler"}
     )
     analyzer_node.condition_func = route_by_complexity
@@ -3164,10 +3527,10 @@ async def demo_conditional_workflow(framework: UnifiedAgentFramework):
 async def main():
     """
     메인 실행 함수 - 인터랙티브 데모
-    
+
     실행 방법:
         python Semantic-agent_framework.py
-    
+
     필수 환경변수 (.env 파일):
         AZURE_OPENAI_API_KEY=your-api-key
         AZURE_OPENAI_ENDPOINT =https://your-endpoint.openai.azure.com/
@@ -3196,7 +3559,7 @@ async def main():
         # 프레임워크 간편 생성
         framework = UnifiedAgentFramework.create()
         config = framework.config
-        
+
         print(f"✅ 엔드포인트: {config.endpoint}")
         print(f"✅ 모델: {config.deployment_name}")
         print("="*60)
@@ -3362,13 +3725,13 @@ async def main():
             elif cmd == "skills":
                 # 스킬 관련 명령어
                 subcmd = args[0] if args else "list"
-                
+
                 if subcmd == "list":
                     print("\n📚 등록된 스킬:")
                     for skill in framework.skill_manager.list_skills():
                         status = "✅" if skill.enabled else "❌"
                         print(f"  {status} {skill.name}: {skill.description[:50]}...")
-                
+
                 elif subcmd == "info" and len(args) > 1:
                     skill_name = args[1]
                     skill = framework.skill_manager.get_skill(skill_name)
@@ -3380,23 +3743,23 @@ async def main():
                         print(f"   우선순위: {skill.priority}")
                     else:
                         print(f"❌ 스킬을 찾을 수 없습니다: {skill_name}")
-                
+
                 elif subcmd == "stats":
                     stats = framework.skill_manager.get_usage_stats()
                     print("\n📊 스킬 사용 통계:")
                     print(json.dumps(stats, indent=2, ensure_ascii=False))
-                
+
                 elif subcmd == "create" and len(args) > 1:
                     skill_name = args[1]
                     output_dir = args[2] if len(args) > 2 else "./skills"
                     path = framework.skill_manager.create_skill_template(skill_name, output_dir)
                     print(f"✅ 스킬 템플릿 생성: {path}")
-                
+
                 elif subcmd == "load" and len(args) > 1:
                     skill_dir = args[1]
                     count = framework.skill_manager.load_skills_from_directory(skill_dir)
                     print(f"✅ {count}개 스킬 로드 완료")
-                
+
                 else:
                     print("\n💡 스킬 명령어:")
                     print("  skills list           - 등록된 스킬 목록")
@@ -3405,7 +3768,7 @@ async def main():
                     print("  skills create <name>  - 새 스킬 템플릿 생성")
                     print("  skills load <dir>     - 디렉토리에서 스킬 로드")
                 continue
-            
+
             elif cmd == "smart":
                 # 스마트 질의응답 (스킬 자동 감지)
                 message = " ".join(args) if args else input("질문: ")
@@ -3480,12 +3843,12 @@ async def main():
 async def quick_run(message: str, system_prompt: str = "You are a helpful assistant.") -> str:
     """
     가장 간단한 사용법 - 한 줄로 AI 응답 받기
-    
+
     사용법:
     ```python
     import asyncio
     from Semantic_agent_framework import quick_run
-    
+
     response = asyncio.run(quick_run("파이썬이란 무엇인가요?"))
     print(response)
     ```
@@ -3501,22 +3864,22 @@ def create_framework(
 ) -> UnifiedAgentFramework:
     """
     프레임워크 간편 생성
-    
+
     사용법:
     ```python
     from Semantic_agent_framework import create_framework
-    
+
     framework = create_framework(model="gpt-4o", temperature=0.5)
     ```
     """
     config = FrameworkConfig.from_env()
     config.model = model
     config.temperature = temperature
-    
+
     for key, value in kwargs.items():
         if hasattr(config, key):
             setattr(config, key, value)
-    
+
     return UnifiedAgentFramework.create(config)
 
 

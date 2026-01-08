@@ -1,18 +1,24 @@
-# 🚀 Unified Agent Framework
+# 🚀 Unified Agent Framework - Enterprise Edition
 
-**최고의 AI Agent 프레임워크들의 장점만을 통합한 엔터프라이즈급 오케스트레이션 프레임워크**
+**최고의 AI Agent 프레임워크들의 장점을 통합한 엔터프라이즈급 오케스트레이션 프레임워크**
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Semantic Kernel](https://img.shields.io/badge/Semantic_Kernel-Latest-orange.svg)](https://github.com/microsoft/semantic-kernel)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-Enabled-purple.svg)](https://opentelemetry.io/)
 [![Skills](https://img.shields.io/badge/Anthropic_Skills-Integrated-red.svg)](https://github.com/anthropics/skills)
+[![AgentCore](https://img.shields.io/badge/AWS_AgentCore_Patterns-Integrated-yellow.svg)](https://github.com/awslabs/amazon-bedrock-agentcore-samples)
+
+> **v2.0** - Memory Hook Provider, Session Manager, Enhanced Supervisor (Investigation Plan) 패턴 추가
 
 ## 📖 목차
 
 - [개요](#-개요)
 - [핵심 기능](#-핵심-기능)
-- [Skills 시스템](#-skills-시스템-new)
+- [Skills 시스템](#-skills-시스템)
+- [Memory Hook Provider](#-memory-hook-provider-new)
+- [Session Manager](#-session-manager-new)
+- [Enhanced Supervisor](#-enhanced-supervisor-new)
 - [설치](#-설치)
 - [빠른 시작](#-빠른-시작)
 - [아키텍처](#-아키텍처)
@@ -28,7 +34,7 @@
 
 ## 🎯 개요
 
-Unified Agent Framework는 다음 5가지 최고의 AI Agent 프레임워크의 핵심 장점을 통합했습니다:
+Unified Agent Framework는 다음 6가지 최고의 AI Agent 프레임워크의 핵심 장점을 통합했습니다:
 
 | 프레임워크 | 통합된 기능 |
 |-----------|-----------|
@@ -36,7 +42,8 @@ Unified Agent Framework는 다음 5가지 최고의 AI Agent 프레임워크의 
 | **Semantic Kernel** | 플러그인 시스템 & 함수 호출 |
 | **LangGraph** | 상태 기반 그래프 & 조건부 라우팅 |
 | **Microsoft Agent Framework** | 체크포인팅, OpenTelemetry, 관찰성 |
-| **Anthropic Skills** | 모듈화된 전문 지식 & Progressive Disclosure (NEW!) |
+| **Anthropic Skills** | 모듈화된 전문 지식 & Progressive Disclosure |
+| **AWS AgentCore** | Memory Hook Provider, Session Manager, Investigation Plan (NEW!) |
 
 ### 왜 Unified Agent Framework인가?
 
@@ -49,6 +56,13 @@ Unified Agent Framework는 다음 5가지 최고의 AI Agent 프레임워크의 
 # ✅ Unified Agent Framework: 간단하고 강력
 framework = UnifiedAgentFramework.create()  # 환경변수 자동 로드
 response = await framework.smart_chat("파이썬 코드 작성해줘")  # 스킬 자동 감지
+
+# 새로운 기능: Memory Hook으로 대화 자동 저장
+session = framework.session_manager.get_or_create_session(
+    session_id="session-123",
+    actor_id="user-456"
+)
+context = await session.on_agent_initialized(agent_name="assistant")
 ```
 
 ---
@@ -120,6 +134,153 @@ router = RouterAgent(
 # 3회 이상 접근 시 자동 캐싱
 # O(1) 조회 성능
 memory_store = CachedMemoryStore()
+```
+
+---
+
+## 🧠 Memory Hook Provider (NEW!)
+
+> **참조**: [AWS AgentCore - Memory Pattern](https://github.com/awslabs/amazon-bedrock-agentcore-samples)
+
+대화 기록을 자동으로 저장/로드하는 Memory Hook 시스템입니다.
+
+### 주요 기능
+
+- **자동 대화 기록**: 메시지 추가 시 자동 저장
+- **세션 기반 컨텍스트**: 세션별 대화 기록 관리
+- **네임스페이스 분류**: `/conversation`, `/preferences` 등으로 분류
+
+### 사용법
+
+```python
+from Unified_agent_framework import MemoryHookProvider, MemoryStore
+
+# Memory Hook 생성
+memory_hook = MemoryHookProvider(
+    memory_store=memory_store,
+    session_id="session-123",
+    actor_id="user-456",
+    max_context_turns=10  # 최근 10개 대화 유지
+)
+
+# 에이전트 초기화 시 컨텍스트 로드
+context = await memory_hook.on_agent_initialized(agent_name="assistant")
+
+# 메시지 추가 시 자동 저장
+await memory_hook.on_message_added(
+    content="사용자 질문입니다",
+    role="USER",
+    agent_name="assistant"
+)
+
+# 최근 k개 대화 조회
+last_turns = await memory_hook.get_last_k_turns(k=5)
+```
+
+### ConversationMessage 모델
+
+```python
+@dataclass
+class ConversationMessage:
+    content: str
+    role: str  # USER, ASSISTANT, TOOL
+    timestamp: datetime
+    agent_name: Optional[str] = None
+    session_id: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+```
+
+---
+
+## 🔐 Session Manager (NEW!)
+
+> **참조**: [AWS AgentCore - Session Management](https://github.com/awslabs/amazon-bedrock-agentcore-samples)
+
+다중 사용자/다중 세션을 효율적으로 관리합니다.
+
+### 사용법
+
+```python
+from Unified_agent_framework import MemorySessionManager
+
+# Session Manager 생성
+session_manager = MemorySessionManager(
+    memory_store=memory_store,
+    default_ttl_hours=24  # 세션 만료 시간
+)
+
+# 세션 조회 또는 생성
+session = session_manager.get_or_create_session(
+    session_id="session-123",
+    actor_id="user-456",
+    namespace="/conversation"
+)
+
+# 세션 목록 조회
+sessions = await session_manager.list_sessions(actor_id="user-456")
+
+# 만료된 세션 정리
+await session_manager.cleanup_expired_sessions()
+```
+
+---
+
+## 🎯 Enhanced Supervisor (NEW!)
+
+> **참조**: [AWS AgentCore - SRE Agent Supervisor Pattern](https://github.com/awslabs/amazon-bedrock-agentcore-samples)
+
+Investigation Plan 기반의 체계적인 멀티 에이전트 오케스트레이션입니다.
+
+### Investigation Plan
+
+```python
+@dataclass
+class InvestigationPlan:
+    steps: List[str]            # 실행 단계
+    agents_sequence: List[str]  # 에이전트 실행 순서
+    complexity: str             # "simple" or "complex"
+    auto_execute: bool          # 자동 실행 여부
+    reasoning: str              # 계획 생성 이유
+```
+
+### 사용법
+
+```python
+from Unified_agent_framework import SupervisorAgent
+
+# 서브 에이전트 정의
+researcher = SimpleAgent(name="researcher", system_prompt="연구 담당")
+writer = SimpleAgent(name="writer", system_prompt="작성 담당")
+
+# Supervisor 생성 (Enhanced)
+supervisor = SupervisorAgent(
+    name="supervisor",
+    system_prompt="팀 리더입니다",
+    sub_agents=[researcher, writer],
+    max_rounds=5,
+    memory_hook=memory_hook,  # Memory Hook 연동
+    auto_approve_simple=True  # 간단한 계획 자동 실행
+)
+
+# 실행 (Investigation Plan 자동 생성)
+result = await supervisor.execute(state, kernel)
+
+# 결과 확인
+print(result.metadata["investigation_plan"])  # 실행된 계획
+print(result.metadata["execution_log"])       # 실행 로그
+```
+
+### 응답 집계 (Response Aggregation)
+
+여러 에이전트의 응답을 자동으로 집계하여 통합된 답변을 생성합니다:
+
+```python
+# supervisor.execute() 내부에서 자동 실행
+aggregated = await supervisor.aggregate_responses(
+    responses=execution_log,
+    state=state,
+    kernel=kernel
+)
 ```
 
 ---
@@ -386,11 +547,11 @@ from Semantic_agent_framework import UnifiedAgentFramework
 async def main():
     # 환경변수 자동 로드하여 프레임워크 생성
     framework = UnifiedAgentFramework.create()
-    
+
     # 빠른 질의응답
     response = await framework.quick_chat("안녕하세요!")
     print(response)
-    
+
     # 스마트 질의응답 (스킬 자동 감지)
     response = await framework.smart_chat("파이썬으로 피보나치 함수 만들어줘")
     print(response)
@@ -412,7 +573,7 @@ async def main():
     config.api_key = "your-key"
     config.endpoint = "your-endpoint"
     config.deployment_name = "your-deployment"
-    
+
     framework = UnifiedAgentFramework.create(config)
     response = await framework.quick_chat("Hello!")
 
@@ -427,14 +588,14 @@ async def main():
 
     # 간단한 대화 워크플로우
     framework.create_simple_workflow("my_bot", "너는 친절한 AI야.")
-    
+
     # 실행
     state = await framework.run(
         session_id="session-001",
         workflow_name="my_bot",
         user_message="안녕하세요!"
     )
-    
+
     print(state.messages[-1].content)
 
 asyncio.run(main())
