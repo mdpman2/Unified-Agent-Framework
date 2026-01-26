@@ -1,9 +1,98 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Unified Agent Framework - 워크플로우 모듈
+Unified Agent Framework - 워크플로우 모듈 (Workflow Module)
 
-Node와 Graph 클래스를 통한 워크플로우 실행 관리
+================================================================================
+📁 파일 위치: unified_agent/workflow.py
+📋 역할: Node와 Graph 클래스를 통한 워크플로우 실행 관리
+📅 최종 업데이트: 2026년 1월
+================================================================================
+
+🎯 주요 구성 요소:
+
+    📌 Node (워크플로우 노드):
+        - 단일 에이전트를 래핑하는 실행 단위
+        - 조건부 라우팅 지원 (condition_func)
+        - 엣지(edges)를 통한 다음 노드 지정
+        - 실행 횟수 추적
+
+    📌 Graph (워크플로우 그래프):
+        - 노드들의 집합 및 실행 순서 관리
+        - 조건부 엣지 추가 (add_conditional_edge)
+        - 루프 노드 지정 및 무한 루프 방지
+        - 체크포인트/롤백 지원
+        - Mermaid 형식 시각화
+        - 실행 통계 제공
+
+🔧 워크플로우 실행 흐름:
+
+    ┌───────────────────────────────────────────────────────┐
+    │  [START] → [Node A] ───┬───→ [Node B] → [END]  │
+    │                       │                          │
+    │                       │ (condition: "need_review")  │
+    │                       │                          │
+    │                       └───→ [Node C] ────────┘  │
+    └───────────────────────────────────────────────────────┘
+
+📌 사용 예시:
+
+    예제 1: 기본 워크플로우
+    ----------------------------------------
+    >>> from unified_agent.workflow import Node, Graph
+    >>> from unified_agent.agents import SimpleAgent
+    >>>
+    >>> # 노드 생성
+    >>> node_a = Node(name="greeting", agent=greeting_agent)
+    >>> node_b = Node(name="response", agent=response_agent)
+    >>>
+    >>> # 그래프 생성 및 노드 추가
+    >>> graph = Graph(name="chat_workflow")
+    >>> graph.add_node(node_a)
+    >>> graph.add_node(node_b)
+    >>> graph.set_start_node("greeting")
+    >>> graph.set_end_node("response")
+    >>> graph.add_edge("greeting", "response")
+    >>>
+    >>> # 실행
+    >>> result = await graph.run(initial_state, kernel)
+
+    예제 2: 조건부 라우팅 (분기)
+    ----------------------------------------
+    >>> # 조건 함수 정의
+    >>> async def route_by_intent(state, result):
+    ...     if "code" in result.content.lower():
+    ...         return "coding"
+    ...     return "general"
+    >>>
+    >>> # 조건부 엣지 추가
+    >>> graph.add_conditional_edge(
+    ...     source="router",
+    ...     condition_func=route_by_intent,
+    ...     routes={"coding": "code_agent", "general": "chat_agent"}
+    ... )
+
+    예제 3: 루프 워크플로우 (반복)
+    ----------------------------------------
+    >>> # 루프 노드 지정 (reviewer는 반복 가능)
+    >>> graph.set_loop_nodes(["reviewer"])
+    >>> graph.max_iterations = 5  # 최대 5회 반복
+    >>>
+    >>> # 검토 완료 시 pass, 수정 필요 시 writer로 복귀
+    >>> graph.add_conditional_edge(
+    ...     source="reviewer",
+    ...     routes={"pass": "end", "revise": "writer"}
+    ... )
+
+⚠️ 주요 기능:
+    - 무한 루프 방지: max_iterations 설정
+    - 체크포인트: 실행 중 상태 저장 및 복구
+    - 시각화: visualize() 메서드로 Mermaid 다이어그램 생성
+    - 통계: get_statistics()로 실행 통계 확인
+
+🔗 참고:
+    - LangGraph: https://github.com/langchain-ai/langgraph (영감)
+    - Mermaid: https://mermaid.js.org/
 """
 
 import logging

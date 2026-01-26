@@ -1,9 +1,96 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Unified Agent Framework - 에이전트 모듈
+Unified Agent Framework - 에이전트 모듈 (Agents Module)
 
-Agent 기본 클래스 및 다양한 에이전트 구현체들
+================================================================================
+📁 파일 위치: unified_agent/agents.py
+📋 역할: Agent 기본 클래스 및 다양한 에이전트 구현체 제공
+📅 최종 업데이트: 2026년 1월
+================================================================================
+
+🎯 에이전트 계층 구조:
+
+    Agent (ABC)  ────────────────  추상 기본 클래스
+        ├── SimpleAgent          단순 LLM 호출 에이전트
+        ├── ApprovalAgent        Human-in-the-loop 승인 에이전트
+        ├── RouterAgent          요청 라우팅 에이전트
+        ├── ProxyAgent           다른 에이전트 위임 에이전트
+        └── SupervisorAgent      멀티 에이전트 감독 에이전트
+
+📌 에이전트 유형별 설명:
+
+    1. SimpleAgent
+       - 가장 기본적인 에이전트
+       - LLM에 메시지를 보내고 응답을 받음
+       - 스트리밍 응답 지원
+
+    2. ApprovalAgent
+       - 위험한 작업 실행 전 사용자 승인 필요
+       - Human-in-the-loop 패턴 구현
+       - 자동 승인 규칙 설정 가능
+
+    3. RouterAgent
+       - 요청을 분석하여 적절한 에이전트로 라우팅
+       - 의도 분류 및 전문 에이전트 선택
+       - A/B 테스트 및 실험 가능
+
+    4. ProxyAgent
+       - 다른 에이전트에게 작업을 위임
+       - 결과를 수집하여 통합
+       - Handoff 패턴 구현
+
+    5. SupervisorAgent (Microsoft Agent Framework 패턴)
+       - 여러 에이전트를 감독하고 조율
+       - 계획 수립 및 실행 관리
+       - 에이전트 간 협업 조정
+
+🔧 공통 기능 (Agent 기본 클래스):
+    - enable_streaming: 스트리밍 응답 지원
+    - event_bus: 이벤트 발행 (작업 시작/완료/오류 등)
+    - circuit_breaker: 회로 차단기 통합 (장애 전파 방지)
+    - 메트릭 추적: total_executions, total_tokens, total_duration_ms
+
+📌 사용 예시:
+
+    예제 1: SimpleAgent
+    ----------------------------------------
+    >>> from unified_agent.agents import SimpleAgent
+    >>> from unified_agent.models import AgentRole
+    >>>
+    >>> agent = SimpleAgent(
+    ...     name="assistant",
+    ...     role=AgentRole.ASSISTANT,
+    ...     system_prompt="You are a helpful assistant.",
+    ...     model="gpt-5.2",
+    ...     enable_streaming=True
+    ... )
+    >>>
+    >>> result = await agent.execute(state, kernel)
+
+    예제 2: SupervisorAgent (멀티 에이전트)
+    ----------------------------------------
+    >>> from unified_agent.agents import SupervisorAgent
+    >>>
+    >>> supervisor = SupervisorAgent(
+    ...     name="supervisor",
+    ...     managed_agents=[researcher, writer, reviewer],
+    ...     max_rounds=10
+    ... )
+    >>>
+    >>> # Supervisor가 에이전트를 조율하여 작업 수행
+    >>> result = await supervisor.execute(state, kernel)
+
+⚠️ 주의사항:
+    - 모든 execute() 메서드는 비동기(async)입니다.
+    - Kernel은 Semantic Kernel 인스턴스입니다.
+    - circuit_breaker는 LLM API 호출 장애 시 발동합니다.
+    - event_bus가 설정되면 작업 이벤트가 자동 발행됩니다.
+
+🔗 참고:
+    - Semantic Kernel: https://github.com/microsoft/semantic-kernel
+    - Microsoft Agent Framework: https://github.com/microsoft/agent-framework
+    - Circuit Breaker: unified_agent.utils.CircuitBreaker
 """
 
 import re
@@ -47,13 +134,59 @@ __all__ = [
 
 class Agent(ABC):
     """
-    Agent 기본 클래스
+    Agent 추상 기본 클래스 (Abstract Base Class)
 
-    주요 기능:
-    1. enable_streaming: 스트리밍 응답 지원
-    2. event_bus: 이벤트 발행
-    3. circuit_breaker: 회로 차단기 통합
-    4. 메트릭 추적: total_executions, total_tokens, total_duration_ms
+    ================================================================================
+    📋 역할: 모든 에이전트의 공통 인터페이스 및 기본 기능 제공
+    📅 최종 업데이트: 2026년 1월
+    ================================================================================
+
+    🎯 핵심 기능:
+        1. enable_streaming: 스트리밍 응답 지원 (실시간 토큰 출력)
+        2. event_bus: 이벤트 발행 (작업 시작/완료/오류 통지)
+        3. circuit_breaker: 회로 차단기 (장애 전파 방지)
+        4. 메트릭 추적: 실행 횟수, 토큰 사용량, 실행 시간
+
+    🔧 가상 메서드 (구현 필수):
+        - execute(state, kernel) -> NodeResult
+          에이전트의 최신 실행 로직
+
+    🔧 유틸리티 메서드 (상속 가능):
+        - _get_llm_response(): LLM API 호출
+        - _stream_response(): 스트리밍 응답 처리
+        - _emit_event(): 이벤트 발행
+
+    Args:
+        name (str): 에이전트 고유 이름
+        role (AgentRole): 에이전트 역할 (기본: ASSISTANT)
+        system_prompt (str): 시스템 프롬프트
+        model (str): LLM 모델명 (기본: DEFAULT_LLM_MODEL)
+        temperature (float): 생성 온도 (기본: 0.7)
+        max_tokens (int): 최대 생성 토큰 (기본: 1000)
+        enable_streaming (bool): 스트리밍 활성화 (기본: False)
+        event_bus (EventBus): 이벤트 버스 (선택)
+        service_id (str): Semantic Kernel 서비스 ID (선택)
+
+    📌 사용 예시:
+        >>> class MyCustomAgent(Agent):
+        ...     async def execute(self, state: AgentState, kernel: Kernel) -> NodeResult:
+        ...         # 커스텀 로직 구현
+        ...         response = await self._get_llm_response(kernel, state.messages)
+        ...         return NodeResult(
+        ...             agent_name=self.name,
+        ...             content=response,
+        ...             status=ExecutionStatus.COMPLETED
+        ...         )
+
+    ⚠️ 주의사항:
+        - Reasoning 모델(o3, o4-mini 등)은 temperature가 무시됩니다.
+        - circuit_breaker는 3회 연속 실패 시 자동 OPEN 상태로 전환됩니다.
+        - event_bus가 없으면 이벤트가 발행되지 않습니다.
+
+    🔗 참고:
+        - Semantic Kernel: https://github.com/microsoft/semantic-kernel
+        - CircuitBreaker: unified_agent.utils.CircuitBreaker
+        - EventBus: unified_agent.events.EventBus
     """
 
     def __init__(

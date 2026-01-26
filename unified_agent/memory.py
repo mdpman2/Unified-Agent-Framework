@@ -1,16 +1,86 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Unified Agent Framework - 메모리 관리 모듈
+Unified Agent Framework - 메모리 관리 모듈 (Memory Module)
 
-메모리 저장소, 캐싱, 세션 관리 등을 담당합니다.
+================================================================================
+📁 파일 위치: unified_agent/memory.py
+📋 역할: 메모리 저장소, 캐싱, 세션 관리, 상태 관리
+📅 최종 업데이트: 2026년 1월
+================================================================================
+
+🎯 주요 구성 요소:
+
+    📌 메모리 저장소:
+        - MemoryStore: 추상 기본 클래스 (ABC)
+        - CachedMemoryStore: LRU 캐시 적용 저장소
+
+    📌 대화 관리:
+        - ConversationMessage: 대화 메시지 모델 (AgentCore 패턴)
+        - MemoryHookProvider: 메모리 훅 제공자
+        - MemorySessionManager: 세션 관리자
+
+    📌 상태 관리:
+        - StateManager: 에이전트 상태 관리자
+
+🔧 핵심 기능:
+    - LRU (Least Recently Used) 캐싱: 메모리 사용량 제한
+    - 자동 타임스탬프: 모든 저장 데이터에 UTC 시간 기록
+    - 버전 관리: 데이터 변경 시 버전 자동 증가
+    - 패턴 매칭: list_keys()에서 글로브 패턴 지원
+    - 네임스페이스 분리: 다중 에이전트/세션 격리
+
+📌 사용 예시:
+
+    예제 1: CachedMemoryStore 사용
+    ----------------------------------------
+    >>> from unified_agent.memory import CachedMemoryStore
+    >>>
+    >>> # 저장소 생성 (최대 100개 항목 캐싱)
+    >>> store = CachedMemoryStore(max_cache_size=100)
+    >>>
+    >>> # 데이터 저장
+    >>> await store.save("session:user1", {
+    ...     "messages": [...],
+    ...     "context": {...}
+    ... })
+    >>>
+    >>> # 데이터 로드 (캐시 자동 적용)
+    >>> data = await store.load("session:user1")
+    >>>
+    >>> # 키 목록 조회 (패턴 매칭)
+    >>> keys = await store.list_keys("session:*")
+
+    예제 2: StateManager 사용
+    ----------------------------------------
+    >>> from unified_agent.memory import StateManager
+    >>> from unified_agent.models import AgentState
+    >>>
+    >>> manager = StateManager()
+    >>>
+    >>> # 상태 저장
+    >>> state = AgentState(session_id="session-1", messages=[])
+    >>> await manager.save_state("session-1", state)
+    >>>
+    >>> # 상태 복원
+    >>> restored = await manager.load_state("session-1")
+
+⚠️ 주의사항:
+    - CachedMemoryStore는 인메모리 저장소로 재시작 시 데이터 소실
+    - 프로덕션에서는 Redis 또는 CosmosDB 기반 구현 권장
+    - 대용량 데이터는 max_cache_size 조절 필요
+
+🔗 참고:
+    - Microsoft Agent Framework Memory: https://github.com/microsoft/agent-framework
+    - LRU Cache 알고리즘: https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU
 """
 
 import os
 import json
+import fnmatch
 import logging
 from abc import ABC, abstractmethod
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
@@ -34,7 +104,35 @@ __all__ = [
 
 class MemoryStore(ABC):
     """
-    메모리 저장소 인터페이스
+    메모리 저장소 추상 기본 클래스 (Abstract Base Class)
+
+    ================================================================================
+    📋 역할: 메모리 저장소의 공통 인터페이스 정의
+    📅 최종 업데이트: 2026년 1월
+    ================================================================================
+
+    🎯 주요 기능:
+        - save(): 데이터 저장
+        - load(): 데이터 로드
+        - delete(): 데이터 삭제
+        - list_keys(): 키 목록 조회 (패턴 매칭 지원)
+
+    📌 구현 예시:
+        >>> class RedisMemoryStore(MemoryStore):
+        ...     async def save(self, key: str, data: Dict) -> None:
+        ...         # Redis에 저장
+        ...         pass
+        ...
+        ...     async def load(self, key: str) -> Optional[Dict]:
+        ...         # Redis에서 로드
+        ...         pass
+
+    ⚠️ 주의사항:
+        - 모든 메서드는 비동기(async)로 구현해야 합니다.
+        - 데이터는 Dict 형태로 저장/로드됩니다.
+
+    🔗 제공되는 구현체:
+        - CachedMemoryStore: 인메모리 LRU 캐시 저장소
     """
 
     @abstractmethod
@@ -57,23 +155,64 @@ class MemoryStore(ABC):
 
 class CachedMemoryStore(MemoryStore):
     """
-    캐싱 메모리 저장소 - LRU 캐시
+    LRU (Least Recently Used) 캐시 적용 메모리 저장소
 
-    LRU (Least Recently Used) 캐시 알고리즘 적용
+    ================================================================================
+    📋 역할: 인메모리 데이터 저장 + 자주 접근하는 데이터 캐싱
+    📅 최종 업데이트: 2026년 1월
+    ================================================================================
 
-    LRU 캐시 장점:
-    - 메모리 사용량 제한 (max_cache_size)
-    - 최근 사용 데이터 우선 유지
-    - 오래된 데이터 자동 제거
+    🎯 LRU 캐시 알고리즘:
+        - 자주 접근하는 데이터를 메모리에 유지
+        - 캠시 크기 초과 시 가장 오래된 항목 자동 제거
+        - 데이터 접근 횟수 추적 (access_count)
+        - 3회 이상 접근 시 캐시로 승격
+
+    🔧 내부 구조:
+        - data: 원본 데이터 저장소 (Dict)
+        - cache: LRU 캐시 (Dict)
+        - access_count: 키별 접근 횟수 (Dict)
+        - access_order: 접근 순서 기록 (List)
+
+    Args:
+        max_cache_size (int): 캐시 최대 항목 수 (기본: 100)
+
+    📌 사용 예시:
+        >>> store = CachedMemoryStore(max_cache_size=500)
+        >>>
+        >>> # 데이터 저장 (timestamp, version 자동 추가)
+        >>> await store.save("user:123", {"name": "John", "age": 30})
+        >>>
+        >>> # 데이터 로드 (자주 접근 시 캐시에서 로드)
+        >>> data = await store.load("user:123")
+        >>>
+        >>> # 키 목록 조회
+        >>> all_keys = await store.list_keys("*")  # 모든 키
+        >>> user_keys = await store.list_keys("user:*")  # user:로 시작하는 키
+
+    ⚠️ 주의사항:
+        - 인메모리 저장소로 프로세스 재시작 시 데이터 소실
+        - 대용량 데이터는 max_cache_size를 늘리거나 외부 저장소 사용 권장
+        - __slots__ 사용으로 메모리 효율성 최적화
+
+    🔗 LRU 참고:
+        - https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU
     """
-    __slots__ = ('data', 'cache', 'access_count', 'max_cache_size', 'access_order')
+    __slots__ = ('data', 'cache', 'access_count', 'max_cache_size')
 
     def __init__(self, max_cache_size: int = 100):
-        self.data: Dict[str, Dict] = {}
-        self.cache: Dict[str, Any] = {}
-        self.access_count: Dict[str, int] = defaultdict(int)
+        """
+        CachedMemoryStore 초기화
+
+        Args:
+            max_cache_size (int): 캐시 최대 항목 수 (기본: 100)
+                - 메모리 사용량과 성능 균형 고려하여 설정
+                - 대량 데이터 저장 시 500 이상 권장
+        """
+        self.data: Dict[str, Dict] = {}  # 원본 데이터
+        self.cache: OrderedDict = OrderedDict()  # 최적화: OrderedDict로 LRU 구현
+        self.access_count: Dict[str, int] = defaultdict(int)  # 접근 횟수
         self.max_cache_size = max_cache_size
-        self.access_order: List[str] = []
 
     async def save(self, key: str, data: Dict) -> None:
         self.data[key] = {
@@ -90,9 +229,9 @@ class CachedMemoryStore(MemoryStore):
     async def load(self, key: str) -> Optional[Dict]:
         self.access_count[key] += 1
 
-        # 캐시 확인
+        # 캐시 확인 (최적화: OrderedDict move_to_end)
         if key in self.cache:
-            self._update_access_order(key)
+            self.cache.move_to_end(key)  # LRU 업데이트
             return self.cache[key]
 
         # 원본 데이터 확인
@@ -105,32 +244,21 @@ class CachedMemoryStore(MemoryStore):
             del self.data[key]
         if key in self.cache:
             del self.cache[key]
-        if key in self.access_order:
-            self.access_order.remove(key)
 
     async def list_keys(self, pattern: str = "*") -> List[str]:
-        """키 목록 조회"""
-        import fnmatch
+        """키 목록 조회 (최적화: 모듈 레벨 fnmatch import)"""
         if pattern == "*":
             return list(self.data.keys())
         return [k for k in self.data.keys() if fnmatch.fnmatch(k, pattern)]
 
     def _add_to_cache(self, key: str, data: Any):
-        """캐시에 추가 (LRU 정책)"""
-        # 캐시 크기 제한
-        while len(self.cache) >= self.max_cache_size and self.access_order:
-            oldest_key = self.access_order.pop(0)
-            if oldest_key in self.cache:
-                del self.cache[oldest_key]
+        """캐시에 추가 (최적화: OrderedDict LRU)"""
+        # 캐시 크기 제한 - OrderedDict의 popitem(last=False)로 O(1) 제거
+        while len(self.cache) >= self.max_cache_size:
+            self.cache.popitem(last=False)  # 가장 오래된 항목 제거
 
         self.cache[key] = data
-        self._update_access_order(key)
-
-    def _update_access_order(self, key: str):
-        """접근 순서 업데이트"""
-        if key in self.access_order:
-            self.access_order.remove(key)
-        self.access_order.append(key)
+        self.cache.move_to_end(key)  # 최신으로 이동
 
 
 # ============================================================================
@@ -140,14 +268,52 @@ class CachedMemoryStore(MemoryStore):
 @dataclass
 class ConversationMessage:
     """
-    대화 메시지 모델 (AgentCore Memory 패턴)
+    대화 메시지 데이터 모델 (AgentCore Memory 패턴)
+
+    ================================================================================
+    📋 역할: 단일 대화 메시지를 표현하는 불변 데이터 클래스
+    📅 최종 업데이트: 2026년 1월
+    ================================================================================
+
+    🎯 주요 속성:
+        - content: 메시지 내용
+        - role: 발화자 역할 (USER, ASSISTANT, TOOL, SYSTEM)
+        - timestamp: 메시지 생성 시간 (UTC)
+        - agent_name: 에이전트 이름 (선택)
+        - session_id: 세션 ID (선택)
+        - metadata: 추가 메타데이터 (Dict)
+
+    📌 사용 예시:
+        >>> from unified_agent.memory import ConversationMessage
+        >>>
+        >>> # 사용자 메시지
+        >>> user_msg = ConversationMessage(
+        ...     content="안녕하세요!",
+        ...     role="USER",
+        ...     session_id="session-1"
+        ... )
+        >>>
+        >>> # 도구 결과 메시지
+        >>> tool_msg = ConversationMessage(
+        ...     content="{\'result\': \'success\'}",
+        ...     role="TOOL",
+        ...     agent_name="search_agent",
+        ...     metadata={"tool_name": "web_search", "duration_ms": 250}
+        ... )
+
+    ⚠️ 주의사항:
+        - timestamp는 자동으로 UTC 시간이 설정됩니다.
+        - role은 문자열로 저장되며 AgentRole enum과 매핑됩니다.
+
+    🔗 참고:
+        - Microsoft Agent Framework Memory: https://github.com/microsoft/agent-framework
     """
-    content: str
-    role: str  # USER, ASSISTANT, TOOL
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    agent_name: Optional[str] = None
-    session_id: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    content: str  # 메시지 내용
+    role: str  # 발화자 역할: USER, ASSISTANT, TOOL, SYSTEM
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))  # 생성 시간 (UTC)
+    agent_name: Optional[str] = None  # 에이전트 이름 (선택)
+    session_id: Optional[str] = None  # 세션 ID (선택)
+    metadata: Dict[str, Any] = field(default_factory=dict)  # 추가 메타데이터
 
 
 # ============================================================================

@@ -1,9 +1,62 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Unified Agent Framework - 데이터 모델 모듈
+Unified Agent Framework - 데이터 모델 모듈 (Models Module)
 
-핵심 데이터 모델, Enum, Pydantic 모델들을 정의합니다.
+================================================================================
+📁 파일 위치: unified_agent/models.py
+📋 역할: 핵심 데이터 모델, Enum, Pydantic 모델 정의
+📅 최종 업데이트: 2026년 1월
+================================================================================
+
+🎯 주요 구성 요소:
+
+    📌 Enum 클래스 (상태 및 타입 정의):
+        - AgentRole: 에이전트 역할 (ASSISTANT, USER, SUPERVISOR 등)
+        - ExecutionStatus: 실행 상태 (PENDING, RUNNING, COMPLETED 등)
+        - ApprovalStatus: 승인 상태 (PENDING, APPROVED, REJECTED 등)
+        - WebSocketMessageType: WebSocket 메시지 타입
+        - PlanStepStatus: 계획 단계 상태
+        - RAICategory: RAI 검증 카테고리
+
+    📌 Pydantic 모델 (데이터 검증):
+        - Message: 대화 메시지
+        - AgentState: 에이전트 상태
+        - NodeResult: 노드 실행 결과
+        - StreamingMessage: 스트리밍 메시지
+        - TeamAgent: 팀 에이전트 설정
+        - TeamConfiguration: 팀 설정
+        - PlanStep: 계획 단계
+        - MPlan: 멀티 에이전트 계획
+        - RAIValidationResult: RAI 검증 결과
+
+📌 사용 예시:
+    >>> from unified_agent.models import (
+    ...     AgentRole, ExecutionStatus, Message, AgentState
+    ... )
+    >>>
+    >>> # 메시지 생성
+    >>> msg = Message(
+    ...     role=AgentRole.USER,
+    ...     content="안녕하세요!",
+    ...     name="user1"
+    ... )
+    >>>
+    >>> # 에이전트 상태 생성
+    >>> state = AgentState(
+    ...     session_id="session-1",
+    ...     messages=[msg],
+    ...     current_agent="assistant"
+    ... )
+
+⚠️ 주의사항:
+    - 모든 Pydantic 모델은 불변(immutable) 검증을 제공합니다.
+    - Enum은 str을 상속하여 JSON 직렬화가 용이합니다.
+    - datetime은 UTC 기준으로 저장됩니다.
+
+🔗 참고:
+    - Pydantic: https://docs.pydantic.dev/
+    - Python Enum: https://docs.python.org/3/library/enum.html
 """
 
 import time

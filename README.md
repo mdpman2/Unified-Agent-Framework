@@ -1,34 +1,159 @@
-# 🚀 Unified Agent Framework - Enterprise Edition
+# 🚀 Unified Agent Framework - Enterprise Edition v3.1
 
 **최고의 AI Agent 프레임워크들의 장점을 통합한 엔터프라이즈급 오케스트레이션 프레임워크**
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/unified-agent-framework/unified-agent-framework/ci.yml?label=CI)](https://github.com/unified-agent-framework/unified-agent-framework/actions)
+[![PyPI](https://img.shields.io/pypi/v/unified-agent-framework.svg)](https://pypi.org/project/unified-agent-framework/)
 [![Semantic Kernel](https://img.shields.io/badge/Semantic_Kernel-Latest-orange.svg)](https://github.com/microsoft/semantic-kernel)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-Enabled-purple.svg)](https://opentelemetry.io/)
-[![Skills](https://img.shields.io/badge/Anthropic_Skills-Integrated-red.svg)](https://github.com/anthropics/skills)
-[![AgentCore](https://img.shields.io/badge/AWS_AgentCore_Patterns-Integrated-yellow.svg)](https://github.com/awslabs/amazon-bedrock-agentcore-samples)
-[![GPT-5](https://img.shields.io/badge/GPT--5_Series-Supported-brightgreen.svg)](https://openai.com/)
-[![Modular](https://img.shields.io/badge/Architecture-Modular-blueviolet.svg)](#-모듈화-아키텍처-v30)
+[![Agent Framework](https://img.shields.io/badge/MS_Agent_Framework-Integrated-red.svg)](https://github.com/microsoft/agent-framework)
+[![GPT-5.2](https://img.shields.io/badge/GPT--5.2-Supported-brightgreen.svg)](https://openai.com/)
+[![Claude 4.5](https://img.shields.io/badge/Claude_Opus_4.5-Supported-blueviolet.svg)](https://anthropic.com/)
+[![Grok-4](https://img.shields.io/badge/Grok--4-Supported-yellow.svg)](https://xai.com/)
+[![MCP](https://img.shields.io/badge/MCP-Native_Support-teal.svg)](https://modelcontextprotocol.io/)
 [![Tests](https://img.shields.io/badge/Tests-79%20Passed-success.svg)](#-테스트)
 
-> **v3.0** - 🆕 **완전한 모듈화 아키텍처** 적용! 6,000줄 → 12개 모듈로 분리, Microsoft Multi-Agent Engine 패턴 통합, WebSocket 스트리밍, MPlan 계획 시스템, ProxyAgent, RAI 검증, AgentFactory, OrchestrationManager 추가
+> **v3.1.0** - 🆕 **2026년 1월 최신 업데이트!** GPT-5.2/Claude Opus 4.5/Grok-4 지원, Microsoft Agent Framework MCP 패턴 통합, Adaptive Circuit Breaker, 대용량 컨텍스트(최대 10M tokens) 지원, RAI 강화 검증, 상세 한글 주석 추가
 
-## 🆕 v3.0 주요 업데이트
+## 🆕 v3.1 주요 업데이트 (2026년 1월)
 
-### 📦 모듈화 아키텍처
-- **93% 코드 감소**: 6,040줄 → 325줄 (래퍼 파일)
-- **12개 독립 모듈**: 유지보수성 및 테스트 용이성 대폭 향상
-- **순환 참조 없음**: 깔끔한 의존성 구조
-- **79개 테스트 통과**: 완전한 테스트 커버리지
+### 🤖 최신 AI 모델 지원 (40+ 모델)
 
-### 🎯 Microsoft Multi-Agent Engine 통합
-- **WebSocket 스트리밍**: 실시간 메시지 타입 지원
-- **MPlan 시스템**: 구조화된 실행 계획 및 진행률 추적
-- **ProxyAgent**: 사용자 명확화 요청 패턴
-- **RAI 검증**: Responsible AI 콘텐츠 검증
-- **AgentFactory**: JSON 기반 에이전트 동적 생성
-- **OrchestrationManager**: 팀 기반 오케스트레이션
+| 모델 계열 | 지원 모델 | 컨텍스트 | 비고 |
+|------------|-----------|---------|------|
+| **GPT-5.2** | gpt-5.2, gpt-5.2-chat, gpt-5.2-codex | 400K | 🆕 최신 |
+| **GPT-5.1 Codex** | gpt-5.1-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max | 400K | 코드 특화 |
+| **Claude 4.5** | claude-opus-4-5, claude-sonnet-4-5, claude-haiku-4-5 | 200K | MS Foundry |
+| **Grok-4** | grok-4, grok-4-fast-reasoning, grok-4-fast-non-reasoning | 2M | MS Foundry |
+| **o-시리즈** | o3, o3-mini, o3-pro, o4-mini | 200K | Reasoning |
+| **DeepSeek** | deepseek-v3.2, deepseek-v3.2-speciale, deepseek-r1-0528 | - | Reasoning |
+| **Llama 4** | llama-4-maverick-17b, llama-4-scout-17b | **10M** | 최대 컨텍스트 |
+| **Phi-4** | phi-4, phi-4-reasoning, phi-4-multimodal-instruct | - | Microsoft |
+| **Mistral** | mistral-large-3, mistral-medium-2505, mistral-small-2503 | - | - |
+
+### 📝 상세 한글 주석 추가 (🆕 NEW)
+
+모든 모듈에 상세한 한글 주석이 추가되어 학습 및 유지보수가 용이해졌습니다:
+
+```python
+class CircuitBreaker:
+    """
+    Adaptive Circuit Breaker - 장애 전파 방지 패턴 (2026년 개선 버전)
+
+    ================================================================================
+    📋 역할: 외부 서비스 장애 시 빠른 실패로 시스템 안정성 보장
+    📅 최종 업데이트: 2026년 1월
+    ================================================================================
+
+    🔄 상태 전환 다이어그램:
+        [CLOSED] ──(연속 실패)──▶ [OPEN]
+            ▲                        │
+            │                 (타임아웃 후)
+            │                        ▼
+            └──(연속 성공)── [HALF_OPEN]
+    ...
+    """
+```
+
+주석에 포함된 내용:
+- 📋 **역할 설명**: 각 클래스/함수의 목적
+- 📅 **업데이트 날짜**: 최종 수정일
+- 📌 **사용 예시**: 코피 가능한 코드 예제
+- ⚠️ **주의사항**: 흔한 실수 및 제약사항
+- 🔗 **참고 링크**: 관련 문서 및 리소스
+
+### 🔌 Microsoft Agent Framework MCP 통합
+
+```python
+from unified_agent import MCPTool, Settings
+
+# MCP 활성화
+Settings.ENABLE_MCP = True
+Settings.MCP_APPROVAL_MODE = "selective"  # always/never/selective
+
+# Microsoft Learn MCP 도구
+mcp_tool = MCPTool(
+    name="docs",
+    server_config={
+        "type": "mcp",
+        "url": "https://learn.microsoft.com/api/mcp"
+    }
+)
+
+# 에이전트에 MCP 도구 통합
+agent = framework.create_skilled_agent(
+    name="assistant",
+    tools=[mcp_tool]
+)
+```
+
+### 📦 모듈화 아키텍처 개선
+
+| 항목 | v2.x | v3.1 | 개선 |
+|------|------|------|------|
+| 메인 파일 | 6,040줄 | 325줄 | **93.5% 감소** |
+| 모듈 수 | 1개 | 12개 | **모듈화** |
+| 테스트 | 없음 | 79개 | **완전 커버리지** |
+| 공개 API | - | 67개 | **정의됨** |
+
+### 🛡️ 성능 및 안정성 개선
+
+#### Adaptive Circuit Breaker (2026년 개선)
+```python
+from unified_agent import CircuitBreaker
+
+breaker = CircuitBreaker(
+    failure_threshold=5,      # 5회 실패 시 OPEN
+    success_threshold=3,      # 3회 연속 성공 시 CLOSED 복귀
+    timeout=60.0,             # 60초 후 HALF_OPEN
+    adaptive_timeout=True     # 평균 응답시간 기반 동적 타임아웃
+)
+
+# 메트릭 확인
+metrics = breaker.get_metrics()
+print(f"성공률: {metrics['success_rate']:.2%}")
+print(f"평균 응답시간: {metrics['avg_response_time_ms']:.1f}ms")
+```
+
+#### 대용량 컨텍스트 지원
+```python
+from unified_agent.config import is_large_context_model, get_model_context_window
+
+# 모델별 컨텍스트 크기 확인
+print(get_model_context_window("gpt-5.2"))      # 400,000
+print(get_model_context_window("gpt-4.1"))      # 1,000,000
+print(get_model_context_window("grok-4-fast-reasoning"))  # 2,000,000
+print(get_model_context_window("llama-4-scout-17b-16e-instruct"))  # 10,000,000 (최대!)
+
+# 대용량 모델 확인
+is_large_context_model("gpt-5.2")  # True (100K+)
+```
+
+#### 멀티모달 모델 지원
+```python
+from unified_agent.config import is_multimodal_model
+
+# 이미지/오디오 입력 지원 모델 확인
+is_multimodal_model("gpt-5.2")           # True
+is_multimodal_model("claude-opus-4-5")   # True
+is_multimodal_model("phi-4-multimodal-instruct")  # True
+is_multimodal_model("gpt-5.2-codex")     # False (코드 특화)
+```
+
+#### RAI (Responsible AI) 강화
+```python
+from unified_agent import RAIValidator, RAICategory
+
+validator = RAIValidator(strict_mode=True)
+result = validator.validate("사용자 입력 텍스트")
+
+if not result.is_safe:
+    print(f"⚠️ 카테고리: {result.category.value}")
+    print(f"⚠️ 사유: {result.reason}")
+    print(f"💡 제안: {result.suggestions}")
+```
 
 ## 📖 목차
 
@@ -403,63 +528,93 @@ python demo_unified_agent.py
 
 ```python
 class Settings:
-    """프레임워크 전역 설정 - 모든 설정을 한 곳에서 관리"""
+    """
+    프레임워크 전역 설정 클래스 (Singleton-like Pattern)
 
-    # ─────────────────────────────────────────────────────────────────
-    # LLM 모델 설정
-    # ─────────────────────────────────────────────────────────────────
-    DEFAULT_MODEL: str = "gpt-5.2"           # 기본 모델
-    DEFAULT_API_VERSION: str = "2024-08-01-preview"
+    2026년 1월 업데이트:
+    - 40+ 모델 지원 (GPT-5.2, Claude 4.5, Grok-4, Llama 4 등)
+    - MCP 설정 추가 (ENABLE_MCP, MCP_APPROVAL_MODE)
+    - Multi-Agent 오케스트레이션 설정
+    - RAI (Responsible AI) 설정
+    """
+
+    # ─────────────────────────────────────────────────────────────────────
+    # LLM 모델 설정 (2026년 최신)
+    # ─────────────────────────────────────────────────────────────────────
+    DEFAULT_MODEL: str = "gpt-5.2"           # 기본 모델 (2026년 최신)
+    DEFAULT_API_VERSION: str = "2025-12-01-preview"  # API 버전 (최신)
     DEFAULT_TEMPERATURE: float = 0.7         # GPT-4 계열만 적용
-    DEFAULT_MAX_TOKENS: int = 1000
+    DEFAULT_MAX_TOKENS: int = 4096           # 기본 최대 토큰 (증가)
+    DEFAULT_CONTEXT_WINDOW: int = 200000     # 기본 컨텍스트 윈도우
 
-    # ─────────────────────────────────────────────────────────────────
-    # 지원 모델 목록
-    # ─────────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────────
+    # 지원 모델 목록 (2026년 1월 기준 - 40+ 모델)
+    # ─────────────────────────────────────────────────────────────────────
     SUPPORTED_MODELS: list = [
-        # GPT-4 계열
+        # GPT-4 계열 (Legacy)
         "gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
         # GPT-5 계열
-        "gpt-5", "gpt-5.1", "gpt-5.2",
+        "gpt-5", "gpt-5.1", "gpt-5.2", "gpt-5.2-chat", "gpt-5.2-codex",
+        "gpt-5.1-codex", "gpt-5.1-codex-mini", "gpt-5.1-codex-max",
         # o-시리즈 (Reasoning)
-        "o1", "o1-mini", "o1-preview", "o3", "o3-mini", "o4-mini"
+        "o1", "o1-mini", "o3", "o3-mini", "o3-pro", "o4-mini",
+        # Claude (Microsoft Foundry)
+        "claude-opus-4-5", "claude-sonnet-4-5", "claude-haiku-4-5",
+        # Grok (Microsoft Foundry)
+        "grok-4", "grok-4-fast-reasoning", "grok-4-fast-non-reasoning",
+        # DeepSeek
+        "deepseek-v3.2", "deepseek-r1-0528",
+        # Llama 4
+        "llama-4-maverick-17b-128e-instruct-fp8", "llama-4-scout-17b-16e-instruct",
+        # Phi-4
+        "phi-4", "phi-4-reasoning", "phi-4-multimodal-instruct",
+        # Mistral
+        "mistral-large-3", "mistral-medium-2505"
     ]
 
-    # Temperature 미지원 모델 (자동으로 temperature 파라미터 제외)
+    # Temperature 미지원 모델 (Reasoning 모델)
     MODELS_WITHOUT_TEMPERATURE: list = [
-        "gpt-5", "gpt-5.1", "gpt-5.2",
-        "o1", "o1-mini", "o1-preview", "o3", "o3-mini", "o4-mini"
+        "gpt-5", "gpt-5.1", "gpt-5.2", "gpt-5.1-codex", "gpt-5.2-codex",
+        "o1", "o1-mini", "o3", "o3-mini", "o3-pro", "o4-mini",
+        "deepseek-r1", "deepseek-r1-0528",
+        "phi-4-reasoning", "phi-4-mini-reasoning"
     ]
 
-    # ─────────────────────────────────────────────────────────────────
-    # 프레임워크 설정
-    # ─────────────────────────────────────────────────────────────────
-    CHECKPOINT_DIR: str = "./checkpoints"
-    ENABLE_TELEMETRY: bool = True
-    ENABLE_EVENTS: bool = True
-    ENABLE_STREAMING: bool = False
-    MAX_CACHE_SIZE: int = 100
+    # ─────────────────────────────────────────────────────────────────────
+    # MCP (Model Context Protocol) 설정 - 2026 최신
+    # ─────────────────────────────────────────────────────────────────────
+    ENABLE_MCP: bool = True
+    MCP_AUTO_CONNECT: bool = True
+    MCP_RECONNECT_ATTEMPTS: int = 3
+    MCP_REQUEST_TIMEOUT: int = 30
+    MCP_APPROVAL_MODE: str = "selective"  # always/never/selective
 
-    # ─────────────────────────────────────────────────────────────────
-    # Memory 설정 (AWS AgentCore 패턴)
-    # ─────────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────────
+    # Multi-Agent 오케스트레이션 설정
+    # ─────────────────────────────────────────────────────────────────────
+    ORCHESTRATION_MODE: str = "adaptive"     # supervisor/sequential/parallel/adaptive
+    MAX_SUPERVISOR_ROUNDS: int = 10
+    MAX_CONCURRENT_AGENTS: int = 5
+    ENABLE_HANDOFF: bool = True
+    ENABLE_REFLECTION: bool = True
+
+    # ─────────────────────────────────────────────────────────────────────
+    # RAI (Responsible AI) 설정
+    # ─────────────────────────────────────────────────────────────────────
+    ENABLE_RAI_VALIDATION: bool = True
+    RAI_STRICT_MODE: bool = False
+    RAI_CONTENT_SAFETY_LEVEL: str = "medium"  # low/medium/high
+    ENABLE_PII_DETECTION: bool = True
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Memory 설정
+    # ─────────────────────────────────────────────────────────────────────
     ENABLE_MEMORY_HOOKS: bool = True
-    MEMORY_NAMESPACE: str = "/conversation"
-    MAX_MEMORY_TURNS: int = 20
-    SESSION_TTL_HOURS: int = 24
-
-
-    # ─────────────────────────────────────────────────────────────────
-    # Supervisor 설정 (SRE Agent 패턴)
-    # ─────────────────────────────────────────────────────────────────
-    AUTO_APPROVE_SIMPLE_PLANS: bool = True
-    MAX_SUPERVISOR_ROUNDS: int = 5
-
-    # ─────────────────────────────────────────────────────────────────
-    # 로깅 설정
-    # ─────────────────────────────────────────────────────────────────
-    LOG_LEVEL: str = "INFO"
-    LOG_FILE: str = "agent_framework.log"
+    ENABLE_SEMANTIC_MEMORY: bool = True
+    MEMORY_EMBEDDING_MODEL: str = "text-embedding-3-large"
+    MAX_MEMORY_TURNS: int = 50
+    MAX_CACHE_SIZE: int = 500
+    SESSION_TTL_HOURS: int = 72
 ```
 
 ### 사용법
@@ -511,69 +666,73 @@ framework = UnifiedAgentFramework.create()
 
 ## 🤖 GPT-5 및 모델 지원 (NEW!)
 
-프레임워크는 GPT-5 시리즈와 o-series (Reasoning) 모델을 완전히 지원합니다.
+프레임워크는 2026년 1월 기준 최신 AI 모델을 완전히 지원합니다.
 
-### 지원 모델
+### 지원 모델 (40+)
 
-| 모델 시리즈 | 모델 | Temperature | 비고 |
-|------------|------|-------------|------|
-| **GPT-4** | gpt-4, gpt-4o, gpt-4o-mini | ✅ 지원 | 기본 모델 |
-| **GPT-4.1** | gpt-4.1, gpt-4.1-mini, gpt-4.1-nano | ✅ 지원 | 개선된 성능 |
-| **GPT-5** | gpt-5, gpt-5.1, gpt-5.2 | ❌ 자동 생략 | 최신 모델 |
-| **o-series** | o1, o1-mini, o1-preview | ❌ 자동 생략 | Reasoning 특화 |
-| **o3-series** | o3, o3-mini, o4-mini | ❌ 자동 생략 | 고급 추론 |
+| 모델 시리즈 | 모델 | Temperature | 컨텍스트 | 비고 |
+|------------|------|-------------|---------|------|
+| **GPT-4** | gpt-4, gpt-4o, gpt-4o-mini | ✅ 지원 | 128K | Legacy |
+| **GPT-4.1** | gpt-4.1, gpt-4.1-mini, gpt-4.1-nano | ✅ 지원 | **1M** | 개선된 성능 |
+| **GPT-5** | gpt-5, gpt-5-pro | ❌ 자동 생략 | 200K~400K | Reasoning |
+| **GPT-5.1** | gpt-5.1, gpt-5.1-chat | ❌/✅ | 400K | 2025 |
+| **GPT-5.1 Codex** | gpt-5.1-codex, codex-mini, codex-max | ❌ 자동 생략 | 400K | 코드 특화 |
+| **GPT-5.2** | gpt-5.2, gpt-5.2-chat, gpt-5.2-codex | ❌/✅ | **400K** | 🆕 최신 |
+| **o-series** | o1, o3, o3-mini, o3-pro, o4-mini | ❌ 자동 생략 | 200K | Reasoning |
+| **Claude 4.5** | claude-opus-4-5, sonnet-4-5, haiku-4-5 | ✅ 지원 | 200K | MS Foundry |
+| **Grok-4** | grok-4, grok-4-fast-reasoning | ✅ 지원 | **2M** | MS Foundry |
+| **DeepSeek** | deepseek-v3.2, r1-0528 | ❌/✅ | - | Reasoning |
+| **Llama 4** | maverick-17b, scout-17b | ✅ 지원 | **10M** | 최대 컨텍스트 |
+| **Phi-4** | phi-4, phi-4-reasoning, multimodal | ❌/✅ | - | Microsoft |
+| **Mistral** | large-3, medium-2505, small-2503 | ✅ 지원 | - | - |
 
-### 사용법
+### 유틸리티 함수
 
 ```python
-from unified_agent import Settings, UnifiedAgentFramework
+from unified_agent.config import (
+    supports_temperature,
+    is_multimodal_model,
+    is_large_context_model,
+    get_model_context_window
+)
 
-# GPT-5.2 사용
-Settings.DEFAULT_MODEL = "gpt-5.2"
-framework = UnifiedAgentFramework.create()
+# Temperature 지원 확인
+print(supports_temperature("gpt-4.1"))     # True
+print(supports_temperature("gpt-5.2"))     # False (Reasoning)
+print(supports_temperature("gpt-5.2-chat"))  # True (chat 모델)
+print(supports_temperature("o4-mini"))     # False (Reasoning)
 
-# o3 사용 (Reasoning 모델)
-Settings.DEFAULT_MODEL = "o3"
-framework = UnifiedAgentFramework.create()
-```
+# 멀티모달 지원 확인 (이미지/오디오 입력)
+print(is_multimodal_model("gpt-5.2"))      # True
+print(is_multimodal_model("claude-opus-4-5"))  # True
+print(is_multimodal_model("gpt-5.2-codex"))  # False
 
-### CLI에서 모델 변경
+# 대용량 컨텍스트 확인 (100K+)
+print(is_large_context_model("gpt-5.2"))   # True
+print(is_large_context_model("gpt-4o"))    # False (128K)
 
-```bash
-# 프레임워크 실행
-python Unified-agent_framework.py
-
-# 모델 변경 명령
-> model gpt-5.2
-🔄 모델 변경: gpt-4.1 → gpt-5.2
-
-> model o3
-🔄 모델 변경: gpt-5.2 → o3
-
-# 현재 모델 확인
-> model
-📋 현재 모델: o3
-📋 지원 모델: gpt-4, gpt-4o, gpt-4o-mini, gpt-4.1, gpt-5, gpt-5.1, gpt-5.2, o1, o3, ...
+# 컨텍스트 윈도우 크기 확인
+print(get_model_context_window("gpt-5.2"))      # 400,000
+print(get_model_context_window("gpt-4.1"))      # 1,000,000
+print(get_model_context_window("grok-4-fast-reasoning"))  # 2,000,000
+print(get_model_context_window("llama-4-scout-17b-16e-instruct"))  # 10,000,000
 ```
 
 ### Temperature 자동 처리
 
 ```python
-def supports_temperature(model: str) -> bool:
-    """모델이 temperature를 지원하는지 확인"""
-    model_lower = model.lower()
-    for unsupported in Settings.MODELS_WITHOUT_TEMPERATURE:
-        if unsupported in model_lower:
-            return False
-    return True
+from unified_agent.config import create_execution_settings
 
-# 사용 예시
-print(supports_temperature("gpt-4.1"))  # True
-print(supports_temperature("gpt-5.2"))  # False
-print(supports_temperature("o3"))       # False
+# 자동으로 temperature 지원 여부 확인 후 설정 생성
+settings = create_execution_settings(
+    model="gpt-5.2",
+    temperature=0.7,  # Reasoning 모델에서는 자동 생략됨
+    max_tokens=2000
+)
+# → ⓘ️ 모델 'gpt-5.2'은(는) temperature를 지원하지 않습니다. 해당 파라미터를 생략합니다.
 ```
 
-> 💡 **자동 처리**: GPT-5, o1, o3 계열 모델 사용 시 `temperature` 파라미터가 자동으로 생략되어 오류를 방지합니다.
+> 💡 **자동 처리**: GPT-5, o1, o3, o4 계열 모델 사용 시 `temperature` 파라미터가 자동으로 생략되어 API 오류를 방지합니다.
 
 ---
 
@@ -1650,51 +1809,96 @@ class MCPAgent(Agent):
 
 ## 🤝 기여하기
 
-기여를 환영합니다! 다음 단계를 따라주세요:
+기여를 환영합니다! 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참조하세요.
 
-1. **Fork** 이 저장소
-2. **Feature Branch** 생성 (`git checkout -b feature/AmazingFeature`)
-3. **Commit** 변경사항 (`git commit -m 'Add some AmazingFeature'`)
-4. **Push** to Branch (`git push origin feature/AmazingFeature`)
-5. **Pull Request** 생성
-
-### 개발 환경 설정
+### 빠른 시작
 
 ```bash
-# 저장소 클론
-git clone https://github.com/your-username/unified-agent-framework.git
+# 저장소 Fork 후 Clone
+git clone https://github.com/YOUR_USERNAME/unified-agent-framework.git
 cd unified-agent-framework
 
 # 가상환경 생성
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+venv\Scripts\activate  # macOS/Linux: source venv/bin/activate
 
-# 개발 의존성 설치
+# 의존성 설치
+pip install -r requirements.txt
+
+# 개발 의존성 설치 (선택)
 pip install -e ".[dev]"
 
 # 테스트 실행
-pytest tests/
+python test_unified_agent.py
 ```
+
+### 기여 방법
+
+1. **Fork** 이 저장소
+2. **Feature Branch** 생성 (`git checkout -b feature/AmazingFeature`)
+3. **Commit** 변경사항 (`git commit -m 'feat: add amazing feature'`)
+4. **Push** to Branch (`git push origin feature/AmazingFeature`)
+5. **Pull Request** 생성
+
+[Conventional Commits](https://www.conventionalcommits.org/) 규칙을 따릅니다.
+
+### 관련 문서
+
+- 📋 [기여 가이드](CONTRIBUTING.md) - 상세한 기여 방법
+- 📜 [행동 강령](CODE_OF_CONDUCT.md) - 커뮤니티 가이드라인
+- 📝 [변경 이력](CHANGELOG.md) - 버전별 변경사항
 
 ---
 
-## � 프로젝트 구조
+## 📁 프로젝트 구조
 
 ```
 Unified-agent-framework/
-├── Unified-agent_framework.py    # 메인 프레임워크 코드
-├── README.md                     # 이 문서
-├── checkpoints/                  # 체크포인트 저장 디렉토리
-│   └── *.json
-└── skills/                       # 🆕 SKILL.md 기반 스킬 디렉토리
-    ├── python-expert/
-    │   └── SKILL.md
-    ├── data-analyst/
-    │   └── SKILL.md
-    ├── korean-writer/
-    │   └── SKILL.md
-    └── api-developer/
-        └── SKILL.md
+│
+├── 📦 unified_agent/              # 핵심 패키지 (12개 모듈)
+│   ├── __init__.py               # 패키지 진입점 (67개 API export)
+│   ├── config.py                 # 설정 클래스 (40+ 모델, MCP, RAI)
+│   ├── models.py                 # Pydantic 데이터 모델
+│   ├── memory.py                 # 메모리 시스템
+│   ├── events.py                 # 이벤트 시스템
+│   ├── skills.py                 # 스킬 관리
+│   ├── tools.py                  # 도구 정의
+│   ├── agents.py                 # 5가지 에이전트 타입
+│   ├── workflow.py               # 워크플로우 엔진
+│   ├── orchestration.py          # 멀티에이전트 오케스트레이션
+│   ├── framework.py              # 통합 프레임워크
+│   ├── utils.py                  # 유틸리티 (CircuitBreaker 등)
+│   └── exceptions.py             # 커스텀 예외
+│
+├── 📂 skills/                     # SKILL.md 기반 스킬 디렉토리
+│   ├── python-expert/
+│   ├── data-analyst/
+│   └── korean-writer/
+│
+├── 🧪 test_unified_agent.py       # 테스트 (79개)
+├── 🎮 demo_unified_agent.py       # 데모 코드
+├── 📖 Unified_agent_framework.py  # 레거시 래퍼 (하위 호환성)
+│
+├── 📋 README.md                   # 이 문서
+├── 📄 LICENSE                     # MIT 라이선스
+├── 📝 CHANGELOG.md                # 버전 변경 이력
+├── 🤝 CONTRIBUTING.md             # 기여 가이드
+├── 📜 CODE_OF_CONDUCT.md          # 행동 강령
+│
+├── 📦 pyproject.toml              # Python 패키징 설정
+├── 📦 requirements.txt            # 의존성 목록
+├── 🔧 .env.example                # 환경 변수 템플릿
+├── 🙈 .gitignore                  # Git 제외 파일
+│
+└── 🔄 .github/                    # GitHub 설정
+    ├── ISSUE_TEMPLATE/           # 이슈 템플릿
+    │   ├── bug_report.md
+    │   ├── feature_request.md
+    │   └── question.md
+    ├── PULL_REQUEST_TEMPLATE.md  # PR 템플릿
+    └── workflows/                # GitHub Actions
+        ├── ci.yml                # CI 파이프라인
+        └── release.yml           # PyPI 배포
 ```
 
 ### 스킬 추가 방법
@@ -1727,19 +1931,44 @@ Unified-agent-framework/
 
 ## 📊 버전 이력
 
+전체 변경 이력은 [CHANGELOG.md](CHANGELOG.md)를 참조하세요.
+
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|-------------|
-| **3.0.0** | 2026-01 | 🆕 **완전한 모듈화 아키텍처** (12개 모듈로 분리), Microsoft Multi-Agent Engine 통합 (WebSocket, MPlan, ProxyAgent, RAI), AgentFactory, OrchestrationManager, 79개 테스트 커버리지, 93% 코드 감소 |
+| **3.1.0** | 2026-01-26 | 🆕 **40+ AI 모델 지원** (GPT-5.2, Claude 4.5, Grok-4, Llama 4, o4-mini), Adaptive Circuit Breaker, MCP 설정, RAI 강화, 상세 한글 주석, **GitHub 오픈소스 준비** (CI/CD, 문서화) |
+| 3.0.0 | 2026-01 | **완전한 모듈화 아키텍처** (12개 모듈로 분리), Microsoft Multi-Agent Engine 통합 (WebSocket, MPlan, ProxyAgent, RAI), AgentFactory, OrchestrationManager, 79개 테스트 커버리지, 93% 코드 감소 |
 | 2.2.0 | 2026-01 | **Settings 클래스** (중앙 설정 통합), GPT-5.2/o3/o4-mini 모델 추가, UTF-8 기본 인코딩, CLI `model` 명령 추가 |
 | 2.1.0 | 2025-12 | SKILL.md 파일 기반 스킬 관리, GPT-5/o1 모델 temperature 자동 분기 |
-| 2.0.0 | 2025-01 | Skills 시스템 통합, FrameworkConfig 추가, Factory Pattern, AWS AgentCore 패턴 (Memory Hook, Session Manager, Investigation Plan) |
+| 2.0.0 | 2025-01 | Skills 시스템 통합, FrameworkConfig 추가, Factory Pattern, AWS AgentCore 패턴 |
 | 1.0.0 | 2024-12 | 초기 릴리스, 5개 프레임워크 통합 |
+
+---
+
+## 📦 설치 (PyPI)
+
+```bash
+# pip로 설치
+pip install unified-agent-framework
+
+# 또는 MCP 지원 포함
+pip install unified-agent-framework[mcp]
+
+# 또는 모든 기능 포함
+pip install unified-agent-framework[full]
+```
 
 ---
 
 <div align="center">
 
 **⭐ 이 프로젝트가 도움이 되었다면 Star를 눌러주세요! ⭐**
+
+[![GitHub Stars](https://img.shields.io/github/stars/unified-agent-framework/unified-agent-framework?style=social)](https://github.com/unified-agent-framework/unified-agent-framework)
+[![GitHub Forks](https://img.shields.io/github/forks/unified-agent-framework/unified-agent-framework?style=social)](https://github.com/unified-agent-framework/unified-agent-framework/fork)
+
+[🐛 버그 리포트](https://github.com/unified-agent-framework/unified-agent-framework/issues/new?template=bug_report.md) ·
+[✨ 기능 제안](https://github.com/unified-agent-framework/unified-agent-framework/issues/new?template=feature_request.md) ·
+[❓ 질문하기](https://github.com/unified-agent-framework/unified-agent-framework/issues/new?template=question.md)
 
 Made with ❤️ by the Unified Agent Framework Team
 

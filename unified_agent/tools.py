@@ -1,9 +1,112 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Unified Agent Framework - 도구 모듈
+Unified Agent Framework - 도구 모듈 (Tools Module)
 
-AIFunction, MCP 도구 등 외부 도구 통합을 담당합니다.
+================================================================================
+📁 파일 위치: unified_agent/tools.py
+📋 역할: AIFunction, MCP 도구 등 외부 도구 통합 및 관리
+📅 최종 업데이트: 2026년 1월
+================================================================================
+
+🎯 주요 구성 요소:
+
+    📌 AIFunction (Abstract Base Class):
+        - OpenAI Function Calling을 위한 추상 클래스
+        - Microsoft Agent Framework 패턴 기반
+        - 메트릭 수집 (execution_count, total_duration_ms)
+        - OpenAI 함수 스키마 자동 생성
+
+    📌 ApprovalRequiredAIFunction:
+        - Human-in-the-loop 승인이 필요한 함수 래퍼
+        - 자동 승인 임계값 설정 가능
+        - 결제, 데이터 삭제 등 위험한 작업용
+
+    📌 MockMCPClient:
+        - MCP 클라이언트 모킹 (테스트용)
+        - call_tool(), list_tools() 메서드 제공
+
+    📌 MCPTool:
+        - Model Context Protocol 도구 클래스
+        - 외부 MCP 서버와 통신
+        - Microsoft Learn, GitHub 등 다양한 소스 지원
+
+🔧 MCP (Model Context Protocol) 설명:
+    LLM이 외부 데이터 소스와 상호작용하기 위한 표준 프로토콜입니다.
+
+    지원 소스 예시:
+    - Microsoft Learn 문서
+    - GitHub 저장소
+    - Azure 리소스
+    - 데이터베이스
+    - 파일 시스템
+
+📌 사용 예시:
+
+    예제 1: 커스텀 AIFunction
+    ----------------------------------------
+    >>> from unified_agent.tools import AIFunction
+    >>>
+    >>> class WebSearchFunction(AIFunction):
+    ...     def __init__(self):
+    ...         super().__init__(
+    ...             name="web_search",
+    ...             description="Search the web for information",
+    ...             parameters={
+    ...                 "type": "object",
+    ...                 "properties": {
+    ...                     "query": {"type": "string", "description": "Search query"}
+    ...                 },
+    ...                 "required": ["query"]
+    ...             }
+    ...         )
+    ...
+    ...     async def execute(self, query: str) -> str:
+    ...         # 웹 검색 로직
+    ...         return f"Search results for: {query}"
+    >>>
+    >>> # 사용
+    >>> func = WebSearchFunction()
+    >>> schema = func.get_schema()  # OpenAI Function Calling 스키마
+    >>> result, duration = await func.invoke_with_metrics(query="Python tutorial")
+
+    예제 2: Human-in-the-loop 승인
+    ----------------------------------------
+    >>> from unified_agent.tools import ApprovalRequiredAIFunction
+    >>>
+    >>> # 기본 함수를 승인 필요 함수로 래핑
+    >>> payment_func = PaymentFunction()
+    >>> approved_func = ApprovalRequiredAIFunction(
+    ...     base_function=payment_func,
+    ...     approval_callback=request_user_approval,
+    ...     auto_approve_threshold=10000  # 10,000원 이하는 자동 승인
+    ... )
+
+    예제 3: MCP 도구
+    ----------------------------------------
+    >>> from unified_agent.tools import MCPTool
+    >>>
+    >>> # Microsoft Learn MCP 도구
+    >>> docs_tool = MCPTool(
+    ...     name="microsoft_docs",
+    ...     server_config={
+    ...         "type": "mcp",
+    ...         "url": "https://learn.microsoft.com/api/mcp"
+    ...     }
+    ... )
+    >>>
+    >>> # 도구 실행
+    >>> result = await docs_tool.call("search", query="Azure OpenAI quickstart")
+
+⚠️ 주의사항:
+    - AIFunction.execute()는 반드시 async로 구현해야 합니다.
+    - ApprovalRequiredAIFunction은 보안이 중요한 작업에 사용하세요.
+    - MCP 서버 연결 실패 시 CircuitBreaker가 자동 발동됩니다.
+
+🔗 참고:
+    - MCP Protocol: https://modelcontextprotocol.io/
+    - Microsoft Agent Framework: https://github.com/microsoft/agent-framework
+    - OpenAI Function Calling: https://platform.openai.com/docs/guides/function-calling
 """
 
 import time

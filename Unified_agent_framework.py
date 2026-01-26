@@ -1,36 +1,40 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Unified Agent Framework - Enterprise Edition v3.0
-Microsoft Multi-Agent-Custom-Automation-Engine 패턴 통합 + 완전 모듈화 아키텍처
+Unified Agent Framework - Enterprise Edition v3.1
+Microsoft Agent Framework MCP 패턴 통합 + 2026년 최신 모델 지원
 
 ============================================================================
 📌 모듈 정보
 ============================================================================
-버전: 3.0.0
+버전: 3.1.0
 작성자: Enterprise AI Team
 라이선스: MIT
+최종 업데이트: 2026년 1월
 
-🆕 v3.0 주요 변경사항:
-- 완전한 모듈화 아키텍처 (6,040줄 → 12개 모듈로 분리)
-- 93% 코드 감소 (이 파일은 re-export 래퍼로 변환)
-- 79개 테스트 케이스 완전 통과
-- 순환 참조 없는 깔끔한 의존성 구조
+🆕 v3.1 주요 변경사항 (2026년 1월):
+- GPT-5.2, Claude Opus 4.5, Grok-4 등 2026년 최신 모델 지원
+- Microsoft Agent Framework MCP 패턴 완전 통합
+- Adaptive Circuit Breaker (동적 타임아웃)
+- 대용량 컨텍스트 지원 (최대 10M tokens - Llama 4 Scout)
+- RAI 강화 검증 (Azure Content Safety 통합)
+- 시맨틱 메모리 및 임베딩 지원
+- 병렬 도구 호출 (최대 5개 동시)
 
 이 파일은 unified_agent 패키지의 모든 공개 API를 re-export합니다.
 실제 구현은 unified_agent/ 패키지의 개별 모듈에 있습니다.
 
 패키지 구조:
     unified_agent/
-    ├── __init__.py      # 패키지 진입점 (67개 공개 API export)
+    ├── __init__.py      # 패키지 진입점 (70개+ 공개 API export)
     ├── exceptions.py    # 예외 클래스 (FrameworkError, ConfigurationError 등)
-    ├── config.py        # 설정 및 상수 (Settings, FrameworkConfig)
+    ├── config.py        # 설정 및 상수 (Settings, FrameworkConfig) - 2026 최신 모델
     ├── models.py        # 데이터 모델 (Enum, Pydantic, Dataclass)
     ├── utils.py         # 유틸리티 (StructuredLogger, CircuitBreaker, RAIValidator)
-    ├── memory.py        # 메모리 시스템 (MemoryStore, CachedMemoryStore)
+    ├── memory.py        # 메모리 시스템 (MemoryStore, CachedMemoryStore, SemanticMemory)
     ├── events.py        # 이벤트 시스템 (EventBus, EventType)
     ├── skills.py        # Skills 시스템 (Skill, SkillManager)
-    ├── tools.py         # 도구 (AIFunction, MCPTool)
+    ├── tools.py         # 도구 (AIFunction, MCPTool - Microsoft Agent Framework 통합)
     ├── agents.py        # 에이전트 (SimpleAgent, RouterAgent, SupervisorAgent)
     ├── workflow.py      # 워크플로우 (Graph, Node)
     ├── orchestration.py # 오케스트레이션 (AgentFactory, OrchestrationManager)
@@ -57,7 +61,10 @@ Microsoft Multi-Agent-Custom-Automation-Engine 패턴 통합 + 완전 모듈화 
 3. 프레임워크 직접 사용:
    ```python
    import asyncio
-   from unified_agent import UnifiedAgentFramework
+   from unified_agent import UnifiedAgentFramework, Settings
+
+   # 2026년 최신 모델 설정
+   Settings.DEFAULT_MODEL = "gpt-5.2"  # or "claude-opus-4-5", "grok-4"
 
    async def main():
        framework = UnifiedAgentFramework.create()
@@ -82,7 +89,24 @@ Microsoft Multi-Agent-Custom-Automation-Engine 패턴 통합 + 완전 모듈화 
    team = factory.create_team(team_config)
    ```
 
-5. MPlan 구조화된 계획 시스템 (v3.0 NEW!):
+5. MCP Tool 통합 (v3.1 NEW! - Microsoft Agent Framework 패턴):
+   ```python
+   from unified_agent import MCPTool
+
+   # Microsoft Learn MCP 서버 연결
+   mcp_tool = MCPTool(
+       name="Microsoft Learn MCP",
+       url="https://learn.microsoft.com/api/mcp",
+       approval_mode="selective"  # always_require, never_require, selective
+   )
+
+   agent = framework.create_skilled_agent(
+       name="docs_assistant",
+       tools=[mcp_tool]
+   )
+   ```
+
+6. MPlan 구조화된 계획 시스템:
    ```python
    from unified_agent import MPlan, PlanStep
 
@@ -96,34 +120,23 @@ Microsoft Multi-Agent-Custom-Automation-Engine 패턴 통합 + 완전 모듈화 
    print(f"진행률: {plan.get_progress() * 100}%")
    ```
 
-6. WebSocket 스트리밍 (v3.0 NEW!):
-   ```python
-   from unified_agent import WebSocketMessageType, StreamingMessage
-
-   msg = StreamingMessage(
-       type=WebSocketMessageType.AGENT_RESPONSE,
-       content="Hello!",
-       agent_name="assistant"
-   )
-   ```
-
 ============================================================================
-주요 기능
+주요 기능 (2026년 v3.1)
 ============================================================================
 [핵심 기능]
-1. MCP (Model Context Protocol) 서버 통합
+1. MCP (Model Context Protocol) 서버 통합 - Microsoft Agent Framework 패턴
 2. Human-in-the-loop 승인 시스템
-3. 스트리밍 응답 지원
-4. 재시도 로직 및 회로 차단기 패턴
+3. 스트리밍 응답 지원 (기본 활성화)
+4. 재시도 로직 및 Adaptive 회로 차단기 패턴
 5. 비동기 이벤트 시스템 (Pub-Sub)
-6. 향상된 메모리 관리 (LRU 캐시)
+6. 향상된 메모리 관리 (LRU 캐시 + 시맨틱 메모리)
 7. Supervisor Agent 패턴
 8. 조건부 라우팅 및 루프 지원
 9. 버전 관리 및 롤백
 10. 상세 메트릭 및 성능 모니터링
 11. Anthropic Skills 시스템
 
-[v3.0 NEW! Microsoft Multi-Agent Engine 통합]
+[v3.0 Microsoft Multi-Agent Engine 통합]
 12. WebSocket 메시지 타입 및 실시간 스트리밍
 13. Team/Agent Configuration 시스템
 14. MPlan 구조화된 계획 시스템 (진행률 추적)
@@ -132,27 +145,32 @@ Microsoft Multi-Agent-Custom-Automation-Engine 패턴 통합 + 완전 모듈화 
 17. AgentFactory - JSON 기반 에이전트 동적 생성
 18. OrchestrationManager - 팀 기반 오케스트레이션
 
-[v3.0 NEW! 모듈화 아키텍처]
-19. 12개 독립 모듈로 분리
-20. 93% 코드 감소 (유지보수성 향상)
-21. 79개 테스트 케이스 통과
-22. 순환 참조 없는 의존성 구조
+[v3.1 2026년 최신 업데이트]
+19. GPT-5.2/5.1-codex, Claude Opus 4.5, Grok-4 모델 지원
+20. 대용량 컨텍스트 지원 (최대 10M tokens)
+21. Microsoft Agent Framework MCP 완전 통합
+22. Adaptive Circuit Breaker (동적 타임아웃)
+23. 병렬 도구 호출 (최대 5개 동시)
+24. 시맨틱 메모리 및 임베딩 지원
+25. RAI 강화 검증 (Azure Content Safety)
 
 ============================================================================
 필요 패키지
 ============================================================================
 pip install semantic-kernel python-dotenv opentelemetry-api opentelemetry-sdk pydantic pyyaml
+# MCP 통합 (선택)
+pip install agent-framework-azure-ai --pre
 """
 
 # ============================================================================
 # 모듈 메타데이터
 # ============================================================================
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 __author__ = "Enterprise AI Team"
 
 # ============================================================================
 # unified_agent 패키지에서 모든 공개 API re-export
-# v3.0: 12개 모듈에서 67개 공개 심볼 export
+# v3.1: 13개 모듈에서 70개+ 공개 심볼 export
 # ============================================================================
 from unified_agent import (
     # ─────────────────────────────────────────────────────────────────────────
@@ -168,7 +186,7 @@ from unified_agent import (
 
     # ─────────────────────────────────────────────────────────────────────────
     # Configuration (unified_agent/config.py)
-    # 중앙 설정 관리 및 상수
+    # 중앙 설정 관리 및 상수 - 2026년 최신 모델 목록 포함
     # ─────────────────────────────────────────────────────────────────────────
     Settings,
     FrameworkConfig,
@@ -207,7 +225,7 @@ from unified_agent import (
 
     # ─────────────────────────────────────────────────────────────────────────
     # Utilities (unified_agent/utils.py)
-    # 로깅, 회로차단기, RAI 검증 등 유틸리티
+    # 로깅, 회로차단기(Adaptive), RAI 검증 등 유틸리티
     # ─────────────────────────────────────────────────────────────────────────
     StructuredLogger,
     retry_with_backoff,
@@ -217,7 +235,7 @@ from unified_agent import (
 
     # ─────────────────────────────────────────────────────────────────────────
     # Memory System (unified_agent/memory.py)
-    # 대화 기록 및 상태 관리 (LRU 캐시, Hook Provider)
+    # 대화 기록 및 상태 관리 (LRU 캐시, Hook Provider, 시맨틱 메모리)
     # ─────────────────────────────────────────────────────────────────────────
     MemoryStore,
     CachedMemoryStore,
@@ -244,7 +262,7 @@ from unified_agent import (
 
     # ─────────────────────────────────────────────────────────────────────────
     # Tools (unified_agent/tools.py)
-    # AI Function, MCP Tool, 승인 필요 함수
+    # AI Function, MCP Tool (Microsoft Agent Framework 패턴), 승인 필요 함수
     # ─────────────────────────────────────────────────────────────────────────
     AIFunction,
     ApprovalRequiredAIFunction,
