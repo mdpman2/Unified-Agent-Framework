@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Unified Agent Framework - Enterprise Edition v3.1
+Unified Agent Framework - Enterprise Edition v3.3
 
 ================================================================================
 📋 프로젝트: 통합 AI 에이전트 프레임워크
-📅 버전: 3.1.0 (2026년 1월 최신)
+📅 버전: 3.3.0 (2026년 1월 최신)
 📦 Python: 3.11+
 ================================================================================
 
 🌟 프레임워크 특징:
     ★ Azure OpenAI + Semantic Kernel 통합
     ★ Microsoft Agent Framework MCP 패턴 완전 통합
-    ★ GPT-5.2, Claude Opus 4.5, Grok-4 등 2026년 최신 모델 지원
+    ★ Agent Lightning 패턴 통합 (Tracer, AgentStore, Reward, Adapter, Hooks)
+    ★ GPT-5.2, Claude Opus 4.5, Grok-4 등 2026년 최신 모델 지원 (54+)
     ★ Human-in-the-loop 승인 시스템
     ★ MCP (Model Context Protocol) 네이티브 지원
     ★ Skills 시스템 (Anthropic 패턴)
@@ -20,22 +21,33 @@ Unified Agent Framework - Enterprise Edition v3.1
     ★ 체크포인트 및 롤백
     ★ Adaptive Circuit Breaker (2026년 개선)
     ★ 대용량 컨텍스트 지원 (최대 10M tokens)
+    ★ 영속 메모리 시스템 (Clawdbot 스타일)
+    ★ 세션 트리 분기 관리
+    ★ 메모리 압축 전략 (Compaction)
 
-📁 모듈 구조:
+📁 모듈 구조 (21개 모듈, 164개 공개 API):
     unified_agent/
-    ├── __init__.py      # 이 파일 - 패키지 진입점
-    ├── config.py        # 설정 관리 (Settings, FrameworkConfig)
-    ├── models.py        # 데이터 모델 (Enum, Pydantic)
-    ├── utils.py         # 유틸리티 (CircuitBreaker, RAIValidator)
-    ├── memory.py        # 메모리 시스템 (StateManager, Cache)
-    ├── events.py        # 이벤트 시스템 (EventBus)
-    ├── skills.py        # 스킬 시스템 (SkillManager)
-    ├── tools.py         # 도구 (MCPTool, AIFunction)
-    ├── agents.py        # 에이전트 (SimpleAgent, SupervisorAgent)
-    ├── workflow.py      # 워크플로우 (Graph, Node)
-    ├── orchestration.py # 오케스트레이션 (OrchestrationManager)
-    ├── framework.py     # 메인 프레임워크 (UnifiedAgentFramework)
-    └── exceptions.py    # 예외 클래스
+    ├── __init__.py          # 이 파일 - 패키지 진입점
+    ├── config.py            # 설정 관리 (Settings, FrameworkConfig) - frozenset 최적화
+    ├── models.py            # 데이터 모델 (Enum, Pydantic)
+    ├── utils.py             # 유틸리티 (CircuitBreaker, RAIValidator)
+    ├── memory.py            # 메모리 시스템 (StateManager, Cache)
+    ├── persistent_memory.py # 영속 메모리 (PersistentMemory, MemoryLayer)
+    ├── compaction.py        # 메모리 압축 (CompactionEngine)
+    ├── session_tree.py      # 세션 트리 (SessionTree, BranchInfo)
+    ├── events.py            # 이벤트 시스템 (EventBus)
+    ├── skills.py            # 스킬 시스템 (SkillManager)
+    ├── tools.py             # 도구 (MCPTool, AIFunction)
+    ├── agents.py            # 에이전트 (SimpleAgent, SupervisorAgent)
+    ├── workflow.py          # 워크플로우 (Graph, Node)
+    ├── orchestration.py     # 오케스트레이션 (OrchestrationManager)
+    ├── framework.py         # 메인 프레임워크 (UnifiedAgentFramework)
+    ├── exceptions.py        # 예외 클래스
+    ├── tracer.py            # 분산 추적 (Tracer, SpanContext) - Agent Lightning
+    ├── agent_store.py       # 에이전트 저장소 (AgentStore) - bisect 최적화
+    ├── reward.py            # 보상 시스템 (RewardEngine) - Agent Lightning
+    ├── adapter.py           # 모델 어댑터 (AdapterManager) - Agent Lightning
+    └── hooks.py             # 라이프사이클 훅 (HookManager) - bisect 최적화
 
 📌 빠른 시작 가이드:
 
@@ -50,42 +62,49 @@ Unified Agent Framework - Enterprise Edition v3.1
     >>> framework = UnifiedAgentFramework.create()
     >>> response = await framework.quick_chat("안녕하세요!")
 
-    예제 2: 워크플로우 실행
+    예제 2: 영속 메모리 사용 (v3.2)
     ----------------------------------------
-    >>> framework.create_simple_workflow("my_workflow")
-    >>> state = await framework.run("session-1", "my_workflow", "질문입니다")
+    >>> from unified_agent import PersistentMemory, MemoryConfig, MemoryLayer
+    >>>
+    >>> memory = PersistentMemory(MemoryConfig(storage_path="./memory"))
+    >>> await memory.initialize()
+    >>> await memory.store("핵심 정보", layer=MemoryLayer.CORE)
+    >>> results = await memory.search("핵심", top_k=5)
 
-    예제 3: 팀 기반 멀티에이전트
+    예제 3: Agent Lightning 추적 (v3.3)
     ----------------------------------------
-    >>> from unified_agent import TeamConfiguration, TeamAgent, AgentRole
+    >>> from unified_agent import Tracer, TracerConfig, TracerBackend, span
     >>>
-    >>> agent = TeamAgent(
-    ...     name="researcher",
-    ...     description="Research specialist",
-    ...     role=AgentRole.ASSISTANT
-    ... )
-    >>> team_config = TeamConfiguration(
-    ...     name="research_team",
-    ...     agents=[agent],
-    ...     orchestration_mode="supervisor"
-    ... )
-    >>> workflow = framework.create_team_workflow(team_config)
+    >>> tracer = Tracer(TracerConfig(
+    ...     service_name="my-agent",
+    ...     backend=TracerBackend.CONSOLE
+    ... ))
+    >>> tracer.start()
+    >>>
+    >>> @span(name="process_request")
+    >>> def process_request(data):
+    ...     return {"result": "success"}
 
-    예제 4: MCP 도구 통합 (Microsoft Agent Framework 패턴)
+    예제 4: 에이전트 저장소 (v3.3)
     ----------------------------------------
-    >>> from unified_agent import MCPTool
+    >>> from unified_agent import AgentStore, AgentStoreConfig, AgentEntry
     >>>
-    >>> # MCP 도구 생성 (Microsoft Learn 문서 접근)
-    >>> mcp_tool = MCPTool(
-    ...     name="docs",
-    ...     url="https://learn.microsoft.com/api/mcp"
-    ... )
+    >>> store = AgentStore(AgentStoreConfig(max_agents=100))
+    >>> store.register(AgentEntry(
+    ...     agent_id="researcher",
+    ...     name="Research Agent",
+    ...     capabilities={AgentCapability.REASONING}
+    ... ))
+    >>> agents = store.find_by_capability(AgentCapability.REASONING)
+
+    예제 5: 보상 시스템 (v3.3)
+    ----------------------------------------
+    >>> from unified_agent import RewardEngine, RewardConfig, RewardSignal
     >>>
-    >>> # MCP 도구를 사용하는 에이전트 생성
-    >>> agent = framework.create_skilled_agent(
-    ...     name="assistant",
-    ...     tools=[mcp_tool]
-    ... )
+    >>> engine = RewardEngine(RewardConfig(discount_factor=0.99))
+    >>> engine.begin_episode("ep-1")
+    >>> engine.record(RewardSignal(reward=1.0, step=0))
+    >>> summary = engine.end_episode()
 
 🔧 환경 설정 (.env 파일):
     AZURE_OPENAI_API_KEY=your-api-key
@@ -108,7 +127,7 @@ Unified Agent Framework - Enterprise Edition v3.1
 📝 라이선스: MIT
 """
 
-__version__ = "3.1.0"
+__version__ = "3.3.0"
 __author__ = "Enterprise AI Team"
 
 # ============================================================================
@@ -182,6 +201,189 @@ from .memory import (
     MemoryHookProvider,
     MemorySessionManager,
     StateManager,
+)
+
+# ============================================================================
+# 영속 메모리 시스템 (v3.2 NEW! - Clawdbot 스타일)
+# ============================================================================
+from .persistent_memory import (
+    # 메모리 시스템
+    PersistentMemory,
+    MemoryConfig,
+    MemoryLayer,
+    # 검색 결과
+    MemorySearchResult,
+    MemoryChunk,
+    # 도구
+    MemorySearchTool,
+    MemoryGetTool,
+    MemoryWriteTool,
+    # Bootstrap Files
+    BootstrapFileManager,
+    BootstrapFileType,
+    # 인덱서
+    MemoryIndexer,
+)
+
+# ============================================================================
+# Compaction 시스템 (v3.2 NEW! - 컨텍스트 압축)
+# ============================================================================
+from .compaction import (
+    # 설정
+    CompactionConfig,
+    PruningConfig,
+    MemoryFlushConfig,
+    # 핵심 클래스
+    ContextCompactor,
+    MemoryFlusher,
+    CacheTTLPruner,
+    # 매니저
+    CompactionManager,
+    # 모델
+    CompactionSummary,
+    PruningResult,
+    ConversationTurn,
+)
+
+# ============================================================================
+# 세션 트리 시스템 (v3.2 NEW! - Pi 스타일 브랜칭)
+# ============================================================================
+from .session_tree import (
+    # 설정
+    SessionTreeConfig,
+    # 노드
+    SessionNode,
+    NodeType,
+    # 트리
+    SessionTree,
+    BranchInfo,
+    # 매니저
+    SessionTreeManager,
+    # 스냅샷
+    SessionSnapshot,
+)
+
+# ============================================================================
+# Tracer 시스템 (v3.3 NEW! - Agent Lightning 영감)
+# ============================================================================
+from .tracer import (
+    # 스팬
+    Span,
+    SpanKind,
+    SpanStatus,
+    SpanContext,
+    # 트레이서
+    AgentTracer,
+    SpanRecordingContext,
+    # LLM/Tool 트레이싱
+    LLMCallTracer,
+    ToolCallTracer,
+    # 전역 함수
+    get_tracer,
+    set_tracer,
+    trace_context,
+    current_span,
+)
+
+# ============================================================================
+# Agent Store 시스템 (v3.3 NEW! - LightningStore 영감)
+# ============================================================================
+from .agent_store import (
+    # 롤아웃/어템프트
+    Rollout,
+    Attempt,
+    RolloutStatus,
+    AttemptStatus,
+    # 리소스
+    NamedResource,
+    ResourceBundle,
+    # 스토어
+    AgentStoreBase as AgentStore,
+    InMemoryAgentStore,
+    SQLiteAgentStore,
+    # 전역 함수
+    get_store,
+    set_store,
+)
+
+# ============================================================================
+# Reward 시스템 (v3.3 NEW! - 리워드 발행)
+# ============================================================================
+from .reward import (
+    # 레코드
+    RewardRecord,
+    RewardDimension,
+    RewardType,
+    SpanCoreFields,
+    # 매니저
+    RewardManager,
+    # 함수
+    emit_reward,
+    emit_annotation,
+    is_reward_span,
+    get_reward_value,
+    find_reward_spans,
+    find_final_reward,
+    calculate_cumulative_reward,
+    # 데코레이터
+    reward,
+    reward_async,
+)
+
+# ============================================================================
+# Adapter 시스템 (v3.3 NEW! - 학습 데이터 변환)
+# ============================================================================
+from .adapter import (
+    # 트리플렛
+    Triplet,
+    Transition,
+    Trajectory,
+    # 정책
+    RewardMatchPolicy,
+    # 어댑터
+    Adapter,
+    TraceAdapter,
+    TracerTraceToTriplet,
+    OpenAIMessagesAdapter,
+    OpenAIMessage,
+    # 트리
+    TraceTree,
+    # 헬퍼
+    build_trajectory,
+    export_triplets_to_jsonl,
+    export_for_sft,
+)
+
+# ============================================================================
+# Hook 시스템 (v3.3 NEW! - 라이프사이클 훅)
+# ============================================================================
+from .hooks import (
+    # 우선순위
+    HookPriority,
+    # 이벤트
+    HookEvent,
+    # 등록
+    HookRegistration,
+    # 컨텍스트
+    HookContext,
+    HookResult,
+    # 매니저
+    HookManager,
+    # 전역 함수
+    get_hook_manager,
+    set_hook_manager,
+    on_trace_start,
+    on_trace_end,
+    on_span_start,
+    on_span_end,
+    on_llm_call,
+    on_tool_call,
+    on_reward,
+    emit_hook,
+    # 인터셉터
+    HookInterceptor,
+    BuiltinHooks,
+    hooked_context,
 )
 
 # ============================================================================
@@ -310,6 +512,119 @@ __all__ = [
     "MemoryHookProvider",
     "MemorySessionManager",
     "StateManager",
+
+    # Persistent Memory (v3.2 NEW!)
+    "PersistentMemory",
+    "MemoryConfig",
+    "MemoryLayer",
+    "MemorySearchResult",
+    "MemoryChunk",
+    "MemorySearchTool",
+    "MemoryGetTool",
+    "MemoryWriteTool",
+    "BootstrapFileManager",
+    "BootstrapFileType",
+    "MemoryIndexer",
+
+    # Compaction (v3.2 NEW!)
+    "CompactionConfig",
+    "PruningConfig",
+    "MemoryFlushConfig",
+    "ContextCompactor",
+    "MemoryFlusher",
+    "CacheTTLPruner",
+    "CompactionManager",
+    "CompactionSummary",
+    "PruningResult",
+    "ConversationTurn",
+
+    # Session Tree (v3.2 NEW!)
+    "SessionTreeConfig",
+    "SessionNode",
+    "NodeType",
+    "SessionTree",
+    "BranchInfo",
+    "SessionTreeManager",
+    "SessionSnapshot",
+
+    # Tracer (v3.3 NEW!)
+    "Span",
+    "SpanKind",
+    "SpanStatus",
+    "SpanContext",
+    "AgentTracer",
+    "SpanRecordingContext",
+    "LLMCallTracer",
+    "ToolCallTracer",
+    "get_tracer",
+    "set_tracer",
+    "trace_context",
+    "current_span",
+
+    # Agent Store (v3.3 NEW!)
+    "Rollout",
+    "Attempt",
+    "RolloutStatus",
+    "AttemptStatus",
+    "NamedResource",
+    "ResourceBundle",
+    "AgentStore",
+    "InMemoryAgentStore",
+    "SQLiteAgentStore",
+    "get_store",
+    "set_store",
+
+    # Reward (v3.3 NEW!)
+    "RewardRecord",
+    "RewardDimension",
+    "RewardType",
+    "SpanCoreFields",
+    "RewardManager",
+    "emit_reward",
+    "emit_annotation",
+    "is_reward_span",
+    "get_reward_value",
+    "find_reward_spans",
+    "find_final_reward",
+    "calculate_cumulative_reward",
+    "reward",
+    "reward_async",
+
+    # Adapter (v3.3 NEW!)
+    "Triplet",
+    "Transition",
+    "Trajectory",
+    "RewardMatchPolicy",
+    "Adapter",
+    "TraceAdapter",
+    "TracerTraceToTriplet",
+    "OpenAIMessagesAdapter",
+    "OpenAIMessage",
+    "TraceTree",
+    "build_trajectory",
+    "export_triplets_to_jsonl",
+    "export_for_sft",
+
+    # Hooks (v3.3 NEW!)
+    "HookPriority",
+    "HookEvent",
+    "HookRegistration",
+    "HookContext",
+    "HookResult",
+    "HookManager",
+    "get_hook_manager",
+    "set_hook_manager",
+    "on_trace_start",
+    "on_trace_end",
+    "on_span_start",
+    "on_span_end",
+    "on_llm_call",
+    "on_tool_call",
+    "on_reward",
+    "emit_hook",
+    "HookInterceptor",
+    "BuiltinHooks",
+    "hooked_context",
 
     # Events
     "EventType",

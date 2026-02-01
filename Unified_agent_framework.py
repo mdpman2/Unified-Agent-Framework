@@ -21,24 +21,41 @@ Microsoft Agent Framework MCP 패턴 통합 + 2026년 최신 모델 지원
 - 시맨틱 메모리 및 임베딩 지원
 - 병렬 도구 호출 (최대 5개 동시)
 
+🆕 v3.2 주요 변경사항 (2026년 2월):
+- 영속 메모리 시스템 (Clawdbot 스타일 2계층 메모리)
+  - Daily Logs + Long-term Memory
+  - memory_search/memory_get 도구
+  - 하이브리드 검색 (Vector 70% + BM25 30%)
+- Compaction 시스템 (컨텍스트 압축)
+  - 자동/수동 Compaction
+  - Pre-compaction Memory Flush
+  - Cache-TTL Pruning
+- 세션 트리 시스템 (Pi 스타일)
+  - 대화 브랜칭/리와인드
+  - 브랜치 요약 및 병합
+  - 스냅샷 및 복원
+
 이 파일은 unified_agent 패키지의 모든 공개 API를 re-export합니다.
 실제 구현은 unified_agent/ 패키지의 개별 모듈에 있습니다.
 
 패키지 구조:
     unified_agent/
-    ├── __init__.py      # 패키지 진입점 (70개+ 공개 API export)
-    ├── exceptions.py    # 예외 클래스 (FrameworkError, ConfigurationError 등)
-    ├── config.py        # 설정 및 상수 (Settings, FrameworkConfig) - 2026 최신 모델
-    ├── models.py        # 데이터 모델 (Enum, Pydantic, Dataclass)
-    ├── utils.py         # 유틸리티 (StructuredLogger, CircuitBreaker, RAIValidator)
-    ├── memory.py        # 메모리 시스템 (MemoryStore, CachedMemoryStore, SemanticMemory)
-    ├── events.py        # 이벤트 시스템 (EventBus, EventType)
-    ├── skills.py        # Skills 시스템 (Skill, SkillManager)
-    ├── tools.py         # 도구 (AIFunction, MCPTool - Microsoft Agent Framework 통합)
-    ├── agents.py        # 에이전트 (SimpleAgent, RouterAgent, SupervisorAgent)
-    ├── workflow.py      # 워크플로우 (Graph, Node)
-    ├── orchestration.py # 오케스트레이션 (AgentFactory, OrchestrationManager)
-    └── framework.py     # 메인 프레임워크 (UnifiedAgentFramework)
+    ├── __init__.py           # 패키지 진입점 (100개+ 공개 API export)
+    ├── exceptions.py         # 예외 클래스 (FrameworkError, ConfigurationError 등)
+    ├── config.py             # 설정 및 상수 (Settings, FrameworkConfig) - 2026 최신 모델
+    ├── models.py             # 데이터 모델 (Enum, Pydantic, Dataclass)
+    ├── utils.py              # 유틸리티 (StructuredLogger, CircuitBreaker, RAIValidator)
+    ├── memory.py             # 메모리 시스템 (MemoryStore, CachedMemoryStore, SemanticMemory)
+    ├── persistent_memory.py  # v3.2 영속 메모리 (PersistentMemory, 하이브리드 검색)
+    ├── compaction.py         # v3.2 Compaction (ContextCompactor, MemoryFlusher)
+    ├── session_tree.py       # v3.2 세션 트리 (SessionTree, 브랜칭/리와인드)
+    ├── events.py             # 이벤트 시스템 (EventBus, EventType)
+    ├── skills.py             # Skills 시스템 (Skill, SkillManager)
+    ├── tools.py              # 도구 (AIFunction, MCPTool - Microsoft Agent Framework 통합)
+    ├── agents.py             # 에이전트 (SimpleAgent, RouterAgent, SupervisorAgent)
+    ├── workflow.py           # 워크플로우 (Graph, Node)
+    ├── orchestration.py      # 오케스트레이션 (AgentFactory, OrchestrationManager)
+    └── framework.py          # 메인 프레임워크 (UnifiedAgentFramework)
 
 ============================================================================
 🚀 빠른 시작 가이드
@@ -120,6 +137,61 @@ Microsoft Agent Framework MCP 패턴 통합 + 2026년 최신 모델 지원
    print(f"진행률: {plan.get_progress() * 100}%")
    ```
 
+7. 영속 메모리 시스템 (v3.2 NEW! - Clawdbot 스타일):
+   ```python
+   from unified_agent import PersistentMemory, MemorySearchTool
+
+   # 메모리 시스템 초기화
+   memory = PersistentMemory(agent_id="main")
+   await memory.initialize()
+
+   # 오늘 기록에 메모 추가
+   await memory.add_daily_note("API 설계 결정: REST over GraphQL")
+
+   # 장기 기억에 추가
+   await memory.add_long_term_memory("TypeScript 선호", section="User Preferences")
+
+   # 하이브리드 검색 (Vector 70% + BM25 30%)
+   results = await memory.search("API 설계")
+   ```
+
+8. Compaction 시스템 (v3.2 NEW!):
+   ```python
+   from unified_agent import CompactionManager, CompactionConfig
+
+   manager = CompactionManager(
+       compaction_config=CompactionConfig(context_window=200000),
+   )
+   manager.set_summarizer(llm_summarize)
+
+   # 자동 Compaction (필요시)
+   turns = await manager.process_turns(turns, agent_respond)
+
+   # 수동 Compaction
+   turns, summary = await manager.force_compact(turns, "Focus on decisions")
+   ```
+
+9. 세션 트리 시스템 (v3.2 NEW! - Pi 스타일):
+   ```python
+   from unified_agent import SessionTree, SessionTreeManager
+
+   tree = SessionTree(session_id="main-session")
+
+   # 대화 추가
+   tree.add_message("user", "API 설계 도와줘")
+   tree.add_message("assistant", "어떤 종류의 API인가요?")
+
+   # 브랜치 생성 (사이드 퀘스트)
+   tree.create_branch("fix-bug", "버그 수정용")
+   tree.add_message("user", "버그 좀 고쳐줘")
+
+   # 메인으로 복귀
+   tree.switch_branch("main")
+
+   # 브랜치 병합 (요약 포함)
+   summary = await tree.merge_branch("fix-bug", summarizer=llm_summarize)
+   ```
+
 ============================================================================
 주요 기능 (2026년 v3.1)
 ============================================================================
@@ -154,6 +226,21 @@ Microsoft Agent Framework MCP 패턴 통합 + 2026년 최신 모델 지원
 24. 시맨틱 메모리 및 임베딩 지원
 25. RAI 강화 검증 (Azure Content Safety)
 
+[v3.2 영속 메모리 & 세션 관리]
+26. 영속 메모리 시스템 (Clawdbot 스타일)
+    - 2계층 메모리: Daily Logs + Long-term Memory
+    - memory_search/memory_get 도구
+    - 하이브리드 검색 (Vector 70% + BM25 30%)
+    - Bootstrap Files (AGENTS.md, SOUL.md, USER.md)
+27. Compaction 시스템 (컨텍스트 압축)
+    - 자동/수동 Compaction 트리거
+    - Pre-compaction Memory Flush
+    - Cache-TTL Pruning (API 비용 최적화)
+28. 세션 트리 시스템 (Pi 스타일)
+    - 대화 브랜칭/리와인드
+    - 브랜치 요약 및 병합
+    - 스냅샷 및 복원
+
 ============================================================================
 필요 패키지
 ============================================================================
@@ -165,7 +252,7 @@ pip install agent-framework-azure-ai --pre
 # ============================================================================
 # 모듈 메타데이터
 # ============================================================================
-__version__ = "3.1.0"
+__version__ = "3.2.0"
 __author__ = "Enterprise AI Team"
 
 # ============================================================================
@@ -243,6 +330,49 @@ from unified_agent import (
     MemoryHookProvider,
     MemorySessionManager,
     StateManager,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Persistent Memory System (unified_agent/persistent_memory.py) - v3.2 NEW!
+    # Clawdbot 스타일 2계층 영속 메모리 + 하이브리드 검색
+    # ─────────────────────────────────────────────────────────────────────────
+    PersistentMemory,
+    MemoryConfig,
+    MemoryLayer,
+    MemorySearchResult,
+    MemoryChunk,
+    MemorySearchTool,
+    MemoryGetTool,
+    MemoryWriteTool,
+    BootstrapFileManager,
+    BootstrapFileType,
+    MemoryIndexer,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Compaction System (unified_agent/compaction.py) - v3.2 NEW!
+    # 컨텍스트 압축, Memory Flush, Cache-TTL Pruning
+    # ─────────────────────────────────────────────────────────────────────────
+    CompactionConfig,
+    PruningConfig,
+    MemoryFlushConfig,
+    ContextCompactor,
+    MemoryFlusher,
+    CacheTTLPruner,
+    CompactionManager,
+    CompactionSummary,
+    PruningResult,
+    ConversationTurn,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Session Tree System (unified_agent/session_tree.py) - v3.2 NEW!
+    # Pi 스타일 세션 트리 (브랜칭, 리와인드, 요약)
+    # ─────────────────────────────────────────────────────────────────────────
+    SessionTreeConfig,
+    SessionNode,
+    NodeType,
+    SessionTree,
+    BranchInfo,
+    SessionTreeManager,
+    SessionSnapshot,
 
     # ─────────────────────────────────────────────────────────────────────────
     # Event System (unified_agent/events.py)
@@ -365,6 +495,40 @@ __all__ = [
     "MemoryHookProvider",
     "MemorySessionManager",
     "StateManager",
+
+    # 영속 메모리 시스템 (unified_agent/persistent_memory.py) - v3.2 NEW!
+    "PersistentMemory",
+    "MemoryConfig",
+    "MemoryLayer",
+    "MemorySearchResult",
+    "MemoryChunk",
+    "MemorySearchTool",
+    "MemoryGetTool",
+    "MemoryWriteTool",
+    "BootstrapFileManager",
+    "BootstrapFileType",
+    "MemoryIndexer",
+
+    # Compaction 시스템 (unified_agent/compaction.py) - v3.2 NEW!
+    "CompactionConfig",
+    "PruningConfig",
+    "MemoryFlushConfig",
+    "ContextCompactor",
+    "MemoryFlusher",
+    "CacheTTLPruner",
+    "CompactionManager",
+    "CompactionSummary",
+    "PruningResult",
+    "ConversationTurn",
+
+    # 세션 트리 시스템 (unified_agent/session_tree.py) - v3.2 NEW!
+    "SessionTreeConfig",
+    "SessionNode",
+    "NodeType",
+    "SessionTree",
+    "BranchInfo",
+    "SessionTreeManager",
+    "SessionSnapshot",
 
     # 이벤트 시스템 (unified_agent/events.py)
     "EventType",

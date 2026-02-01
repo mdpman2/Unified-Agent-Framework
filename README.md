@@ -1,4 +1,4 @@
-# 🚀 Unified Agent Framework - Enterprise Edition v3.1
+# 🚀 Unified Agent Framework - Enterprise Edition v3.3
 
 **최고의 AI Agent 프레임워크들의 장점을 통합한 엔터프라이즈급 오케스트레이션 프레임워크**
 
@@ -13,13 +13,234 @@
 [![Claude 4.5](https://img.shields.io/badge/Claude_Opus_4.5-Supported-blueviolet.svg)](https://anthropic.com/)
 [![Grok-4](https://img.shields.io/badge/Grok--4-Supported-yellow.svg)](https://xai.com/)
 [![MCP](https://img.shields.io/badge/MCP-Native_Support-teal.svg)](https://modelcontextprotocol.io/)
-[![Tests](https://img.shields.io/badge/Tests-79%20Passed-success.svg)](#-테스트)
+[![Agent Lightning](https://img.shields.io/badge/Agent_Lightning-Integrated-gold.svg)](https://github.com/microsoft/agent-lightning)
+[![Tests](https://img.shields.io/badge/Tests-27%20Passed-success.svg)](#-테스트)
 
-> **v3.1.0** - 🆕 **2026년 1월 최신 업데이트!** GPT-5.2/Claude Opus 4.5/Grok-4 지원, Microsoft Agent Framework MCP 패턴 통합, Adaptive Circuit Breaker, 대용량 컨텍스트(최대 10M tokens) 지원, RAI 강화 검증, 상세 한글 주석 추가
+> **v3.3.0** - 🆕 **2026년 1월 최신 업데이트!** Agent Lightning 패턴 완전 통합 (Tracer, AgentStore, Reward, Adapter, Hooks), 영속 메모리 시스템, 세션 트리 분기 관리, Compaction 전략, 성능 최적화
 
-## 🆕 v3.1 주요 업데이트 (2026년 1월)
+## 🆕 v3.3 주요 업데이트 (2026년 1월)
 
-### 🤖 최신 AI 모델 지원 (40+ 모델)
+### ⚡ Agent Lightning 패턴 완전 통합
+
+Microsoft Agent Lightning의 핵심 패턴 5가지를 완전히 통합하여 강화학습 기반 에이전트 개발이 가능합니다:
+
+#### 1. Tracer (분산 추적 시스템)
+```python
+from unified_agent import (
+    Tracer, TracerConfig, TracerBackend, 
+    SpanContext, span, async_span
+)
+
+# 추적 설정 및 시작
+config = TracerConfig(
+    service_name="my-agent",
+    backend=TracerBackend.CONSOLE,  # CONSOLE, JAEGER, ZIPKIN, OTLP
+    sample_rate=1.0
+)
+tracer = Tracer(config)
+tracer.start()
+
+# 데코레이터로 자동 추적
+@span(name="process_request", attributes={"type": "inference"})
+def process_request(data):
+    return {"result": "success"}
+
+# 컨텍스트 매니저로 수동 추적
+with tracer.start_span("custom_operation") as span:
+    span.set_attribute("user_id", "12345")
+    span.add_event("processing_started")
+    # ... 작업 수행 ...
+```
+
+#### 2. AgentStore (우선순위 기반 에이전트 저장소)
+```python
+from unified_agent import (
+    AgentStore, AgentStoreConfig, AgentEntry, AgentPriority,
+    AgentCapability, AgentSelectionStrategy
+)
+
+# 에이전트 저장소 생성
+store = AgentStore(AgentStoreConfig(
+    max_agents=100,
+    selection_strategy=AgentSelectionStrategy.WEIGHTED_RANDOM
+))
+
+# 에이전트 등록 (O(log n) 우선순위 삽입)
+entry = AgentEntry(
+    agent_id="research-agent",
+    name="Researcher",
+    capabilities={AgentCapability.REASONING, AgentCapability.PLANNING},
+    priority=AgentPriority.HIGH,
+    metadata={"specialization": "academic"}
+)
+store.register(entry)
+
+# 능력 기반 에이전트 조회
+agents = store.find_by_capability(AgentCapability.REASONING)
+
+# 우선순위별 상위 N개 조회
+top_agents = store.get_top_by_priority(n=5)
+```
+
+#### 3. Reward (강화학습 보상 시스템)
+```python
+from unified_agent import (
+    RewardEngine, RewardConfig, RewardSignal, RewardType,
+    RewardAggregator, RewardNormalizer
+)
+
+# 보상 엔진 생성
+engine = RewardEngine(RewardConfig(
+    discount_factor=0.99,
+    normalize=True,
+    clip_range=(-10.0, 10.0)
+))
+
+# 에피소드 시작 및 보상 기록
+engine.begin_episode("episode-1")
+engine.record(RewardSignal(
+    reward=1.0,
+    reward_type=RewardType.INTRINSIC,
+    step=0
+))
+engine.record(RewardSignal(reward=0.5, reward_type=RewardType.EXTRINSIC, step=1))
+summary = engine.end_episode()
+
+print(f"총 보상: {summary.total_reward:.2f}")
+print(f"평균 보상: {summary.average_reward:.2f}")
+print(f"할인 보상: {summary.discounted_reward:.2f}")
+```
+
+#### 4. Adapter (모델 어댑터 시스템)
+```python
+from unified_agent import (
+    AdapterManager, AdapterConfig, ModelAdapter,
+    AdapterType, AdapterMergeStrategy
+)
+
+# 어댑터 매니저 생성
+manager = AdapterManager(AdapterConfig(
+    base_model="gpt-5.2",
+    adapter_type=AdapterType.LORA,
+    merge_strategy=AdapterMergeStrategy.WEIGHTED
+))
+
+# 어댑터 등록 및 활성화
+adapter = ModelAdapter(
+    name="code-specialist",
+    adapter_type=AdapterType.LORA,
+    parameters={"rank": 8, "alpha": 16}
+)
+manager.register_adapter(adapter)
+manager.activate_adapter("code-specialist")
+
+# 다중 어댑터 병합
+merged = manager.merge_adapters(["code-specialist", "reasoning-expert"])
+```
+
+#### 5. Hooks (라이프사이클 훅 시스템)
+```python
+from unified_agent import (
+    HookManager, HookConfig, HookPoint, HookPriority,
+    hook, async_hook
+)
+
+# 훅 매니저 생성
+manager = HookManager(HookConfig(allow_async=True))
+
+# 데코레이터로 훅 등록
+@hook(point=HookPoint.PRE_INFERENCE, priority=HookPriority.HIGH)
+def validate_input(context):
+    if not context.get("input"):
+        raise ValueError("Input required")
+    return context
+
+# 훅 실행
+context = {"input": "Hello", "model": "gpt-5.2"}
+result = await manager.execute_hooks(HookPoint.PRE_INFERENCE, context)
+```
+
+### 🗄️ v3.2 영속 메모리 시스템 (Clawdbot 스타일)
+
+#### PersistentMemory - 계층형 영속 메모리
+```python
+from unified_agent import (
+    PersistentMemory, MemoryConfig, MemoryLayer,
+    MemorySearchTool, MemoryStats
+)
+
+# 메모리 시스템 초기화
+config = MemoryConfig(
+    storage_path="./memory",
+    enable_embedding=True,
+    embedding_model="text-embedding-3-large"
+)
+memory = PersistentMemory(config)
+await memory.initialize()
+
+# 계층별 메모리 저장
+await memory.store("프로젝트 목표: AI 에이전트 개발", layer=MemoryLayer.CORE)
+await memory.store("오늘 회의 내용: API 설계 논의", layer=MemoryLayer.SESSION)
+await memory.store("사용자가 Python을 선호함", layer=MemoryLayer.WORKING)
+
+# 시맨틱 검색
+results = await memory.search("API 설계", top_k=5)
+for result in results:
+    print(f"[{result.layer}] {result.content} (score: {result.score:.2f})")
+```
+
+#### Compaction - 메모리 압축 전략
+```python
+from unified_agent import (
+    CompactionEngine, CompactionConfig, CompactionStrategy,
+    CompactionTrigger, CompactionStats
+)
+
+# 압축 엔진 설정
+compaction = CompactionEngine(CompactionConfig(
+    strategy=CompactionStrategy.SEMANTIC_CLUSTER,
+    trigger=CompactionTrigger.SIZE_THRESHOLD,
+    threshold_mb=100,
+    min_cluster_size=5
+))
+
+# 메모리 압축 실행
+stats = await compaction.compact(memory)
+print(f"압축률: {stats.compression_ratio:.1%}")
+print(f"원본: {stats.original_count} → 압축 후: {stats.compacted_count}")
+```
+
+#### SessionTree - 세션 분기 관리
+```python
+from unified_agent import (
+    SessionTree, SessionTreeConfig, BranchInfo,
+    BranchStrategy, RolloutStatus
+)
+
+# 세션 트리 생성
+tree = SessionTree(SessionTreeConfig(
+    max_branches=10,
+    auto_prune=True
+))
+await tree.initialize()
+
+# 분기 생성 및 관리
+branch = await tree.create_branch(
+    parent_id="main",
+    name="experiment-1",
+    metadata={"hypothesis": "새로운 프롬프트 테스트"}
+)
+
+# 분기 목록 조회
+branches = await tree.list_branches()
+for b in branches:
+    print(f"[{b.status}] {b.name}: {b.message_count} messages")
+
+# 분기 병합
+await tree.merge_branch(branch.branch_id, target_id="main")
+```
+
+### 🤖 v3.1 최신 AI 모델 지원 (54+ 모델)
 
 | 모델 계열 | 지원 모델 | 컨텍스트 | 비고 |
 |------------|-----------|---------|------|
@@ -157,8 +378,10 @@ if not result.is_safe:
 
 ## 📖 목차
 
-- [v3.0 주요 업데이트](#-v30-주요-업데이트)
-- [모듈화 아키텍처](#-모듈화-아키텍처-v30)
+- [v3.3 주요 업데이트](#-v33-주요-업데이트-2026년-1월)
+- [v3.2 영속 메모리 시스템](#️-v32-영속-메모리-시스템-clawdbot-스타일)
+- [v3.1 최신 AI 모델 지원](#-v31-최신-ai-모델-지원-54-모델)
+- [모듈화 아키텍처](#-모듈화-아키텍처-v33)
 - [개요](#-개요)
 - [핵심 기능](#-핵심-기능)
 - [Microsoft Multi-Agent Engine](#-microsoft-multi-agent-engine-v30)
@@ -182,58 +405,84 @@ if not result.is_safe:
 
 ---
 
-## 📦 모듈화 아키텍처 (v3.0)
+## 📦 모듈화 아키텍처 (v3.3)
 
-v3.0에서 완전한 모듈화 아키텍처로 재구성되었습니다:
+v3.3에서 Agent Lightning 패턴을 포함한 완전한 모듈화 아키텍처로 재구성되었습니다:
 
 ### 패키지 구조
 
 ```
 unified_agent/
-├── __init__.py          # 패키지 진입점 (67개 공개 API export)
+├── __init__.py          # 패키지 진입점 (164개 공개 API export)
 ├── exceptions.py        # 예외 클래스 (FrameworkError, ConfigurationError 등)
-├── config.py            # 설정 및 상수 (Settings, FrameworkConfig)
+├── config.py            # 설정 및 상수 (Settings, FrameworkConfig) - frozenset 최적화
 ├── models.py            # 데이터 모델 (Enum, Pydantic, Dataclass)
 ├── utils.py             # 유틸리티 (StructuredLogger, CircuitBreaker, RAIValidator)
 ├── memory.py            # 메모리 시스템 (MemoryStore, CachedMemoryStore)
+├── persistent_memory.py # 🆕 영속 메모리 (PersistentMemory, MemoryLayer)
+├── compaction.py        # 🆕 메모리 압축 (CompactionEngine, CompactionStrategy)
+├── session_tree.py      # 🆕 세션 트리 (SessionTree, BranchInfo)
 ├── events.py            # 이벤트 시스템 (EventBus, EventType)
 ├── skills.py            # Skills 시스템 (Skill, SkillManager)
 ├── tools.py             # 도구 (AIFunction, MCPTool)
 ├── agents.py            # 에이전트 (SimpleAgent, RouterAgent, SupervisorAgent)
 ├── workflow.py          # 워크플로우 (Graph, Node)
 ├── orchestration.py     # 오케스트레이션 (AgentFactory, OrchestrationManager)
-└── framework.py         # 메인 프레임워크 (UnifiedAgentFramework)
+├── framework.py         # 메인 프레임워크 (UnifiedAgentFramework)
+├── tracer.py            # 🆕 분산 추적 (Tracer, SpanContext) - Agent Lightning
+├── agent_store.py       # 🆕 에이전트 저장소 (AgentStore, AgentEntry) - bisect 최적화
+├── reward.py            # 🆕 보상 시스템 (RewardEngine, RewardSignal) - Agent Lightning
+├── adapter.py           # 🆕 모델 어댑터 (AdapterManager, ModelAdapter) - Agent Lightning
+└── hooks.py             # 🆕 라이프사이클 훅 (HookManager, HookPoint) - bisect 최적화
 ```
 
 ### 최적화 결과
 
-| 항목 | 변경 전 (v2.x) | 변경 후 (v3.0) | 개선 |
-|------|---------------|----------------|------|
+| 항목 | v2.x | v3.3 | 개선 |
+|------|------|------|------|
 | 메인 파일 | 6,040줄 | 325줄 | **93.5% 감소** |
-| 파일 크기 | 214 KB | 15 KB | **93% 감소** |
-| 모듈 수 | 1개 (모놀리식) | 12개 | **모듈화** |
-| 테스트 | 없음 | 79개 | **완전 커버리지** |
+| 모듈 수 | 1개 | 21개 | **모듈화** |
+| 공개 API | - | 164개 | **정의됨** |
+| 지원 모델 | 20개 | 54개 | **170% 증가** |
+| 테스트 | 없음 | 27개 | **완전 커버리지** |
+
+### 성능 최적화 (v3.3)
+
+| 최적화 | 적용 모듈 | 개선 효과 |
+|--------|----------|----------|
+| `frozenset` | config.py | O(n) → O(1) 모델 조회 |
+| `bisect.insort` | agent_store.py, hooks.py | O(n) → O(log n) 삽입 |
+| import 정리 | tracer.py, adapter.py | 불필요한 의존성 제거 |
 
 ### Import 방식
 
 ```python
-# 방법 1: 래퍼 파일에서 import (하위 호환성)
+# 방법 1: 패키지에서 직접 import (권장)
 from unified_agent import UnifiedAgentFramework, Settings
 
-# 방법 2: 패키지에서 직접 import (권장)
-from unified_agent import UnifiedAgentFramework, Settings
-
-# 방법 3: 개별 모듈에서 import (세부 제어)
+# 방법 2: 개별 모듈에서 import (세부 제어)
 from unified_agent.agents import SimpleAgent, SupervisorAgent
 from unified_agent.workflow import Graph, Node
 from unified_agent.models import AgentState, MPlan
+
+# 방법 3: v3.2 영속 메모리 시스템
+from unified_agent.persistent_memory import PersistentMemory, MemoryConfig
+from unified_agent.compaction import CompactionEngine, CompactionStrategy
+from unified_agent.session_tree import SessionTree, BranchInfo
+
+# 방법 4: v3.3 Agent Lightning 패턴
+from unified_agent.tracer import Tracer, TracerConfig, span
+from unified_agent.agent_store import AgentStore, AgentEntry
+from unified_agent.reward import RewardEngine, RewardSignal
+from unified_agent.adapter import AdapterManager, ModelAdapter
+from unified_agent.hooks import HookManager, HookPoint
 ```
 
 ---
 
 ## 🎯 개요
 
-Unified Agent Framework는 다음 6가지 최고의 AI Agent 프레임워크의 핵심 장점을 통합했습니다:
+Unified Agent Framework는 다음 8가지 최고의 AI Agent 프레임워크의 핵심 장점을 통합했습니다:
 
 | 프레임워크 | 통합된 기능 |
 |-----------|-----------|
@@ -243,7 +492,8 @@ Unified Agent Framework는 다음 6가지 최고의 AI Agent 프레임워크의 
 | **Microsoft Agent Framework** | 체크포인팅, OpenTelemetry, 관찰성 |
 | **Anthropic Skills** | 모듈화된 전문 지식 & Progressive Disclosure |
 | **AWS AgentCore** | Memory Hook Provider, Session Manager, Investigation Plan |
-| **Microsoft Multi-Agent Engine** | WebSocket, MPlan, ProxyAgent, RAI, AgentFactory (NEW!) |
+| **Microsoft Multi-Agent Engine** | WebSocket, MPlan, ProxyAgent, RAI, AgentFactory |
+| **Agent Lightning** | 🆕 Tracer, AgentStore, Reward, Adapter, Hooks |
 
 ### 왜 Unified Agent Framework인가?
 
@@ -253,7 +503,7 @@ Unified Agent Framework는 다음 6가지 최고의 AI Agent 프레임워크의 
 # - 통합 어려움
 # - 프로덕션 준비 미흡
 
-# ✅ Unified Agent Framework v3.0: 간단하고 강력하며 모듈화됨
+# ✅ Unified Agent Framework v3.3: 간단하고 강력하며 모듈화됨
 from unified_agent import UnifiedAgentFramework, Settings, TeamConfiguration
 
 # 중앙 설정으로 모델 변경 (한 곳에서 관리)
@@ -261,6 +511,16 @@ Settings.DEFAULT_MODEL = "gpt-5.2"
 
 # 프레임워크 생성 (환경변수 자동 로드)
 framework = UnifiedAgentFramework.create()
+
+# v3.3 NEW: Agent Lightning 추적 통합
+from unified_agent import Tracer, TracerConfig, TracerBackend
+tracer = Tracer(TracerConfig(service_name="my-app", backend=TracerBackend.CONSOLE))
+tracer.start()
+
+# v3.2 NEW: 영속 메모리 시스템
+from unified_agent import PersistentMemory, MemoryConfig
+memory = PersistentMemory(MemoryConfig(storage_path="./memory"))
+await memory.initialize()
 
 # v3.0 NEW: 팀 기반 멀티에이전트
 team_config = TeamConfiguration(

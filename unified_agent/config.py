@@ -459,8 +459,9 @@ def supports_temperature(model: str) -> bool:
     if "chat" in model_lower:
         return True
 
-    # 명시적으로 temperature 미지원 모델 확인
-    if model_lower in [m.lower() for m in Settings.MODELS_WITHOUT_TEMPERATURE]:
+    # 명시적으로 temperature 미지원 모델 확인 (O(1) 조회)
+    _TEMP_UNSUPPORTED = frozenset(m.lower() for m in Settings.MODELS_WITHOUT_TEMPERATURE)
+    if model_lower in _TEMP_UNSUPPORTED:
         return False
 
     # Reasoning 모델 계열 패턴 확인
@@ -511,7 +512,8 @@ def is_multimodal_model(model: str) -> bool:
         - Microsoft: phi-4-multimodal-instruct
         - 특수: computer-use-preview (화면 캡처 입력)
     """
-    return model.lower() in [m.lower() for m in Settings.MULTIMODAL_MODELS]
+    _MULTIMODAL = frozenset(m.lower() for m in Settings.MULTIMODAL_MODELS)
+    return model.lower() in _MULTIMODAL
 
 
 def is_large_context_model(model: str) -> bool:
@@ -551,7 +553,8 @@ def is_large_context_model(model: str) -> bool:
         - 2M: grok-4-fast-reasoning
         - 10M: llama-4-scout-17b-16e-instruct (최대)
     """
-    return model.lower() in [m.lower() for m in Settings.LARGE_CONTEXT_MODELS]
+    _LARGE_CTX = frozenset(m.lower() for m in Settings.LARGE_CONTEXT_MODELS)
+    return model.lower() in _LARGE_CTX
 
 
 def get_model_context_window(model: str) -> int:

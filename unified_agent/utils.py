@@ -135,6 +135,9 @@ class StructuredLogger:
         """
         self.logger = logging.getLogger(name)
 
+    def debug(self, message: str, **kwargs):
+        self._log(logging.DEBUG, message, **kwargs)
+
     def info(self, message: str, **kwargs):
         self._log(logging.INFO, message, **kwargs)
 
