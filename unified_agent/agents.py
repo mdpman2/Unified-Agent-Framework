@@ -117,6 +117,11 @@ from .events import EventType, AgentEvent, EventBus
 from .tools import ApprovalRequiredAIFunction
 from .utils import CircuitBreaker
 
+# v3.3 Agent Lightning 통합
+from .tracer import get_tracer, SpanKind
+from .hooks import get_hook_manager, HookEvent
+from .reward import emit_reward
+
 __all__ = [
     "Agent",
     "SimpleAgent",
@@ -301,15 +306,39 @@ class SimpleAgent(Agent):
     1. 이벤트 발행 (AGENT_STARTED, AGENT_COMPLETED, AGENT_FAILED)
     2. 회로 차단기를 통한 호출
     3. 메트릭 수집 (total_executions, total_duration_ms)
+    4. v3.3 Agent Lightning 통합 (Tracer, Hooks, Reward)
     """
 
     async def execute(self, state: AgentState, kernel: Kernel) -> NodeResult:
         start_time = time.time()
+        tracer = get_tracer()
+        hook_manager = get_hook_manager()
+        
+        # v3.3: Tracer span 시작
+        span = tracer.span(f"agent.{self.name}.execute", SpanKind.AGENT) if tracer else None
+        if span:
+            span.__enter__()
+            span.set_attribute("agent.name", self.name)
+            span.set_attribute("agent.role", self.system_prompt[:50] if self.system_prompt else "")
 
         await self._emit_event(EventType.AGENT_STARTED, {"node": self.name})
+        
+        # v3.3: Hook SPAN_START 이벤트
+        if hook_manager:
+            await hook_manager.emit(HookEvent.SPAN_START, {
+                "agent": self.name,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
 
         try:
             recent_messages = state.get_conversation_history(max_messages=5)
+            
+            # v3.3: Hook LLM_CALL 이벤트
+            if hook_manager:
+                await hook_manager.emit(HookEvent.LLM_CALL, {
+                    "agent": self.name,
+                    "message_count": len(recent_messages)
+                })
 
             response = await self.circuit_breaker.call(
                 self._get_llm_response,
@@ -329,6 +358,28 @@ class SimpleAgent(Agent):
                 "node": self.name,
                 "duration_ms": duration_ms
             })
+            
+            # v3.3: Hook SPAN_END 이벤트
+            if hook_manager:
+                await hook_manager.emit(HookEvent.SPAN_END, {
+                    "agent": self.name,
+                    "duration_ms": duration_ms,
+                    "success": True
+                })
+            
+            # v3.3: Reward 자동 기록 (성공)
+            emit_reward(
+                agent_id=self.name,
+                action=f"execute_{self.name}",
+                reward=1.0,
+                meta={"duration_ms": duration_ms, "response_length": len(response)}
+            )
+            
+            # v3.3: Tracer span 종료
+            if span:
+                span.set_attribute("agent.success", True)
+                span.set_attribute("agent.duration_ms", duration_ms)
+                span.__exit__(None, None, None)
 
             return NodeResult(
                 node_name=self.name,
@@ -343,6 +394,28 @@ class SimpleAgent(Agent):
                 "node": self.name,
                 "error": str(e)
             })
+            
+            # v3.3: Hook SPAN_END 이벤트 (실패)
+            if hook_manager:
+                await hook_manager.emit(HookEvent.SPAN_END, {
+                    "agent": self.name,
+                    "error": str(e),
+                    "success": False
+                })
+            
+            # v3.3: Reward 자동 기록 (실패)
+            emit_reward(
+                agent_id=self.name,
+                action=f"execute_{self.name}",
+                reward=-0.5,
+                meta={"error": str(e)}
+            )
+            
+            # v3.3: Tracer span 종료 (실패)
+            if span:
+                span.set_attribute("agent.success", False)
+                span.set_attribute("agent.error", str(e))
+                span.__exit__(type(e), e, e.__traceback__)
 
             return NodeResult(
                 node_name=self.name,

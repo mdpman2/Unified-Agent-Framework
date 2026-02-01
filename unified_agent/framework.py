@@ -38,6 +38,14 @@ from .workflow import Node, Graph
 from .orchestration import OrchestrationManager, AgentFactory
 from .utils import StructuredLogger, RAIValidator, setup_telemetry
 
+# v3.3 Agent Lightning 통합
+from .tracer import AgentTracer, SpanKind, get_tracer, set_tracer
+from .hooks import HookManager, HookEvent, get_hook_manager, set_hook_manager
+from .reward import emit_reward, RewardManager
+
+# v3.4 Extensions 통합
+from .extensions import Extensions, ExtensionsConfig
+
 __all__ = [
     "UnifiedAgentFramework",
     "quick_run",
@@ -91,7 +99,8 @@ class UnifiedAgentFramework:
         enable_telemetry: bool = True,
         enable_events: bool = True,
         skill_dirs: Optional[List[str]] = None,
-        load_builtin_skills: bool = True
+        load_builtin_skills: bool = True,
+        extensions_config: Optional[ExtensionsConfig] = None,
     ):
         """
         프레임워크 초기화
@@ -105,6 +114,7 @@ class UnifiedAgentFramework:
             enable_events: 이벤트 시스템 활성화 여부
             skill_dirs: 스킬 디렉토리 목록
             load_builtin_skills: 기본 스킬 로드 여부
+            extensions_config: v3.4 확장 모듈 설정
         """
         self.kernel = kernel
         self.config = config or FrameworkConfig()
@@ -118,6 +128,23 @@ class UnifiedAgentFramework:
         self.skill_manager = SkillManager(skill_dirs)
         if load_builtin_skills:
             self._load_builtin_skills()
+
+        # v3.3 Agent Lightning 통합
+        self.agent_tracer = AgentTracer(name="unified-agent-framework")
+        set_tracer(self.agent_tracer)
+        
+        # v3.3 Hook Manager 통합
+        self.hook_manager = HookManager()
+        set_hook_manager(self.hook_manager)
+        
+        # v3.3 Reward Manager 통합
+        self.reward_manager = RewardManager()
+        
+        # v3.4 Extensions 통합 (Prompt Cache, Durable, Concurrent, AgentTool, Thinking, MCP)
+        self.extensions = Extensions(
+            framework=self,
+            config=extensions_config or ExtensionsConfig()
+        )
 
         if enable_telemetry:
             self.tracer = trace.get_tracer(__name__)
@@ -158,7 +185,8 @@ class UnifiedAgentFramework:
         cls,
         config: Optional[FrameworkConfig] = None,
         skill_dirs: Optional[List[str]] = None,
-        load_builtin_skills: bool = True
+        load_builtin_skills: bool = True,
+        extensions_config: Optional[ExtensionsConfig] = None,
     ) -> 'UnifiedAgentFramework':
         """
         프레임워크 간편 생성 (권장)
@@ -170,6 +198,14 @@ class UnifiedAgentFramework:
             # 커스텀 설정 + 스킬 디렉토리
             framework = UnifiedAgentFramework.create(
                 skill_dirs=["./my_skills", "./team_skills"]
+            )
+            
+            # v3.4 확장 모듈 설정
+            framework = UnifiedAgentFramework.create(
+                extensions_config=ExtensionsConfig(
+                    enable_cache=True,
+                    enable_mcp=True
+                )
             )
         """
         if config is None:
@@ -195,7 +231,8 @@ class UnifiedAgentFramework:
             enable_telemetry=config.enable_telemetry,
             enable_events=config.enable_events,
             skill_dirs=skill_dirs,
-            load_builtin_skills=load_builtin_skills
+            load_builtin_skills=load_builtin_skills,
+            extensions_config=extensions_config,
         )
 
     async def quick_chat(self, message: str, system_prompt: str = "You are a helpful assistant.") -> str:
@@ -206,16 +243,32 @@ class UnifiedAgentFramework:
             response = await framework.quick_chat("파이썬이란 무엇인가요?")
             print(response)
         """
-        if "_quick_chat" not in self.graphs:
-            self.create_simple_workflow("_quick_chat", system_prompt)
+        # v3.3: 자동 추적 시작
+        with self.agent_tracer.span("quick_chat", SpanKind.WORKFLOW) as span:
+            span.set_attribute("user.message", message[:100])  # 처음 100자만
+            
+            # v3.3: Hook 이벤트 발행
+            await self.hook_manager.emit(HookEvent.TRACE_START, {"message": message})
+            
+            if "_quick_chat" not in self.graphs:
+                self.create_simple_workflow("_quick_chat", system_prompt)
 
-        session_id = f"quick-{int(time.time())}"
-        state = await self.run(session_id, "_quick_chat", message)
+            session_id = f"quick-{int(time.time())}"
+            state = await self.run(session_id, "_quick_chat", message)
 
-        for msg in reversed(state.messages):
-            if msg.role == AgentRole.ASSISTANT:
-                return msg.content
-        return ""
+            response = ""
+            for msg in reversed(state.messages):
+                if msg.role == AgentRole.ASSISTANT:
+                    response = msg.content
+                    break
+            
+            # v3.3: 응답 정보 추적
+            span.set_attribute("response.length", len(response))
+            
+            # v3.3: Hook 이벤트 발행
+            await self.hook_manager.emit(HookEvent.TRACE_END, {"response_length": len(response)})
+            
+            return response
 
     def create_simple_workflow(self, name: str, system_prompt: str = "You are a helpful assistant.") -> Graph:
         """간단한 대화 워크플로우 생성"""
@@ -591,6 +644,10 @@ class UnifiedAgentFramework:
 
         for tool in self.mcp_tools.values():
             await tool.disconnect()
+        
+        # v3.4 Extensions 정리
+        if self.extensions:
+            await self.extensions.cleanup()
 
         logging.info("✅ 프레임워크 정리 완료")
 

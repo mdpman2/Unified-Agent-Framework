@@ -50,9 +50,12 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import (
     Any,
+    AsyncContextManager,
+    AsyncGenerator,
     Callable,
     ContextManager,
     Dict,
+    Generator,
     Generic,
     List,
     Optional,
@@ -458,7 +461,7 @@ class AgentTracer(Tracer):
         name: str,
         kind: SpanKind = SpanKind.INTERNAL,
         attributes: Optional[Dict[str, Any]] = None,
-    ) -> ContextManager[SpanRecordingContext]:
+    ) -> Generator[SpanRecordingContext, None, None]:
         """
         새 스팬 시작
         
@@ -635,7 +638,7 @@ class LLMCallTracer:
         prompt: Optional[str] = None,
         messages: Optional[List[Dict[str, str]]] = None,
         **kwargs: Any,
-    ) -> ContextManager[SpanRecordingContext]:
+    ) -> Generator[SpanRecordingContext, None, None]:
         """
         LLM 호출 추적
         
@@ -714,7 +717,7 @@ class ToolCallTracer:
         tool_name: str,
         input_args: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
-    ) -> ContextManager[SpanRecordingContext]:
+    ) -> Generator[SpanRecordingContext, None, None]:
         """
         도구 호출 추적
         

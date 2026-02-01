@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Unified Agent Framework - Enterprise Edition v3.3
+Unified Agent Framework - Enterprise Edition v3.4
 
 ================================================================================
 📋 프로젝트: 통합 AI 에이전트 프레임워크
-📅 버전: 3.3.0 (2026년 1월 최신)
+📅 버전: 3.4.0 (2026년 2월 최신)
 📦 Python: 3.11+
 ================================================================================
 
@@ -24,16 +24,23 @@ Unified Agent Framework - Enterprise Edition v3.3
     ★ 영속 메모리 시스템 (Clawdbot 스타일)
     ★ 세션 트리 분기 관리
     ★ 메모리 압축 전략 (Compaction)
+    ★ [v3.4 NEW!] Prompt Caching - 비용 절감
+    ★ [v3.4 NEW!] Durable Agent - 장기 워크플로우
+    ★ [v3.4 NEW!] Concurrent Orchestration - 병렬 실행
+    ★ [v3.4 NEW!] AgentTool Pattern - 에이전트 중첩
+    ★ [v3.4 NEW!] Extended Thinking - Reasoning 추적
+    ★ [v3.4 NEW!] MCP Workbench - 다중 MCP 관리
 
-📁 모듈 구조 (21개 모듈, 164개 공개 API):
+📁 모듈 구조 (28개 모듈, 255개+ 공개 API):
     unified_agent/
     ├── __init__.py          # 이 파일 - 패키지 진입점
+    ├── interfaces.py        # 핵심 인터페이스 (IFramework, IOrchestrator)
     ├── config.py            # 설정 관리 (Settings, FrameworkConfig) - frozenset 최적화
     ├── models.py            # 데이터 모델 (Enum, Pydantic)
     ├── utils.py             # 유틸리티 (CircuitBreaker, RAIValidator)
     ├── memory.py            # 메모리 시스템 (StateManager, Cache)
     ├── persistent_memory.py # 영속 메모리 (PersistentMemory, MemoryLayer)
-    ├── compaction.py        # 메모리 압축 (CompactionEngine)
+    ├── compaction.py        # 메모리 압축 (CompactionManager)
     ├── session_tree.py      # 세션 트리 (SessionTree, BranchInfo)
     ├── events.py            # 이벤트 시스템 (EventBus)
     ├── skills.py            # 스킬 시스템 (SkillManager)
@@ -43,11 +50,18 @@ Unified Agent Framework - Enterprise Edition v3.3
     ├── orchestration.py     # 오케스트레이션 (OrchestrationManager)
     ├── framework.py         # 메인 프레임워크 (UnifiedAgentFramework)
     ├── exceptions.py        # 예외 클래스
-    ├── tracer.py            # 분산 추적 (Tracer, SpanContext) - Agent Lightning
+    ├── extensions.py        # [v3.4 NEW!] 확장 허브 (ExtensionsHub)
+    ├── tracer.py            # 분산 추적 (AgentTracer, SpanContext) - Agent Lightning
     ├── agent_store.py       # 에이전트 저장소 (AgentStore) - bisect 최적화
     ├── reward.py            # 보상 시스템 (RewardEngine) - Agent Lightning
     ├── adapter.py           # 모델 어댑터 (AdapterManager) - Agent Lightning
-    └── hooks.py             # 라이프사이클 훅 (HookManager) - bisect 최적화
+    ├── hooks.py             # 라이프사이클 훅 (HookManager) - bisect 최적화
+    ├── prompt_cache.py      # [v3.4 NEW!] Prompt Caching
+    ├── durable_agent.py     # [v3.4 NEW!] Durable Agent 워크플로우
+    ├── concurrent.py        # [v3.4 NEW!] Fan-out/Fan-in 병렬 실행
+    ├── agent_tool.py        # [v3.4 NEW!] AgentTool 패턴
+    ├── extended_thinking.py # [v3.4 NEW!] Extended Thinking
+    └── mcp_workbench.py     # [v3.4 NEW!] 다중 MCP 서버 관리
 
 📌 빠른 시작 가이드:
 
@@ -66,24 +80,25 @@ Unified Agent Framework - Enterprise Edition v3.3
     ----------------------------------------
     >>> from unified_agent import PersistentMemory, MemoryConfig, MemoryLayer
     >>>
-    >>> memory = PersistentMemory(MemoryConfig(storage_path="./memory"))
+    >>> memory = PersistentMemory(
+    ...     agent_id="my-agent",
+    ...     config=MemoryConfig(workspace_dir="./memory")
+    ... )
     >>> await memory.initialize()
-    >>> await memory.store("핵심 정보", layer=MemoryLayer.CORE)
-    >>> results = await memory.search("핵심", top_k=5)
+    >>> await memory.add_long_term_memory("핵심 정보")
+    >>> results = await memory.search("핵심", max_results=5)
 
     예제 3: Agent Lightning 추적 (v3.3)
     ----------------------------------------
-    >>> from unified_agent import Tracer, TracerConfig, TracerBackend, span
+    >>> from unified_agent import AgentTracer, SpanKind, SpanStatus
     >>>
-    >>> tracer = Tracer(TracerConfig(
-    ...     service_name="my-agent",
-    ...     backend=TracerBackend.CONSOLE
-    ... ))
-    >>> tracer.start()
+    >>> tracer = AgentTracer(name="my-agent")
+    >>> await tracer.initialize()
     >>>
-    >>> @span(name="process_request")
-    >>> def process_request(data):
-    ...     return {"result": "success"}
+    >>> async with tracer.trace_context("task-001", "attempt-1"):
+    ...     with tracer.span("llm_call", SpanKind.LLM) as ctx:
+    ...         ctx.set_attribute("tokens", 1500)
+    ...         # ... LLM 호출 ...
 
     예제 4: 에이전트 저장소 (v3.3)
     ----------------------------------------
@@ -106,6 +121,77 @@ Unified Agent Framework - Enterprise Edition v3.3
     >>> engine.record(RewardSignal(reward=1.0, step=0))
     >>> summary = engine.end_episode()
 
+    예제 6: Prompt Caching 사용 (v3.4 NEW!)
+    ----------------------------------------
+    >>> from unified_agent import PromptCache, CacheConfig
+    >>>
+    >>> cache = PromptCache(CacheConfig(
+    ...     max_memory_mb=100,
+    ...     ttl_seconds=3600
+    ... ))
+    >>> # 캐시 히트로 비용 절감
+    >>> result, cached = await cache.get_or_call(
+    ...     model="gpt-5.2",
+    ...     messages=messages,
+    ...     call_fn=llm_call_fn
+    ... )
+
+    예제 7: Durable Agent 워크플로우 (v3.4 NEW!)
+    ----------------------------------------
+    >>> from unified_agent import DurableAgent, DurableConfig, workflow, activity
+    >>>
+    >>> @activity()
+    >>> async def send_email(ctx, recipient, content):
+    ...     return {"sent": True}
+    >>>
+    >>> @workflow()
+    >>> async def approval_workflow(ctx, data):
+    ...     result = await ctx.call_activity(send_email, data["to"], data["msg"])
+    ...     return result
+
+    예제 8: Concurrent Orchestration (v3.4 NEW!)
+    ----------------------------------------
+    >>> from unified_agent import ConcurrentOrchestrator, FanOutConfig
+    >>>
+    >>> orchestrator = ConcurrentOrchestrator([agent1, agent2, agent3])
+    >>> results = await orchestrator.fan_out(
+    ...     task="시장 분석",
+    ...     aggregation="majority"
+    ... )
+
+    예제 9: AgentTool 패턴 (v3.4 NEW!)
+    ----------------------------------------
+    >>> from unified_agent import AgentTool, AgentToolRegistry
+    >>>
+    >>> registry = AgentToolRegistry()
+    >>> registry.register(AgentTool.from_agent(
+    ...     research_agent,
+    ...     name="research_expert",
+    ...     description="심층 연구 수행"
+    ... ))
+
+    예제 10: Extended Thinking (v3.4 NEW!)
+    ----------------------------------------
+    >>> from unified_agent import ThinkingTracker, ThinkingConfig, ThinkingMode
+    >>>
+    >>> tracker = ThinkingTracker(ThinkingConfig(mode=ThinkingMode.FULL))
+    >>> with tracker.track_thinking("task-1") as thinking:
+    ...     thinking.add_step(ThinkingStepType.OBSERVATION, "입력 분석...")
+    ...     thinking.add_step(ThinkingStepType.REASONING, "추론 수행...")
+
+    예제 11: MCP Workbench (v3.4 NEW!)
+    ----------------------------------------
+    >>> from unified_agent import McpWorkbench, McpServerConfig
+    >>>
+    >>> workbench = McpWorkbench()
+    >>> workbench.register_server(McpServerConfig(
+    ...     name="filesystem",
+    ...     uri="stdio://mcp-server-filesystem",
+    ...     capabilities=["read_file", "write_file"]
+    ... ))
+    >>> await workbench.connect_all()
+    >>> result = await workbench.call_tool("read_file", path="/etc/hosts")
+
 🔧 환경 설정 (.env 파일):
     AZURE_OPENAI_API_KEY=your-api-key
     AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
@@ -127,7 +213,7 @@ Unified Agent Framework - Enterprise Edition v3.3
 📝 라이선스: MIT
 """
 
-__version__ = "3.3.0"
+__version__ = "3.4.0"
 __author__ = "Enterprise AI Team"
 
 # ============================================================================
@@ -444,12 +530,152 @@ from .orchestration import (
 )
 
 # ============================================================================
+# 인터페이스 (v3.4 NEW! - 순환 의존 해소)
+# ============================================================================
+from .interfaces import (
+    IFramework,
+    IOrchestrator,
+    IMemoryProvider,
+    ICacheProvider,
+    IThinkingProvider,
+)
+
+# ============================================================================
 # 프레임워크 메인
 # ============================================================================
 from .framework import (
     UnifiedAgentFramework,
     quick_run,
     create_framework,
+)
+
+# ============================================================================
+# Extensions 통합 허브 (v3.4 NEW!)
+# ============================================================================
+from .extensions import (
+    Extensions,
+    ExtensionsConfig,
+)
+
+# ============================================================================
+# Prompt Cache 시스템 (v3.4 NEW!)
+# ============================================================================
+from .prompt_cache import (
+    # 설정
+    CacheConfig,
+    CacheEntry,
+    CacheStats,
+    # 백엔드
+    CacheBackend,
+    MemoryCacheBackend,
+    DiskCacheBackend,
+    TwoLevelCacheBackend,
+    # 메인
+    PromptCache,
+)
+
+# ============================================================================
+# Durable Agent 시스템 (v3.4 NEW!)
+# ============================================================================
+from .durable_agent import (
+    # 설정
+    DurableConfig,
+    WorkflowState,
+    WorkflowStatus,
+    CheckpointData,
+    ActivityResult,
+    # 컨텍스트
+    DurableContext,
+    # 에이전트
+    DurableAgent,
+    DurableOrchestrator,
+    # 스토어
+    WorkflowStore,
+    FileWorkflowStore,
+    # 데코레이터
+    activity,
+    workflow,
+)
+
+# ============================================================================
+# Concurrent Orchestration 시스템 (v3.4 NEW!)
+# ============================================================================
+from .concurrent import (
+    # 설정
+    FanOutConfig,
+    AggregationStrategy,
+    # 결과
+    ParallelResult,
+    AggregatedResult,
+    # 오케스트레이터
+    ConcurrentOrchestrator,
+    ResultAggregator,
+    # 패턴
+    MapReducePattern,
+    ScatterGatherPattern,
+    ConditionalFanOut,
+)
+
+# ============================================================================
+# AgentTool 패턴 시스템 (v3.4 NEW!)
+# ============================================================================
+from .agent_tool import (
+    # 설정
+    AgentToolConfig,
+    DelegationPolicy,
+    DelegationResult,
+    # 메인
+    AgentTool,
+    AgentToolRegistry,
+    DelegationManager,
+    # 체인
+    AgentChain,
+    ChainStep,
+)
+
+# ============================================================================
+# Extended Thinking 시스템 (v3.4 NEW!)
+# ============================================================================
+from .extended_thinking import (
+    # 설정
+    ThinkingConfig,
+    ThinkingMode,
+    ThinkingStepType,
+    # 스텝
+    ThinkingStep,
+    ThinkingChain,
+    # 컨텍스트
+    ThinkingContext,
+    # 메인
+    ThinkingTracker,
+    ThinkingAnalyzer,
+    ThinkingMetrics,
+    # 스토어
+    ThinkingStore,
+)
+
+# ============================================================================
+# MCP Workbench 시스템 (v3.4 NEW!)
+# ============================================================================
+from .mcp_workbench import (
+    # 설정
+    McpServerConfig,
+    McpWorkbenchConfig,
+    ConnectionState,
+    LoadBalanceStrategy,
+    # 서버
+    McpServerConnection,
+    McpServerInfo,
+    # 워크벤치
+    McpWorkbench,
+    McpToolRegistry,
+    # 라우터
+    McpRouter,
+    CapabilityRouter,
+    RoundRobinRouter,
+    # 헬스체크
+    HealthChecker,
+    HealthStatus,
 )
 
 # ============================================================================
@@ -659,8 +885,91 @@ __all__ = [
     "AgentFactory",
     "OrchestrationManager",
 
+    # Interfaces (v3.4 NEW! - 순환 의존 해소)
+    "IFramework",
+    "IOrchestrator",
+    "IMemoryProvider",
+    "ICacheProvider",
+    "IThinkingProvider",
+
     # Framework
     "UnifiedAgentFramework",
     "quick_run",
     "create_framework",
+
+    # Extensions Hub (v3.4 NEW!)
+    "Extensions",
+    "ExtensionsConfig",
+
+    # Prompt Cache (v3.4 NEW!)
+    "CacheConfig",
+    "CacheEntry",
+    "CacheStats",
+    "CacheBackend",
+    "MemoryCacheBackend",
+    "DiskCacheBackend",
+    "TwoLevelCacheBackend",
+    "PromptCache",
+
+    # Durable Agent (v3.4 NEW!)
+    "DurableConfig",
+    "WorkflowState",
+    "WorkflowStatus",
+    "CheckpointData",
+    "ActivityResult",
+    "DurableContext",
+    "DurableAgent",
+    "DurableOrchestrator",
+    "WorkflowStore",
+    "FileWorkflowStore",
+    "activity",
+    "workflow",
+
+    # Concurrent Orchestration (v3.4 NEW!)
+    "FanOutConfig",
+    "AggregationStrategy",
+    "ParallelResult",
+    "AggregatedResult",
+    "ConcurrentOrchestrator",
+    "ResultAggregator",
+    "MapReducePattern",
+    "ScatterGatherPattern",
+    "ConditionalFanOut",
+
+    # AgentTool (v3.4 NEW!)
+    "AgentToolConfig",
+    "DelegationPolicy",
+    "DelegationResult",
+    "AgentTool",
+    "AgentToolRegistry",
+    "DelegationManager",
+    "AgentChain",
+    "ChainStep",
+
+    # Extended Thinking (v3.4 NEW!)
+    "ThinkingConfig",
+    "ThinkingMode",
+    "ThinkingStepType",
+    "ThinkingStep",
+    "ThinkingChain",
+    "ThinkingContext",
+    "ThinkingTracker",
+    "ThinkingAnalyzer",
+    "ThinkingMetrics",
+    "ThinkingStore",
+
+    # MCP Workbench (v3.4 NEW!)
+    "McpServerConfig",
+    "McpWorkbenchConfig",
+    "ConnectionState",
+    "LoadBalanceStrategy",
+    "McpServerConnection",
+    "McpServerInfo",
+    "McpWorkbench",
+    "McpToolRegistry",
+    "McpRouter",
+    "CapabilityRouter",
+    "RoundRobinRouter",
+    "HealthChecker",
+    "HealthStatus",
 ]

@@ -1,4 +1,4 @@
-# 🚀 Unified Agent Framework - Enterprise Edition v3.3
+# 🚀 Unified Agent Framework - Enterprise Edition v3.4
 
 **최고의 AI Agent 프레임워크들의 장점을 통합한 엔터프라이즈급 오케스트레이션 프레임워크**
 
@@ -14,11 +14,244 @@
 [![Grok-4](https://img.shields.io/badge/Grok--4-Supported-yellow.svg)](https://xai.com/)
 [![MCP](https://img.shields.io/badge/MCP-Native_Support-teal.svg)](https://modelcontextprotocol.io/)
 [![Agent Lightning](https://img.shields.io/badge/Agent_Lightning-Integrated-gold.svg)](https://github.com/microsoft/agent-lightning)
-[![Tests](https://img.shields.io/badge/Tests-27%20Passed-success.svg)](#-테스트)
+[![Tests](https://img.shields.io/badge/Tests-21%20Passed-success.svg)](#-테스트)
 
-> **v3.3.0** - 🆕 **2026년 1월 최신 업데이트!** Agent Lightning 패턴 완전 통합 (Tracer, AgentStore, Reward, Adapter, Hooks), 영속 메모리 시스템, 세션 트리 분기 관리, Compaction 전략, 성능 최적화
+> **v3.4.0** - 🆕 **2026년 2월 최신 업데이트!** Prompt Caching, Durable Agent, Concurrent Orchestration, AgentTool Pattern, Extended Thinking, MCP Workbench 추가
 
-## 🆕 v3.3 주요 업데이트 (2026년 1월)
+## 🆕 v3.4 주요 업데이트 (2026년 2월)
+
+### 🎯 6가지 새로운 기능
+
+#### 1. Prompt Caching (비용 절감)
+LLM API 호출 비용을 획기적으로 절감하는 캐싱 시스템입니다.
+```python
+from unified_agent import PromptCache, CacheConfig
+
+# 캐시 설정 (메모리 기반, 선택적 디스크 캐시)
+cache = PromptCache(CacheConfig(
+    max_size_mb=100,           # 최대 캐시 크기 (MB)
+    max_entries=10000,         # 최대 엔트리 수
+    ttl_seconds=3600,          # TTL (1시간)
+    enable_semantic_match=True,# 시맨틱 유사도 매칭
+    disk_cache_path="./cache" # 디스크 캐시 경로 (선택)
+))
+await cache.initialize()
+
+# 캐시 저장 (prompt, response, model 필수)
+entry = await cache.set(
+    prompt="분석해줘",
+    response="분석 결과입니다...",
+    model="gpt-5.2",
+    tokens=1000
+)
+
+# 캐시 조회
+cached = await cache.get(prompt="분석해줘", model="gpt-5.2")
+
+# 비용 통계 확인
+stats = cache.get_stats()
+print(f"캐시 히트율: {stats.hit_rate:.1%}")
+print(f"절감 토큰: {stats.total_tokens_saved}")
+```
+
+#### 2. Durable Agent (장기 워크플로우)
+Microsoft Durable Functions 스타일의 체크포인트 기반 워크플로우입니다.
+```python
+from unified_agent import (
+    DurableAgent, DurableConfig, DurableOrchestrator,
+    activity, workflow
+)
+
+# 액티비티 정의
+@activity()
+async def send_email(ctx, recipient: str, content: str):
+    # 재시도 가능한 작업
+    return {"sent": True, "timestamp": datetime.now().isoformat()}
+
+@activity(max_retries=3, timeout=60)
+async def process_payment(ctx, amount: float):
+    return {"processed": True, "amount": amount}
+
+# 워크플로우 정의
+@workflow()
+async def approval_workflow(ctx, data: dict):
+    # 이메일 전송
+    email_result = await ctx.call_activity(send_email, data["to"], data["msg"])
+    
+    # 외부 이벤트 대기 (최대 24시간)
+    approval = await ctx.wait_for_event("approval", timeout=86400)
+    
+    if approval["approved"]:
+        payment = await ctx.call_activity(process_payment, data["amount"])
+        return {"status": "completed", "payment": payment}
+    else:
+        return {"status": "rejected"}
+
+# 오케스트레이터 실행
+orchestrator = DurableOrchestrator(DurableConfig(checkpoint_interval=60))
+result = await orchestrator.execute_workflow(approval_workflow, input_data)
+```
+
+#### 3. Concurrent Orchestration (병렬 실행)
+Fan-out/Fan-in 패턴으로 여러 에이전트를 병렬 실행합니다.
+```python
+from unified_agent import (
+    ConcurrentOrchestrator, FanOutConfig, AggregationStrategy,
+    MapReducePattern, ScatterGatherPattern
+)
+
+# 병렬 실행 설정
+config = FanOutConfig(
+    max_concurrency=10,          # 최대 동시 실행 수
+    timeout_seconds=300.0,       # 전체 타임아웃
+    per_agent_timeout=30.0,      # 에이전트별 타임아웃
+    fail_fast=False,             # 첫 실패 시 전체 중단 여부
+    strategy=AggregationStrategy.ALL  # 집계 전략
+)
+
+# 병렬 실행 오케스트레이터
+orchestrator = ConcurrentOrchestrator()
+
+# Fan-out 실행
+results = await orchestrator.fan_out(
+    task="시장 분석을 수행하세요",
+    context={"market": "AI", "period": "2024-2025"}
+)
+
+# Map-Reduce 패턴
+map_reduce = MapReducePattern(
+    mapper=lambda chunk: analyze_chunk(chunk),
+    reducer=lambda results: combine_results(results)
+)
+final_result = await map_reduce.execute(data_chunks)
+
+# Scatter-Gather 패턴 (병렬 → 통합)
+scatter_gather = ScatterGatherPattern(agents, aggregator)
+aggregated = await scatter_gather.execute(task)
+```
+
+#### 4. AgentTool Pattern (에이전트 중첩)
+에이전트를 다른 에이전트의 도구로 사용합니다.
+```python
+from unified_agent import (
+    AgentTool, AgentToolRegistry, DelegationManager,
+    AgentChain, ChainStep
+)
+
+# 에이전트를 도구로 래핑
+registry = AgentToolRegistry()
+
+research_tool = AgentTool.from_agent(
+    agent=research_agent,
+    name="research_expert",
+    description="심층 연구 및 정보 수집 전문가"
+)
+registry.register(research_tool)
+
+# 위임 관리자
+delegation = DelegationManager(registry)
+result = await delegation.delegate(
+    task="AI 동향 분석",
+    required_capabilities=["research", "analysis"]
+)
+
+# 에이전트 체인 (순차 실행)
+chain = AgentChain([
+    ChainStep(research_agent, "정보 수집"),
+    ChainStep(analyst_agent, "분석"),
+    ChainStep(writer_agent, "보고서 작성")
+])
+final_report = await chain.execute(initial_input)
+```
+
+#### 5. Extended Thinking (Reasoning 추적)
+OpenAI o1/o3 스타일의 사고 과정 추적입니다.
+```python
+from unified_agent import (
+    ThinkingTracker, ThinkingConfig, ThinkingMode,
+    ThinkingStepType, ThinkingAnalyzer
+)
+
+# 사고 과정 추적기 설정
+config = ThinkingConfig(
+    max_steps=100,              # 최대 사고 단계 수
+    max_depth=10,               # 최대 사고 깊이
+    timeout_seconds=300.0,      # 타임아웃
+    record_timestamps=True,     # 타임스탬프 기록
+    record_token_usage=True     # 토큰 사용량 기록
+)
+tracker = ThinkingTracker(config)
+
+# 사고 과정 추적 (컨텍스트 매니저)
+with tracker.thinking_context("problem-solving") as ctx:
+    # 단계별 추론 기록
+    tracker.add_step(ThinkingStepType.OBSERVATION, "관찰", "입력 데이터 분석 중...")
+    tracker.add_step(ThinkingStepType.HYPOTHESIS, "가설", "A가 원인일 수 있음")
+    tracker.add_step(ThinkingStepType.REASONING, "추론", "근거 1, 2, 3을 고려하면...")
+    tracker.add_step(ThinkingStepType.VERIFICATION, "검증", "가설 검증 결과: 유효함")
+    tracker.add_step(ThinkingStepType.CONCLUSION, "결론", "A가 원인임")
+
+# 사고 단계 조회
+steps = tracker.get_steps()
+print(f"총 사고 단계: {len(steps)}개")
+```
+
+#### 6. MCP Workbench (다중 MCP 관리)
+여러 MCP 서버를 통합 관리합니다.
+```python
+from unified_agent import (
+    McpWorkbench, McpServerConfig, McpWorkbenchConfig,
+    LoadBalanceStrategy, HealthStatus
+)
+
+# MCP Workbench 생성
+workbench = McpWorkbench(McpWorkbenchConfig(
+    load_balance_strategy=LoadBalanceStrategy.CAPABILITY,
+    enable_healthcheck=True,
+    enable_auto_reconnect=True
+))
+
+# 여러 MCP 서버 등록
+workbench.register_server(McpServerConfig(
+    name="filesystem",
+    uri="stdio://mcp-server-filesystem",
+    capabilities=["read_file", "write_file", "list_dir"],
+    priority=1
+))
+
+workbench.register_server(McpServerConfig(
+    name="database",
+    uri="http://localhost:3000/mcp",
+    capabilities=["query", "insert", "update"],
+    priority=2
+))
+
+workbench.register_server(McpServerConfig(
+    name="web",
+    uri="ws://localhost:8080/mcp",
+    capabilities=["fetch", "scrape"],
+    priority=1
+))
+
+# 모든 서버 연결
+await workbench.connect_all()
+
+# 도구 호출 (자동 라우팅)
+result = await workbench.call_tool("read_file", path="/etc/hosts")
+
+# 특정 서버 지정
+db_result = await workbench.call_tool("query", server_name="database", sql="SELECT * FROM users")
+
+# 상태 조회
+status = workbench.get_status()
+print(f"총 서버: {status['total_servers']}")
+print(f"건강한 서버: {status['healthy_servers']}")
+print(f"사용 가능한 도구: {status['total_tools']}")
+```
+
+---
+
+## 📋 v3.3 주요 업데이트 (2026년 1월)
 
 ### ⚡ Agent Lightning 패턴 완전 통합
 
@@ -26,30 +259,26 @@ Microsoft Agent Lightning의 핵심 패턴 5가지를 완전히 통합하여 강
 
 #### 1. Tracer (분산 추적 시스템)
 ```python
-from unified_agent import (
-    Tracer, TracerConfig, TracerBackend, 
-    SpanContext, span, async_span
-)
+from unified_agent import AgentTracer, SpanKind, SpanStatus
 
-# 추적 설정 및 시작
-config = TracerConfig(
-    service_name="my-agent",
-    backend=TracerBackend.CONSOLE,  # CONSOLE, JAEGER, ZIPKIN, OTLP
-    sample_rate=1.0
-)
-tracer = Tracer(config)
-tracer.start()
+# 트레이서 생성 (name 파라미터 사용)
+tracer = AgentTracer(name="my-agent")
+await tracer.initialize()
 
-# 데코레이터로 자동 추적
-@span(name="process_request", attributes={"type": "inference"})
-def process_request(data):
-    return {"result": "success"}
+# 트레이스 컨텍스트 시작
+async with tracer.trace_context("task-001", "attempt-1"):
+    # 스팬 생성 및 속성 설정
+    with tracer.span("llm_call", SpanKind.LLM) as span_ctx:
+        span_ctx.set_attribute("model", "gpt-5.2")
+        span_ctx.set_attribute("tokens", 1500)
+        span_ctx.add_event("processing_started")
+        # ... LLM 호출 ...
+        span_ctx.set_status(SpanStatus.OK)
 
-# 컨텍스트 매니저로 수동 추적
-with tracer.start_span("custom_operation") as span:
-    span.set_attribute("user_id", "12345")
-    span.add_event("processing_started")
-    # ... 작업 수행 ...
+# 스팬 조회
+spans = tracer.get_last_trace()
+for span in spans:
+    print(f"[{span.kind.value}] {span.name}: {span.duration_ms}ms")
 ```
 
 #### 2. AgentStore (우선순위 기반 에이전트 저장소)
@@ -165,28 +394,30 @@ result = await manager.execute_hooks(HookPoint.PRE_INFERENCE, context)
 #### PersistentMemory - 계층형 영속 메모리
 ```python
 from unified_agent import (
-    PersistentMemory, MemoryConfig, MemoryLayer,
-    MemorySearchTool, MemoryStats
+    PersistentMemory, MemoryConfig, MemoryLayer
 )
 
-# 메모리 시스템 초기화
+# 메모리 시스템 초기화 (agent_id, config 필수)
 config = MemoryConfig(
-    storage_path="./memory",
-    enable_embedding=True,
-    embedding_model="text-embedding-3-large"
+    workspace_dir="./memory",
+    chunk_size=400,
+    chunk_overlap=80,
+    vector_weight=0.7,           # 하이브리드: Vector 70%, BM25 30%
+    embedding_model="text-embedding-3-small"
 )
-memory = PersistentMemory(config)
+memory = PersistentMemory(agent_id="my-agent", config=config)
 await memory.initialize()
 
 # 계층별 메모리 저장
-await memory.store("프로젝트 목표: AI 에이전트 개발", layer=MemoryLayer.CORE)
-await memory.store("오늘 회의 내용: API 설계 논의", layer=MemoryLayer.SESSION)
-await memory.store("사용자가 Python을 선호함", layer=MemoryLayer.WORKING)
+await memory.add_daily_log("오늘 회의: API 설계 논의")        # Layer 1: 일별 기록
+await memory.add_long_term_memory("프로젝트 목표: AI 에이전트 개발")  # Layer 2: 장기 기억
 
-# 시맨틱 검색
-results = await memory.search("API 설계", top_k=5)
+# 시맨틱 검색 (max_results 파라미터)
+results = await memory.search("API 설계", max_results=5)
 for result in results:
-    print(f"[{result.layer}] {result.content} (score: {result.score:.2f})")
+    print(f"[{result.layer.value}] {result.snippet} (score: {result.score:.2f})")
+
+memory.close()
 ```
 
 #### Compaction - 메모리 압축 전략
@@ -212,32 +443,30 @@ print(f"원본: {stats.original_count} → 압축 후: {stats.compacted_count}")
 
 #### SessionTree - 세션 분기 관리
 ```python
-from unified_agent import (
-    SessionTree, SessionTreeConfig, BranchInfo,
-    BranchStrategy, RolloutStatus
+from unified_agent import SessionTree, SessionConfig, BranchInfo
+
+# 세션 트리 생성 (session_id 필수)
+tree = SessionTree(
+    session_id="main-session",
+    config=SessionConfig(
+        max_branches=10,
+        enable_auto_prune=True
+    )
 )
 
-# 세션 트리 생성
-tree = SessionTree(SessionTreeConfig(
-    max_branches=10,
-    auto_prune=True
-))
-await tree.initialize()
-
-# 분기 생성 및 관리
-branch = await tree.create_branch(
-    parent_id="main",
+# 분기 생성 (동기 함수)
+branch = tree.create_branch(
     name="experiment-1",
     metadata={"hypothesis": "새로운 프롬프트 테스트"}
 )
 
 # 분기 목록 조회
-branches = await tree.list_branches()
+branches = tree.list_branches()
 for b in branches:
-    print(f"[{b.status}] {b.name}: {b.message_count} messages")
+    print(f"[{b.status}] {b.name}")
 
 # 분기 병합
-await tree.merge_branch(branch.branch_id, target_id="main")
+tree.merge_branch(branch.branch_id, target_branch_id="main")
 ```
 
 ### 🤖 v3.1 최신 AI 모델 지원 (54+ 모델)
@@ -413,15 +642,16 @@ v3.3에서 Agent Lightning 패턴을 포함한 완전한 모듈화 아키텍처�
 
 ```
 unified_agent/
-├── __init__.py          # 패키지 진입점 (164개 공개 API export)
+├── __init__.py          # 패키지 진입점 (255개 공개 API export)
+├── interfaces.py        # 핵심 인터페이스 (IFramework, IOrchestrator, IMemoryProvider)
 ├── exceptions.py        # 예외 클래스 (FrameworkError, ConfigurationError 등)
 ├── config.py            # 설정 및 상수 (Settings, FrameworkConfig) - frozenset 최적화
 ├── models.py            # 데이터 모델 (Enum, Pydantic, Dataclass)
 ├── utils.py             # 유틸리티 (StructuredLogger, CircuitBreaker, RAIValidator)
 ├── memory.py            # 메모리 시스템 (MemoryStore, CachedMemoryStore)
-├── persistent_memory.py # 🆕 영속 메모리 (PersistentMemory, MemoryLayer)
-├── compaction.py        # 🆕 메모리 압축 (CompactionEngine, CompactionStrategy)
-├── session_tree.py      # 🆕 세션 트리 (SessionTree, BranchInfo)
+├── persistent_memory.py # v3.2 영속 메모리 (PersistentMemory, MemoryLayer)
+├── compaction.py        # v3.2 메모리 압축 (CompactionEngine, CompactionStrategy)
+├── session_tree.py      # v3.2 세션 트리 (SessionTree, BranchInfo)
 ├── events.py            # 이벤트 시스템 (EventBus, EventType)
 ├── skills.py            # Skills 시스템 (Skill, SkillManager)
 ├── tools.py             # 도구 (AIFunction, MCPTool)
@@ -429,11 +659,18 @@ unified_agent/
 ├── workflow.py          # 워크플로우 (Graph, Node)
 ├── orchestration.py     # 오케스트레이션 (AgentFactory, OrchestrationManager)
 ├── framework.py         # 메인 프레임워크 (UnifiedAgentFramework)
-├── tracer.py            # 🆕 분산 추적 (Tracer, SpanContext) - Agent Lightning
-├── agent_store.py       # 🆕 에이전트 저장소 (AgentStore, AgentEntry) - bisect 최적화
-├── reward.py            # 🆕 보상 시스템 (RewardEngine, RewardSignal) - Agent Lightning
-├── adapter.py           # 🆕 모델 어댑터 (AdapterManager, ModelAdapter) - Agent Lightning
-└── hooks.py             # 🆕 라이프사이클 훅 (HookManager, HookPoint) - bisect 최적화
+├── extensions.py        # v3.4 확장 허브 (ExtensionsHub)
+├── tracer.py            # v3.3 분산 추적 (AgentTracer, SpanContext) - Agent Lightning
+├── agent_store.py       # v3.3 에이전트 저장소 (AgentStore, AgentEntry) - bisect 최적화
+├── reward.py            # v3.3 보상 시스템 (RewardEngine, RewardSignal) - Agent Lightning
+├── adapter.py           # v3.3 모델 어댑터 (AdapterManager, ModelAdapter) - Agent Lightning
+├── hooks.py             # v3.3 라이프사이클 훅 (HookManager, HookPoint) - bisect 최적화
+├── prompt_cache.py      # v3.4 프롬프트 캐싱 (PromptCache, CacheConfig)
+├── durable_agent.py     # v3.4 내구성 에이전트 (DurableOrchestrator, DurableConfig)
+├── concurrent.py        # v3.4 병렬 오케스트레이션 (ConcurrentOrchestrator, FanOutConfig)
+├── agent_tool.py        # v3.4 에이전트 도구 패턴 (AgentToolRegistry, DelegationManager)
+├── extended_thinking.py # v3.4 확장 사고 (ThinkingTracker, ThinkingConfig)
+└── mcp_workbench.py     # v3.4 MCP 워크벤치 (McpWorkbench, McpServerConfig)
 ```
 
 ### 최적화 결과
@@ -441,10 +678,10 @@ unified_agent/
 | 항목 | v2.x | v3.3 | 개선 |
 |------|------|------|------|
 | 메인 파일 | 6,040줄 | 325줄 | **93.5% 감소** |
-| 모듈 수 | 1개 | 21개 | **모듈화** |
-| 공개 API | - | 164개 | **정의됨** |
+| 모듈 수 | 1개 | 28개 | **모듈화** |
+| 공개 API | - | 255개 | **정의됨** |
 | 지원 모델 | 20개 | 54개 | **170% 증가** |
-| 테스트 | 없음 | 27개 | **완전 커버리지** |
+| 테스트 | 없음 | 21개 | **완전 커버리지** |
 
 ### 성능 최적화 (v3.3)
 
@@ -467,15 +704,24 @@ from unified_agent.models import AgentState, MPlan
 
 # 방법 3: v3.2 영속 메모리 시스템
 from unified_agent.persistent_memory import PersistentMemory, MemoryConfig
-from unified_agent.compaction import CompactionEngine, CompactionStrategy
-from unified_agent.session_tree import SessionTree, BranchInfo
+from unified_agent.compaction import CompactionManager, CompactionConfig
+from unified_agent.session_tree import SessionTree, SessionConfig
 
 # 방법 4: v3.3 Agent Lightning 패턴
-from unified_agent.tracer import Tracer, TracerConfig, span
+from unified_agent.tracer import AgentTracer, SpanKind, SpanStatus
 from unified_agent.agent_store import AgentStore, AgentEntry
 from unified_agent.reward import RewardEngine, RewardSignal
 from unified_agent.adapter import AdapterManager, ModelAdapter
 from unified_agent.hooks import HookManager, HookPoint
+
+# 방법 5: v3.4 확장 모듈
+from unified_agent.prompt_cache import PromptCache, CacheConfig
+from unified_agent.durable_agent import DurableOrchestrator, DurableConfig
+from unified_agent.concurrent import ConcurrentOrchestrator, FanOutConfig
+from unified_agent.agent_tool import AgentToolRegistry, DelegationManager
+from unified_agent.extended_thinking import ThinkingTracker, ThinkingConfig
+from unified_agent.mcp_workbench import McpWorkbench, McpServerConfig
+from unified_agent.extensions import ExtensionsHub
 ```
 
 ---

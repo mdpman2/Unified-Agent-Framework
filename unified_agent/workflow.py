@@ -104,6 +104,9 @@ from semantic_kernel import Kernel
 from .models import AgentState, NodeResult, ExecutionStatus
 from .agents import Agent
 
+# v3.3: SessionTree 통합
+from .session_tree import SessionTree, SessionNode, NodeType
+
 __all__ = [
     "Node",
     "Graph",
@@ -181,20 +184,36 @@ class Graph:
     4. 상세한 실행 로그
     5. get_statistics(): 그래프 통계
     6. visualize(): Mermaid 형식 시각화
+    7. v3.3: SessionTree 자동 분기 생성
     """
 
-    def __init__(self, name: str = "workflow"):
+    def __init__(self, name: str = "workflow", enable_session_tree: bool = True):
         """
         그래프 초기화
 
         Args:
             name: 워크플로우 이름
+            enable_session_tree: v3.3 SessionTree 기능 활성화 여부
         """
         self.name = name
         self.nodes: Dict[str, Node] = {}
         self.start_node: Optional[str] = None
         self.end_nodes: Set[str] = set()
         self.loop_nodes: Set[str] = set()
+        
+        # v3.3: SessionTree 통합
+        self._enable_session_tree = enable_session_tree
+        self._session_tree: Optional[SessionTree] = None
+        self._current_session_node_id: Optional[str] = None
+    
+    def set_session_tree(self, session_tree: SessionTree):
+        """v3.3: SessionTree 설정"""
+        self._session_tree = session_tree
+        self._logger_info(f"SessionTree connected to workflow: {self.name}")
+    
+    def _logger_info(self, msg: str):
+        """로깅 헬퍼"""
+        logging.info(f"[{self.name}] {msg}")
 
     def add_node(self, node: Node, allow_loop: bool = False):
         """
@@ -270,6 +289,7 @@ class Graph:
         2. 무한 루프 방지 (loop_nodes 체크)
         3. 상세한 로그 출력
         4. 실행 메트릭 수집
+        5. v3.3: SessionTree 분기 자동 생성
 
         Args:
             state: 에이전트 상태
@@ -284,6 +304,16 @@ class Graph:
 
         current_node = self.start_node
         iterations = 0
+        
+        # v3.3: SessionTree 워크플로우 루트 노드 생성
+        if self._enable_session_tree and self._session_tree:
+            root_session_node = self._session_tree.add_node(
+                content=f"Workflow: {self.name} started",
+                role="system",
+                node_type=NodeType.WORKFLOW,
+                metadata={"workflow_name": self.name, "start_node": self.start_node}
+            )
+            self._current_session_node_id = root_session_node.id
 
         logging.info(f"\n{'='*60}")
         logging.info(f"🚀 워크플로우 시작: {self.name}")
@@ -305,9 +335,35 @@ class Graph:
             # 무한 루프 방지 (같은 노드 재방문 체크)
             if current_node in state.visited_nodes and current_node not in self.loop_nodes:
                 logging.warning(f"⚠️ 노드 재방문 감지: {current_node}")
+            
+            # v3.3: SessionTree에 노드 실행 기록
+            if self._enable_session_tree and self._session_tree and self._current_session_node_id:
+                session_node = self._session_tree.add_node(
+                    content=f"Execute node: {current_node}",
+                    role="agent",
+                    node_type=NodeType.AGENT,
+                    parent_id=self._current_session_node_id,
+                    metadata={"node_name": current_node, "iteration": iterations}
+                )
+                self._current_session_node_id = session_node.id
 
             result = await node.execute(state, kernel)
             state.metadata[f"{current_node}_result"] = result.model_dump()
+            
+            # v3.3: SessionTree에 결과 기록
+            if self._enable_session_tree and self._session_tree and self._current_session_node_id:
+                result_type = NodeType.BRANCH if result.next_node else NodeType.DECISION
+                self._session_tree.add_node(
+                    content=f"Result: {result.output[:100]}..." if len(result.output) > 100 else f"Result: {result.output}",
+                    role="system",
+                    node_type=result_type,
+                    parent_id=self._current_session_node_id,
+                    metadata={
+                        "success": result.success,
+                        "next_node": result.next_node,
+                        "duration_ms": result.duration_ms
+                    }
+                )
 
             # 승인 대기 처리
             if result.requires_approval:

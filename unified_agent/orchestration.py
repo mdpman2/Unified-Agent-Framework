@@ -5,6 +5,10 @@ Unified Agent Framework - 오케스트레이션 모듈
 
 팀 기반 멀티 에이전트 오케스트레이션 관리
 Microsoft Multi-Agent-Custom-Automation-Engine 패턴 구현
+
+⚠️ 순환 의존 해소:
+    - framework.py와의 순환 참조를 interfaces.py의 IFramework로 대체
+    - TYPE_CHECKING 블록에서 런타임 의존성 제거
 """
 
 import re
@@ -23,8 +27,8 @@ from .models import (
 from .agents import Agent
 from .utils import StructuredLogger, RAIValidator
 
-if TYPE_CHECKING:
-    from .framework import UnifiedAgentFramework
+# 순환 의존 해소: IFramework 인터페이스 사용
+from .interfaces import IFramework
 
 __all__ = [
     "OrchestrationManager",
@@ -43,12 +47,12 @@ class AgentFactory:
     TeamConfiguration에서 에이전트 팀을 생성합니다.
     """
 
-    def __init__(self, framework: Optional['UnifiedAgentFramework'] = None):
+    def __init__(self, framework: Optional[IFramework] = None):
         """
         팩토리 초기화
 
         Args:
-            framework: UnifiedAgentFramework 인스턴스 (선택)
+            framework: IFramework 인터페이스 (순환 의존 해소)
         """
         self.framework = framework
         self._logger = StructuredLogger("agent_factory")
@@ -123,7 +127,7 @@ class OrchestrationManager:
     def __init__(
         self,
         team_config: TeamConfiguration,
-        framework: Optional['UnifiedAgentFramework'] = None,
+        framework: Optional[IFramework] = None,
         kernel: Optional[Kernel] = None,
         require_plan_approval: bool = False,
         rai_validator: Optional[RAIValidator] = None,
@@ -134,7 +138,7 @@ class OrchestrationManager:
 
         Args:
             team_config: 팀 설정
-            framework: UnifiedAgentFramework 인스턴스
+            framework: IFramework 인터페이스 (순환 의존 해소)
             kernel: Semantic Kernel 인스턴스
             require_plan_approval: 계획 승인 필요 여부
             rai_validator: RAI 검증기

@@ -638,6 +638,10 @@ class PersistentMemory:
         - 중요한 결정, 선호도, 연락처 등
         - 에이전트가 큐레이션
     
+    v3.3: Compaction 자동 연동
+        - 컨텍스트 임계값 도달 시 자동 Compaction 트리거
+        - Memory Flush → Compaction → Pruning 순서로 진행
+    
     사용 예시:
         >>> memory = PersistentMemory(agent_id="main")
         >>> await memory.initialize()
@@ -650,13 +654,17 @@ class PersistentMemory:
         >>> 
         >>> # 검색
         >>> results = await memory.search("API 설계")
+        >>> 
+        >>> # v3.3: 컨텍스트 체크 및 자동 Compaction
+        >>> turns = await memory.check_and_compact(turns, agent_func)
     """
     
     def __init__(
         self,
         agent_id: str = "main",
         config: Optional[MemoryConfig] = None,
-        embedding_func: Optional[Callable[[str], List[float]]] = None
+        embedding_func: Optional[Callable[[str], List[float]]] = None,
+        compaction_manager: Optional[Any] = None  # v3.3: CompactionManager 연동
     ):
         self.agent_id = agent_id
         self.config = config or MemoryConfig()
@@ -673,7 +681,50 @@ class PersistentMemory:
         # Bootstrap 파일 관리자
         self.bootstrap = BootstrapFileManager(str(self.workspace_dir))
         
+        # v3.3: Compaction 연동
+        self._compaction_manager = compaction_manager
+        self._auto_compact_enabled = True
+        self._context_threshold = 0.75  # 75%에서 자동 Compaction
+        
         self._logger = StructuredLogger("persistent_memory")
+    
+    def set_compaction_manager(self, manager: Any):
+        """v3.3: CompactionManager 설정"""
+        self._compaction_manager = manager
+        # Memory writer 연결
+        if hasattr(manager, 'set_memory_writer'):
+            manager.set_memory_writer(lambda content: self._sync_add_daily_note(content))
+        self._logger.info("CompactionManager connected to PersistentMemory")
+    
+    def _sync_add_daily_note(self, content: str):
+        """동기 방식 daily note 추가 (Compaction용)"""
+        import asyncio
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.create_task(self.add_daily_note(content))
+        else:
+            loop.run_until_complete(self.add_daily_note(content))
+    
+    async def check_and_compact(
+        self,
+        turns: List[Any],
+        agent_respond_func: Optional[Callable] = None
+    ) -> List[Any]:
+        """
+        v3.3: 컨텍스트 체크 및 자동 Compaction
+        
+        Args:
+            turns: 현재 대화 턴 리스트
+            agent_respond_func: 에이전트 응답 함수
+        
+        Returns:
+            처리된 턴 리스트 (필요시 압축됨)
+        """
+        if not self._compaction_manager or not self._auto_compact_enabled:
+            return turns
+        
+        # CompactionManager.process_turns() 호출
+        return await self._compaction_manager.process_turns(turns, agent_respond_func)
     
     async def initialize(self):
         """메모리 시스템 초기화"""
