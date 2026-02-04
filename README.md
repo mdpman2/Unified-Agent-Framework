@@ -756,28 +756,20 @@ if not result.is_safe:
 
 ## 📖 목차
 
-- [v3.3 주요 업데이트](#-v33-주요-업데이트-2026년-1월)
+- [v3.5 주요 업데이트](#-v35-주요-업데이트-2026년-2월) - Security Guardrails, Structured Output, Evaluation
+- [v3.4 주요 업데이트](#-v34-주요-업데이트-2026년-1월) - Prompt Cache, Durable Agent, Concurrent Orchestration
+- [v3.3 주요 업데이트](#-v33-주요-업데이트-2026년-1월) - Agent Lightning 통합
 - [v3.2 영속 메모리 시스템](#️-v32-영속-메모리-시스템-clawdbot-스타일)
 - [v3.1 최신 AI 모델 지원](#-v31-최신-ai-모델-지원-54-모델)
-- [모듈화 아키텍처](#-모듈화-아키텍처-v33)
+- [모듈화 아키텍처](#-모듈화-아키텍처-v35)
 - [개요](#-개요)
+- [테스트](#-테스트)
+- [중앙 설정 (Settings)](#️-중앙-설정-settings)
 - [핵심 기능](#-핵심-기능)
 - [Microsoft Multi-Agent Engine](#-microsoft-multi-agent-engine-v30)
-- [중앙 설정 (Settings)](#-중앙-설정-settings)
-- [GPT-5 및 모델 지원](#-gpt-5-및-모델-지원)
-- [Skills 시스템](#-skills-시스템)
-- [Memory Hook Provider](#-memory-hook-provider)
-- [Session Manager](#-session-manager)
-- [Enhanced Supervisor](#-enhanced-supervisor)
-- [설치](#-설치)
-- [빠른 시작](#-빠른-시작)
-- [아키텍처](#-아키텍처)
-- [주요 컴포넌트](#-주요-컴포넌트)
-- [테스트](#-테스트)
-- [실전 예제](#-실전-예제)
-- [성능 최적화](#-성능-최적화)
-- [프로덕션 배포](#-프로덕션-배포)
-- [FAQ](#-faq)
+- [Skills 시스템](#-skills-시스템-new)
+- [기여하기](#-기여하기)
+- [라이선스](#-라이선스)
 - [기여하기](#-기여하기)
 - [라이선스](#-라이선스)
 
@@ -1815,13 +1807,27 @@ print(df.describe())
 
 ## 📦 설치
 
-### 필수 요구사항
-- Python 3.10 이상
+### PyPI로 설치 (권장)
+```bash
+# 기본 설치
+pip install unified-agent-framework
+
+# MCP 지원 포함
+pip install unified-agent-framework[mcp]
+
+# 모든 기능 포함
+pip install unified-agent-framework[full]
+```
+
+### 수동 설치
+
+#### 필수 요구사항
+- Python 3.11 이상
 - Azure OpenAI 또는 OpenAI API 키
 
-### 패키지 설치
+#### 패키지 설치
 ```bash
-pip install semantic-kernel python-dotenv pydantic opentelemetry-api opentelemetry-sdk pyyaml
+pip install semantic-kernel python-dotenv pydantic opentelemetry-api opentelemetry-sdk pyyaml aiohttp
 ```
 
 ### 환경 변수 설정
@@ -2652,26 +2658,11 @@ Unified-agent-framework/
 | 3.3.0 | 2026-01-28 | Agent Lightning 통합 (Tracer, AgentStore, Reward, Adapter, Hooks) |
 | 3.2.0 | 2026-01-27 | Persistent Memory, Compaction, Session Tree |
 | **3.1.0** | 2026-01-26 | 🆕 **54개 AI 모델 지원** (GPT-5.2, Claude 4.5, Grok-4, Llama 4, o4-mini), Adaptive Circuit Breaker, MCP 설정, RAI 강화, 상세 한글 주석, **GitHub 오픈소스 준비** (CI/CD, 문서화) |
-| 3.0.0 | 2026-01 | **완전한 모듈화 아키텍처** (12개 모듈로 분리), Microsoft Multi-Agent Engine 통합 (WebSocket, MPlan, ProxyAgent, RAI), AgentFactory, OrchestrationManager, 79개 테스트 커버리지, 93% 코드 감소 |
+| 3.0.0 | 2026-01 | **완전한 모듈화 아키텍처** (12개 모듈로 분리), Microsoft Multi-Agent Engine 통합 (WebSocket, MPlan, ProxyAgent, RAI), AgentFactory, OrchestrationManager, 93% 코드 감소 |
 | 2.2.0 | 2026-01 | **Settings 클래스** (중앙 설정 통합), GPT-5.2/o3/o4-mini 모델 추가, UTF-8 기본 인코딩, CLI `model` 명령 추가 |
 | 2.1.0 | 2025-12 | SKILL.md 파일 기반 스킬 관리, GPT-5/o1 모델 temperature 자동 분기 |
 | 2.0.0 | 2025-01 | Skills 시스템 통합, FrameworkConfig 추가, Factory Pattern, AWS AgentCore 패턴 |
 | 1.0.0 | 2024-12 | 초기 릴리스, 5개 프레임워크 통합 |
-
----
-
-## 📦 설치 (PyPI)
-
-```bash
-# pip로 설치
-pip install unified-agent-framework
-
-# 또는 MCP 지원 포함
-pip install unified-agent-framework[mcp]
-
-# 또는 모든 기능 포함
-pip install unified-agent-framework[full]
-```
 
 ---
 
