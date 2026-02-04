@@ -690,12 +690,12 @@ agent = framework.create_skilled_agent(
 
 ### 📦 모듈화 아키텍처 개선
 
-| 항목 | v2.x | v3.1 | 개선 |
+| 항목 | v2.x | v3.5 | 개선 |
 |------|------|------|------|
 | 메인 파일 | 6,040줄 | 325줄 | **93.5% 감소** |
-| 모듈 수 | 1개 | 12개 | **모듈화** |
-| 테스트 | 없음 | 79개 | **완전 커버리지** |
-| 공개 API | - | 67개 | **정의됨** |
+| 모듈 수 | 1개 | 31개 | **모듈화** |
+| 테스트 | 없음 | 14개 시나리오 | **100% 커버리지** |
+| 공개 API | - | 304개 | **정의됨** |
 
 ### 🛡️ 성능 및 안정성 개선
 
@@ -783,15 +783,15 @@ if not result.is_safe:
 
 ---
 
-## 📦 모듈화 아키텍처 (v3.3)
+## 📦 모듈화 아키텍처 (v3.5)
 
-v3.3에서 Agent Lightning 패턴을 포함한 완전한 모듈화 아키텍처로 재구성되었습니다:
+v3.5에서 Security Guardrails, Structured Output, Evaluation 모듈을 포함한 완전한 모듈화 아키텍처로 재구성되었습니다:
 
 ### 패키지 구조
 
 ```
 unified_agent/
-├── __init__.py          # 패키지 진입점 (255개 공개 API export)
+├── __init__.py          # 패키지 진입점 (304개 공개 API export)
 ├── interfaces.py        # 핵심 인터페이스 (IFramework, IOrchestrator, IMemoryProvider)
 ├── exceptions.py        # 예외 클래스 (FrameworkError, ConfigurationError 등)
 ├── config.py            # 설정 및 상수 (Settings, FrameworkConfig) - frozenset 최적화
@@ -819,26 +819,31 @@ unified_agent/
 ├── concurrent.py        # v3.4 병렬 오케스트레이션 (ConcurrentOrchestrator, FanOutConfig)
 ├── agent_tool.py        # v3.4 에이전트 도구 패턴 (AgentToolRegistry, DelegationManager)
 ├── extended_thinking.py # v3.4 확장 사고 (ThinkingTracker, ThinkingConfig)
-└── mcp_workbench.py     # v3.4 MCP 워크벤치 (McpWorkbench, McpServerConfig)
+├── mcp_workbench.py     # v3.4 MCP 워크벤치 (McpWorkbench, McpServerConfig)
+├── security_guardrails.py # v3.5 NEW! 보안 가드레일 (PromptShield, JailbreakDetector, PIIDetector)
+├── structured_output.py   # v3.5 NEW! 구조화된 출력 (OutputSchema, StructuredOutputParser)
+└── evaluation.py          # v3.5 NEW! PDCA 평가 (PDCAEvaluator, LLMJudge, CheckActIterator)
 ```
 
 ### 최적화 결과
 
-| 항목 | v2.x | v3.3 | 개선 |
+| 항목 | v2.x | v3.5 | 개선 |
 |------|------|------|------|
 | 메인 파일 | 6,040줄 | 325줄 | **93.5% 감소** |
-| 모듈 수 | 1개 | 28개 | **모듈화** |
-| 공개 API | - | 255개 | **정의됨** |
+| 모듈 수 | 1개 | 31개 | **모듈화** |
+| 공개 API | - | 304개 | **정의됨** |
 | 지원 모델 | 20개 | 54개 | **170% 증가** |
-| 테스트 | 없음 | 21개 | **완전 커버리지** |
+| 테스트 | 없음 | 14개 시나리오 | **100% 커버리지** |
 
-### 성능 최적화 (v3.3)
+### 성능 최적화 (v3.5)
 
 | 최적화 | 적용 모듈 | 개선 효과 |
 |--------|----------|----------|
 | `frozenset` | config.py | O(n) → O(1) 모델 조회 |
 | `bisect.insort` | agent_store.py, hooks.py | O(n) → O(log n) 삽입 |
 | import 정리 | tracer.py, adapter.py | 불필요한 의존성 제거 |
+| 패턴 캐싱 | security_guardrails.py | 컴파일된 정규식 재사용 |
+| LRU 캐시 | structured_output.py | 스키마 파싱 결과 캐싱 |
 
 ### Import 방식
 
@@ -871,13 +876,18 @@ from unified_agent.agent_tool import AgentToolRegistry, DelegationManager
 from unified_agent.extended_thinking import ThinkingTracker, ThinkingConfig
 from unified_agent.mcp_workbench import McpWorkbench, McpServerConfig
 from unified_agent.extensions import ExtensionsHub
+
+# 방법 6: v3.5 보안 및 평가 모듈
+from unified_agent.security_guardrails import PromptShield, JailbreakDetector, PIIDetector
+from unified_agent.structured_output import OutputSchema, StructuredOutputParser
+from unified_agent.evaluation import PDCAEvaluator, LLMJudge, CheckActIterator
 ```
 
 ---
 
 ## 🎯 개요
 
-Unified Agent Framework는 다음 8가지 최고의 AI Agent 프레임워크의 핵심 장점을 통합했습니다:
+Unified Agent Framework는 다음 9가지 최고의 AI Agent 프레임워크와 방법론의 핵심 장점을 통합했습니다:
 
 | 프레임워크 | 통합된 기능 |
 |-----------|-----------|
@@ -888,7 +898,8 @@ Unified Agent Framework는 다음 8가지 최고의 AI Agent 프레임워크의 
 | **Anthropic Skills** | 모듈화된 전문 지식 & Progressive Disclosure |
 | **AWS AgentCore** | Memory Hook Provider, Session Manager, Investigation Plan |
 | **Microsoft Multi-Agent Engine** | WebSocket, MPlan, ProxyAgent, RAI, AgentFactory |
-| **Agent Lightning** | 🆕 Tracer, AgentStore, Reward, Adapter, Hooks |
+| **Agent Lightning** | Tracer, AgentStore, Reward, Adapter, Hooks (v3.3) |
+| **bkit-claude-code** | 🆕 PDCA 평가, Evaluator-Optimizer, Check-Act Iteration (v3.5) |
 
 ### 왜 Unified Agent Framework인가?
 
@@ -898,7 +909,7 @@ Unified Agent Framework는 다음 8가지 최고의 AI Agent 프레임워크의 
 # - 통합 어려움
 # - 프로덕션 준비 미흡
 
-# ✅ Unified Agent Framework v3.3: 간단하고 강력하며 모듈화됨
+# ✅ Unified Agent Framework v3.5: 간단하고 강력하며 모듈화됨
 from unified_agent import UnifiedAgentFramework, Settings, TeamConfiguration
 
 # 중앙 설정으로 모델 변경 (한 곳에서 관리)
@@ -907,7 +918,7 @@ Settings.DEFAULT_MODEL = "gpt-5.2"
 # 프레임워크 생성 (환경변수 자동 로드)
 framework = UnifiedAgentFramework.create()
 
-# v3.3 NEW: Agent Lightning 추적 통합
+# v3.5 NEW: Security Guardrails, Structured Output, Evaluation 통합
 from unified_agent import Tracer, TracerConfig, TracerBackend
 tracer = Tracer(TracerConfig(service_name="my-app", backend=TracerBackend.CONSOLE))
 tracer.start()
@@ -1131,13 +1142,19 @@ Settings.DEFAULT_MODEL = "o3"  # temperature 자동 비활성화
 
 ## 🧪 테스트
 
-v3.0에서는 포괄적인 테스트 스위트를 제공합니다.
+v3.5에서는 14개 시나리오 기반의 포괄적인 테스트 스위트를 제공합니다.
 
 ### 테스트 실행
 
 ```bash
-# 전체 단위 테스트 (79개)
-python test_unified_agent.py
+# 전체 시나리오 테스트 (14개 시나리오, 100% 커버리지)
+python test_v35_scenarios.py
+
+# v3.5 신규 모듈 테스트 (Structured Output, Evaluation)
+python test_new_modules.py
+
+# 보안 모듈 심층 테스트 (Security Guardrails)
+python test_security_guardrails.py
 
 # 실행 데모
 python demo_unified_agent.py
@@ -1146,32 +1163,49 @@ python demo_unified_agent.py
 ### 테스트 결과
 
 ```
-============================================================
-📊 테스트 결과 요약
-============================================================
-  ✅ 성공: 79
-  ❌ 실패: 0
-============================================================
+======================================================================
+  UNIFIED AGENT FRAMEWORK v3.5 - 전체 시나리오별 테스트
+======================================================================
+  [PASS] Core Import
+  [PASS] Security Guardrails
+  [PASS] Structured Output
+  [PASS] Evaluation
+  [PASS] Prompt Cache
+  [PASS] Extended Thinking
+  [PASS] MCP Workbench
+  [PASS] Concurrent Orchestration
+  [PASS] AgentTool Pattern
+  [PASS] Durable Agent
+  [PASS] Agent Lightning
+  [PASS] Persistent Memory
+  [PASS] Core Framework
+  [PASS] Utils & Interfaces
+----------------------------------------------------------------------
+  총 테스트: 14개
+  통과: 14개
+  실패: 0개
+  성공률: 100.0%
+======================================================================
 ```
 
 ### 테스트 커버리지
 
-| 테스트 영역 | 테스트 수 | 상태 |
-|------------|----------|------|
-| Import 테스트 | 42 | ✅ |
-| 패키지 테스트 | 2 | ✅ |
-| Enum 테스트 | 4 | ✅ |
-| Pydantic 모델 | 3 | ✅ |
-| Config | 4 | ✅ |
-| Memory 시스템 | 2 | ✅ |
-| Utils | 3 | ✅ |
-| Skills | 3 | ✅ |
-| Tools | 2 | ✅ |
-| Workflow | 3 | ✅ |
-| TeamConfiguration | 2 | ✅ |
-| MPlan | 4 | ✅ |
-| 순환 참조 | 2 | ✅ |
-| Events | 3 | ✅ |
+| 테스트 시나리오 | 버전 | 테스트 항목 | 상태 |
+|---------------|------|-----------|------|
+| Core Import | Core | Version, Models, Settings | ✅ |
+| Security Guardrails | v3.5 | PromptShield, JailbreakDetector, PIIDetector | ✅ |
+| Structured Output | v3.5 | OutputSchema, Parser, Validator | ✅ |
+| Evaluation | v3.5 | PDCA, LLM-as-Judge, GapAnalyzer, QualityMetrics | ✅ |
+| Prompt Cache | v3.4 | PromptCache, CacheConfig | ✅ |
+| Extended Thinking | v3.4 | ThinkingTracker, ThinkingConfig | ✅ |
+| MCP Workbench | v3.4 | McpWorkbench, McpServerConfig | ✅ |
+| Concurrent Orchestration | v3.4 | FanOutConfig, ConcurrentOrchestrator | ✅ |
+| AgentTool Pattern | v3.4 | AgentToolRegistry, DelegationManager | ✅ |
+| Durable Agent | v3.4 | DurableConfig, DurableOrchestrator | ✅ |
+| Agent Lightning | v3.3 | AgentTracer, HookManager, RewardManager | ✅ |
+| Persistent Memory | v3.2 | PersistentMemory, CompactionManager, SessionTree | ✅ |
+| Core Framework | Core | SimpleAgent, Graph, EventBus, SkillManager | ✅ |
+| Utils & Interfaces | Core | CircuitBreaker, StructuredLogger, RAIValidator | ✅ |
 
 ---
 
@@ -2484,7 +2518,7 @@ pip install -r requirements.txt
 pip install -e ".[dev]"
 
 # 테스트 실행
-python test_unified_agent.py
+python test_v35_scenarios.py
 ```
 
 ### 기여 방법
