@@ -4,8 +4,6 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![CI](https://img.shields.io/github/actions/workflow/status/unified-agent-framework/unified-agent-framework/ci.yml?label=CI)](https://github.com/unified-agent-framework/unified-agent-framework/actions)
-[![PyPI](https://img.shields.io/pypi/v/unified-agent-framework.svg)](https://pypi.org/project/unified-agent-framework/)
 [![Semantic Kernel](https://img.shields.io/badge/Semantic_Kernel-Latest-orange.svg)](https://github.com/microsoft/semantic-kernel)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-Enabled-purple.svg)](https://opentelemetry.io/)
 [![Agent Framework](https://img.shields.io/badge/MS_Agent_Framework-Integrated-red.svg)](https://github.com/microsoft/agent-framework)
