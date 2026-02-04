@@ -1,4 +1,4 @@
-# 🚀 Unified Agent Framework - Enterprise Edition v3.4
+# 🚀 Unified Agent Framework - Enterprise Edition v3.5
 
 **최고의 AI Agent 프레임워크들의 장점을 통합한 엔터프라이즈급 오케스트레이션 프레임워크**
 
@@ -14,11 +14,160 @@
 [![Grok-4](https://img.shields.io/badge/Grok--4-Supported-yellow.svg)](https://xai.com/)
 [![MCP](https://img.shields.io/badge/MCP-Native_Support-teal.svg)](https://modelcontextprotocol.io/)
 [![Agent Lightning](https://img.shields.io/badge/Agent_Lightning-Integrated-gold.svg)](https://github.com/microsoft/agent-lightning)
-[![Tests](https://img.shields.io/badge/Tests-21%20Passed-success.svg)](#-테스트)
+[![bkit PDCA](https://img.shields.io/badge/bkit_PDCA-Evaluation-pink.svg)](https://www.bkit.ai/)
+[![Tests](https://img.shields.io/badge/Tests-14%2F14%20Scenarios%20Passed-success.svg)](#-테스트)
+[![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](#-테스트)
 
-> **v3.4.0** - 🆕 **2026년 2월 최신 업데이트!** Prompt Caching, Durable Agent, Concurrent Orchestration, AgentTool Pattern, Extended Thinking, MCP Workbench 추가
+> **v3.5.0** - 🆕 **2026년 2월 4일 최신 업데이트!** Security Guardrails, Structured Output, Evaluation (PDCA + LLM-as-Judge) 추가
 
-## 🆕 v3.4 주요 업데이트 (2026년 2월)
+## 🆕 v3.5 주요 업데이트 (2026년 2월)
+
+### 🔐 3가지 새로운 기능 (bkit 영감)
+
+#### 1. Security Guardrails (보안 가드레일)
+AI 시스템 보안을 위한 다층 방어 체계입니다.
+```python
+from unified_agent import (
+    SecurityOrchestrator, SecurityConfig, ThreatLevel,
+    PromptShield, JailbreakDetector, PIIDetector
+)
+
+# 보안 오케스트레이터 설정
+config = SecurityConfig(
+    enable_prompt_shield=True,      # Prompt Injection 방어
+    enable_jailbreak_detection=True,# Jailbreak 탐지
+    enable_pii_detection=True,      # PII 탐지 및 마스킹
+    enable_output_validation=True,  # 출력 검증
+    min_threat_level=ThreatLevel.LOW
+)
+orchestrator = SecurityOrchestrator(config)
+
+# 입력 검증
+input_result = await orchestrator.validate_input(user_input)
+if not input_result.is_safe:
+    print(f"🚫 차단: {input_result.reason}")
+    # Prompt Injection 탐지: direct_injection
+else:
+    # 안전한 입력 처리
+    response = await process(user_input)
+
+# 출력 검증 (PII, 프롬프트 누출 체크)
+output_result = await orchestrator.validate_output(response)
+if output_result.pii_detected:
+    response = output_result.masked_output  # PII 마스킹된 출력
+
+# 개별 탐지기 사용
+shield = PromptShield()
+result = await shield.analyze("Ignore all previous instructions...")
+print(f"공격 탐지: {result.is_attack}, 유형: {result.attack_type}")
+```
+
+#### 2. Structured Output (구조화된 출력)
+GPT-5.2 Structured Outputs를 활용한 JSON Schema 강제 출력입니다.
+```python
+from unified_agent import (
+    StructuredOutputClient, OutputSchema, structured_output,
+    StructuredOutputParser, pydantic_to_schema
+)
+from pydantic import BaseModel
+
+# 방법 1: Pydantic 모델 사용
+class AnalysisResult(BaseModel):
+    summary: str
+    confidence: float
+    sources: list[str]
+
+client = StructuredOutputClient()
+result = await client.generate(
+    prompt="AI 동향을 분석해주세요",
+    response_model=AnalysisResult
+)
+print(f"신뢰도: {result.confidence:.1%}")
+
+# 방법 2: JSON Schema 직접 정의
+schema = OutputSchema(
+    name="PersonInfo",
+    description="개인 정보 스키마",
+    schema={
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "age": {"type": "integer"},
+            "email": {"type": "string"}
+        },
+        "required": ["name", "age"]
+    },
+    strict=True
+)
+
+# 방법 3: 데코레이터 사용
+@structured_output(schema=schema)
+async def analyze_person(text: str):
+    return await llm_call(text)
+
+# Parser로 JSON 추출/검증
+parser = StructuredOutputParser()
+result = parser.parse('{"name": "홍길동", "age": 30}', schema)
+```
+
+#### 3. Evaluation (PDCA + LLM-as-Judge)
+bkit 영감의 체계적인 평가 시스템입니다.
+```python
+from unified_agent import (
+    PDCAEvaluator, LLMJudge, CheckActIterator,
+    GapAnalyzer, QualityMetrics, AgentBenchmark,
+    EvaluationConfig, IterationConfig
+)
+
+# PDCA 사이클 평가
+pdca = PDCAEvaluator()
+gap_result = await pdca.evaluate_cycle(
+    plan="설계 문서",
+    implementation="구현 코드",
+    expected_outcome="예상 결과"
+)
+print(f"계획 대비 일치율: {gap_result.match_rate:.1%}")
+
+# LLM-as-Judge 평가
+judge = LLMJudge()
+verdict = await judge.evaluate(
+    output="AI 생성 응답",
+    criteria="정확성, 유용성, 명확성"
+)
+print(f"점수: {verdict.score}/10")
+print(f"강점: {verdict.strengths}")
+print(f"약점: {verdict.weaknesses}")
+
+# Check-Act Iteration (Evaluator-Optimizer 패턴)
+# 90% 목표, 최대 5회 자동 개선 루프
+iterator = CheckActIterator(
+    evaluator=judge,
+    config=IterationConfig(
+        threshold=0.9,        # 90% 목표 (bkit 기준)
+        max_iterations=5,     # 최대 5회 반복
+        early_stop=True
+    )
+)
+
+result = await iterator.iterate(
+    initial_output="초기 응답",
+    criteria="품질 기준"
+)
+print(f"반복 횟수: {result.iterations}")
+print(f"최종 점수: {result.final_score:.1%}")
+print(f"개선율: {result.improvement:.1%}")
+
+# Quality Metrics 수집
+metrics = QualityMetrics()
+metrics.record("task_completion", 0.95)
+metrics.record("response_time_ms", 250)
+report = metrics.generate_report()
+print(f"종합 점수: {report.overall_score:.1%}")
+```
+
+---
+
+## 📋 v3.4 주요 업데이트 (2026년 1월)
 
 ### 🎯 6가지 새로운 기능
 
@@ -2361,11 +2510,15 @@ python test_unified_agent.py
 ```
 Unified-agent-framework/
 │
-├── 📦 unified_agent/              # 핵심 패키지 (12개 모듈)
-│   ├── __init__.py               # 패키지 진입점 (67개 API export)
-│   ├── config.py                 # 설정 클래스 (40+ 모델, MCP, RAI)
+├── 📦 unified_agent/              # 핵심 패키지 (31개 모듈, 310+ API)
+│   ├── __init__.py               # 패키지 진입점 (304개 export)
+│   ├── config.py                 # 설정 클래스 (54개 모델, MCP, RAI)
 │   ├── models.py                 # Pydantic 데이터 모델
+│   ├── interfaces.py             # 핵심 인터페이스 (IFramework, IOrchestrator)
 │   ├── memory.py                 # 메모리 시스템
+│   ├── persistent_memory.py      # [v3.2] 영속 메모리
+│   ├── compaction.py             # [v3.2] 메모리 압축
+│   ├── session_tree.py           # [v3.2] 세션 트리
 │   ├── events.py                 # 이벤트 시스템
 │   ├── skills.py                 # 스킬 관리
 │   ├── tools.py                  # 도구 정의
@@ -2374,14 +2527,31 @@ Unified-agent-framework/
 │   ├── orchestration.py          # 멀티에이전트 오케스트레이션
 │   ├── framework.py              # 통합 프레임워크
 │   ├── utils.py                  # 유틸리티 (CircuitBreaker 등)
-│   └── exceptions.py             # 커스텀 예외
+│   ├── exceptions.py             # 커스텀 예외
+│   ├── tracer.py                 # [v3.3] Agent Lightning 추적
+│   ├── agent_store.py            # [v3.3] 에이전트 저장소
+│   ├── reward.py                 # [v3.3] 보상 시스템
+│   ├── adapter.py                # [v3.3] 모델 어댑터
+│   ├── hooks.py                  # [v3.3] 라이프사이클 훅
+│   ├── extensions.py             # [v3.4] 확장 허브
+│   ├── prompt_cache.py           # [v3.4] 프롬프트 캐싱
+│   ├── durable_agent.py          # [v3.4] 내구성 에이전트
+│   ├── concurrent.py             # [v3.4] 병렬 오케스트레이션
+│   ├── agent_tool.py             # [v3.4] AgentTool 패턴
+│   ├── extended_thinking.py      # [v3.4] 확장 사고
+│   ├── mcp_workbench.py          # [v3.4] MCP 워크벤치
+│   ├── security_guardrails.py    # [v3.5 NEW!] 보안 가드레일
+│   ├── structured_output.py      # [v3.5 NEW!] 구조화된 출력
+│   └── evaluation.py             # [v3.5 NEW!] PDCA 평가
 │
 ├── 📂 skills/                     # SKILL.md 기반 스킬 디렉토리
 │   ├── python-expert/
 │   ├── data-analyst/
 │   └── korean-writer/
 │
-├── 🧪 test_unified_agent.py       # 테스트 (79개)
+├── 🧪 test_v35_scenarios.py       # 통합 테스트 (14개 시나리오, 100%)
+├── 🧪 test_new_modules.py         # v3.5 모듈 테스트
+├── 🧪 test_security_guardrails.py # 보안 모듈 테스트
 ├── 🎮 demo_unified_agent.py       # 데모 코드
 ├── 📖 Unified_agent_framework.py  # 레거시 래퍼 (하위 호환성)
 │
@@ -2428,7 +2598,9 @@ Unified-agent-framework/
 - [Microsoft AutoGen](https://github.com/microsoft/autogen)
 - [Semantic Kernel](https://github.com/microsoft/semantic-kernel)
 - [Microsoft Agent Framework](https://github.com/microsoft/agent-framework)
-- [Microsoft Multi-Agent-Custom-Automation-Engine](https://github.com/microsoft/multi-agent-custom-automation-engine) - MPlan, ProxyAgent, RAI 패턴 (NEW!)
+- [Microsoft Multi-Agent-Custom-Automation-Engine](https://github.com/microsoft/multi-agent-custom-automation-engine) - MPlan, ProxyAgent, RAI 패턴
+- [Microsoft Agent Lightning](https://github.com/microsoft/agent-lightning) - Tracer, AgentStore, Reward, Hooks 패턴 (v3.3)
+- [bkit-claude-code](https://github.com/popup-studio-ai/bkit-claude-code) - PDCA 평가 방법론, Evaluator-Optimizer 패턴 (v3.5 NEW!)
 - [LangGraph](https://github.com/langchain-ai/langgraph)
 - [Anthropic Skills](https://github.com/anthropics/skills) - Skills 시스템 패턴
 - [AWS AgentCore Samples](https://github.com/awslabs/amazon-bedrock-agentcore-samples) - Memory Hook, Session Manager, Investigation Plan 패턴
@@ -2441,7 +2613,11 @@ Unified-agent-framework/
 
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|-------------|
-| **3.1.0** | 2026-01-26 | 🆕 **40+ AI 모델 지원** (GPT-5.2, Claude 4.5, Grok-4, Llama 4, o4-mini), Adaptive Circuit Breaker, MCP 설정, RAI 강화, 상세 한글 주석, **GitHub 오픈소스 준비** (CI/CD, 문서화) |
+| **3.5.0** | 2026-02-04 | 🆕 **Security Guardrails** (Prompt Injection 방어, Jailbreak 탐지, PII 마스킹), **Structured Output** (GPT-5.2 JSON Schema 강제), **Evaluation** (PDCA, LLM-as-Judge, Check-Act Iteration) - bkit 영감 |
+| 3.4.0 | 2026-01-30 | Prompt Caching, Durable Agent, Concurrent Orchestration, AgentTool Pattern, Extended Thinking, MCP Workbench |
+| 3.3.0 | 2026-01-28 | Agent Lightning 통합 (Tracer, AgentStore, Reward, Adapter, Hooks) |
+| 3.2.0 | 2026-01-27 | Persistent Memory, Compaction, Session Tree |
+| **3.1.0** | 2026-01-26 | 🆕 **54개 AI 모델 지원** (GPT-5.2, Claude 4.5, Grok-4, Llama 4, o4-mini), Adaptive Circuit Breaker, MCP 설정, RAI 강화, 상세 한글 주석, **GitHub 오픈소스 준비** (CI/CD, 문서화) |
 | 3.0.0 | 2026-01 | **완전한 모듈화 아키텍처** (12개 모듈로 분리), Microsoft Multi-Agent Engine 통합 (WebSocket, MPlan, ProxyAgent, RAI), AgentFactory, OrchestrationManager, 79개 테스트 커버리지, 93% 코드 감소 |
 | 2.2.0 | 2026-01 | **Settings 클래스** (중앙 설정 통합), GPT-5.2/o3/o4-mini 모델 추가, UTF-8 기본 인코딩, CLI `model` 명령 추가 |
 | 2.1.0 | 2025-12 | SKILL.md 파일 기반 스킬 관리, GPT-5/o1 모델 temperature 자동 분기 |

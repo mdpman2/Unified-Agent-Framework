@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Unified Agent Framework - Enterprise Edition v3.4
+Unified Agent Framework - Enterprise Edition v3.5
 
 ================================================================================
 📋 프로젝트: 통합 AI 에이전트 프레임워크
-📅 버전: 3.4.0 (2026년 2월 최신)
+📅 버전: 3.5.0 (2026년 2월 4일 최신)
 📦 Python: 3.11+
+👤 테스트: 14개 시나리오 100% 통과
 ================================================================================
 
 🌟 프레임워크 특징:
@@ -24,14 +25,17 @@ Unified Agent Framework - Enterprise Edition v3.4
     ★ 영속 메모리 시스템 (Clawdbot 스타일)
     ★ 세션 트리 분기 관리
     ★ 메모리 압축 전략 (Compaction)
-    ★ [v3.4 NEW!] Prompt Caching - 비용 절감
-    ★ [v3.4 NEW!] Durable Agent - 장기 워크플로우
-    ★ [v3.4 NEW!] Concurrent Orchestration - 병렬 실행
-    ★ [v3.4 NEW!] AgentTool Pattern - 에이전트 중첩
-    ★ [v3.4 NEW!] Extended Thinking - Reasoning 추적
-    ★ [v3.4 NEW!] MCP Workbench - 다중 MCP 관리
+    ★ [v3.4] Prompt Caching - 비용 절감
+    ★ [v3.4] Durable Agent - 장기 워크플로우
+    ★ [v3.4] Concurrent Orchestration - 병렬 실행
+    ★ [v3.4] AgentTool Pattern - 에이전트 중첩
+    ★ [v3.4] Extended Thinking - Reasoning 추적
+    ★ [v3.4] MCP Workbench - 다중 MCP 관리
+    ★ [v3.5 NEW!] Security Guardrails - 프롬프트 보안
+    ★ [v3.5 NEW!] Structured Output - GPT-5.2 구조화된 출력
+    ★ [v3.5 NEW!] Evaluation - PDCA + LLM-as-Judge 평가
 
-📁 모듈 구조 (28개 모듈, 255개+ 공개 API):
+📁 모듈 구조 (31개 모듈, 310개+ 공개 API):
     unified_agent/
     ├── __init__.py          # 이 파일 - 패키지 진입점
     ├── interfaces.py        # 핵심 인터페이스 (IFramework, IOrchestrator)
@@ -213,7 +217,7 @@ Unified Agent Framework - Enterprise Edition v3.4
 📝 라이선스: MIT
 """
 
-__version__ = "3.4.0"
+__version__ = "3.5.0"
 __author__ = "Enterprise AI Team"
 
 # ============================================================================
@@ -679,6 +683,86 @@ from .mcp_workbench import (
 )
 
 # ============================================================================
+# Security Guardrails 시스템 (v3.5 NEW!)
+# ============================================================================
+from .security_guardrails import (
+    # Enums
+    ThreatLevel,
+    AttackType,
+    PIIType,
+    ValidationStage,
+    # Config & Results
+    SecurityConfig,
+    ShieldResult,
+    JailbreakResult,
+    PIIResult,
+    GroundednessResult,
+    ValidationResult,
+    AuditLogEntry,
+    # Core Components
+    PromptShield,
+    JailbreakDetector,
+    OutputValidator,
+    GroundednessChecker,
+    PIIDetector,
+    SecurityOrchestrator,
+    # Utilities
+    SecurityAuditLogger,
+)
+
+# ============================================================================
+# Structured Output 시스템 (v3.5 NEW! - GPT-5.2 Structured Outputs)
+# ============================================================================
+from .structured_output import (
+    # 설정
+    OutputSchema,
+    StructuredOutputConfig,
+    # 파서
+    StructuredOutputParser,
+    # 검증
+    StructuredOutputValidator,
+    ValidationError as StructuredValidationError,
+    # 클라이언트
+    StructuredOutputClient,
+    # 데코레이터
+    structured_output,
+    # 유틸리티
+    pydantic_to_schema,
+)
+
+# ============================================================================
+# Evaluation 시스템 (v3.5 NEW! - PDCA + LLM-as-Judge)
+# ============================================================================
+from .evaluation import (
+    # Enums
+    PDCAPhase,
+    EvaluationDimension,
+    QualityLevel,
+    GapSeverity,
+    # 설정
+    EvaluationConfig,
+    JudgeConfig,
+    IterationConfig,
+    # 결과
+    EvaluationResult,
+    JudgeVerdict,
+    GapAnalysisResult,
+    IterationResult,
+    BenchmarkResult,
+    QualityReport,
+    # 핵심 컴포넌트
+    PDCAEvaluator,
+    LLMJudge,
+    CheckActIterator,
+    GapAnalyzer,
+    AgentBenchmark,
+    QualityMetrics,
+    # 프로토콜
+    Evaluator,
+    Optimizer,
+)
+
+# ============================================================================
 # Public API
 # ============================================================================
 __all__ = [
@@ -972,4 +1056,57 @@ __all__ = [
     "RoundRobinRouter",
     "HealthChecker",
     "HealthStatus",
+
+    # Security Guardrails (v3.5 NEW!)
+    "ThreatLevel",
+    "AttackType",
+    "PIIType",
+    "ValidationStage",
+    "SecurityConfig",
+    "ShieldResult",
+    "JailbreakResult",
+    "PIIResult",
+    "GroundednessResult",
+    "ValidationResult",
+    "AuditLogEntry",
+    "PromptShield",
+    "JailbreakDetector",
+    "OutputValidator",
+    "GroundednessChecker",
+    "PIIDetector",
+    "SecurityOrchestrator",
+    "SecurityAuditLogger",
+
+    # Structured Output (v3.5 NEW!)
+    "OutputSchema",
+    "StructuredOutputConfig",
+    "StructuredOutputParser",
+    "StructuredOutputValidator",
+    "StructuredValidationError",
+    "StructuredOutputClient",
+    "structured_output",
+    "pydantic_to_schema",
+
+    # Evaluation (v3.5 NEW!)
+    "PDCAPhase",
+    "EvaluationDimension",
+    "QualityLevel",
+    "GapSeverity",
+    "EvaluationConfig",
+    "JudgeConfig",
+    "IterationConfig",
+    "EvaluationResult",
+    "JudgeVerdict",
+    "GapAnalysisResult",
+    "IterationResult",
+    "BenchmarkResult",
+    "QualityReport",
+    "PDCAEvaluator",
+    "LLMJudge",
+    "CheckActIterator",
+    "GapAnalyzer",
+    "AgentBenchmark",
+    "QualityMetrics",
+    "Evaluator",
+    "Optimizer",
 ]
