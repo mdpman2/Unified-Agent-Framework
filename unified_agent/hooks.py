@@ -36,25 +36,16 @@ import bisect
 import functools
 import inspect
 import re
+import time
 import traceback
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import (
-    Any,
-    Callable,
-    Coroutine,
-    Dict,
-    List,
-    Optional,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Coroutine, TypeVar
 
 from .tracer import Span, SpanKind
 from .agent_store import Rollout, Attempt, AttemptStatus
 from .utils import StructuredLogger
-
 
 # ============================================================================
 # 타입 정의
@@ -65,8 +56,7 @@ T = TypeVar("T")
 # 훅 함수 타입
 SyncHookFunc = Callable[..., Any]
 AsyncHookFunc = Callable[..., Coroutine[Any, Any, Any]]
-HookFunc = Union[SyncHookFunc, AsyncHookFunc]
-
+HookFunc = SyncHookFunc | AsyncHookFunc
 
 # ============================================================================
 # 훅 우선순위
@@ -83,7 +73,6 @@ class HookPriority(IntEnum):
     NORMAL = 50
     LOW = 90
     LOWEST = 100
-
 
 # ============================================================================
 # 훅 이벤트 타입
@@ -130,25 +119,27 @@ class HookEvent:
     MEMORY_LOAD = "memory.load"
     MEMORY_COMPACTION = "memory.compaction"
 
-
 # ============================================================================
 # 훅 등록 정보
 # ============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class HookRegistration:
     """훅 등록 정보"""
     event: str                              # 이벤트 타입
     func: HookFunc                          # 훅 함수
     priority: HookPriority = HookPriority.NORMAL
-    name: Optional[str] = None              # 훅 이름 (디버깅용)
-    filter_pattern: Optional[str] = None    # 필터 패턴 (정규식)
+    name: str | None = None              # 훅 이름 (디버깅용)
+    filter_pattern: str | None = None    # 필터 패턴 (정규식)
     once: bool = False                      # 한 번만 실행
     enabled: bool = True                    # 활성화 여부
     
     # 실행 통계
     call_count: int = 0
-    last_error: Optional[str] = None
+    last_error: str | None = None
+    
+    # 컴파일된 정규식 패턴 (init=False — __post_init__에서 설정)
+    _pattern: re.Pattern | None = field(init=False, default=None, repr=False)
     
     def __post_init__(self):
         if self.name is None:
@@ -170,12 +161,11 @@ class HookRegistration:
         """비동기 함수 여부"""
         return asyncio.iscoroutinefunction(self.func)
 
-
 # ============================================================================
 # 훅 컨텍스트
 # ============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class HookContext:
     """
     훅 실행 컨텍스트
@@ -184,19 +174,19 @@ class HookContext:
     """
     event: str                          # 이벤트 타입
     timestamp: float                    # 발생 시각
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     # 관련 객체
-    span: Optional[Span] = None
-    rollout: Optional[Rollout] = None
-    attempt: Optional[Attempt] = None
+    span: Span | None = None
+    rollout: Rollout | None = None
+    attempt: Attempt | None = None
     
     # 추가 데이터
-    data: Dict[str, Any] = field(default_factory=dict)
+    data: dict[str, Any] = field(default_factory=dict)
     
     # 결과/에러
     result: Any = None
-    error: Optional[Exception] = None
+    error: Exception | None = None
     
     def __getitem__(self, key: str) -> Any:
         return self.data.get(key)
@@ -204,25 +194,23 @@ class HookContext:
     def __setitem__(self, key: str, value: Any) -> None:
         self.data[key] = value
 
-
 # ============================================================================
 # 훅 결과
 # ============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class HookResult:
     """훅 실행 결과"""
     event: str
     hooks_called: int = 0
     hooks_succeeded: int = 0
     hooks_failed: int = 0
-    errors: List[str] = field(default_factory=list)
-    results: List[Any] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    results: list[Any] = field(default_factory=list)
     
     @property
     def success(self) -> bool:
         return self.hooks_failed == 0
-
 
 # ============================================================================
 # 훅 매니저
@@ -237,7 +225,7 @@ class HookManager:
     
     def __init__(
         self,
-        logger: Optional[StructuredLogger] = None,
+        logger: StructuredLogger | None = None,
         suppress_errors: bool = True,
     ):
         """
@@ -245,7 +233,7 @@ class HookManager:
             logger: 로거
             suppress_errors: 훅 에러 억제 여부
         """
-        self._hooks: Dict[str, List[HookRegistration]] = {}
+        self._hooks: dict[str, list[HookRegistration]] = {}
         self._logger = logger or StructuredLogger("hooks")
         self._suppress_errors = suppress_errors
         self._enabled = True
@@ -259,8 +247,8 @@ class HookManager:
         event: str,
         func: HookFunc,
         priority: HookPriority = HookPriority.NORMAL,
-        name: Optional[str] = None,
-        filter_pattern: Optional[str] = None,
+        name: str | None = None,
+        filter_pattern: str | None = None,
         once: bool = False,
     ) -> HookRegistration:
         """
@@ -317,7 +305,7 @@ class HookManager:
                 pass
         return False
     
-    def unregister_all(self, event: Optional[str] = None) -> int:
+    def unregister_all(self, event: str | None = None) -> int:
         """모든 훅 등록 해제"""
         if event:
             count = len(self._hooks.get(event, []))
@@ -336,8 +324,8 @@ class HookManager:
         self,
         event: str,
         priority: HookPriority = HookPriority.NORMAL,
-        name: Optional[str] = None,
-        filter_pattern: Optional[str] = None,
+        name: str | None = None,
+        filter_pattern: str | None = None,
         once: bool = False,
     ) -> Callable[[HookFunc], HookFunc]:
         """훅 등록 데코레이터"""
@@ -369,14 +357,14 @@ class HookManager:
     def on_span_start(
         self,
         priority: HookPriority = HookPriority.NORMAL,
-        filter_pattern: Optional[str] = None,
+        filter_pattern: str | None = None,
     ) -> Callable[[HookFunc], HookFunc]:
         return self.hook(HookEvent.SPAN_START, priority, filter_pattern=filter_pattern)
     
     def on_span_end(
         self,
         priority: HookPriority = HookPriority.NORMAL,
-        filter_pattern: Optional[str] = None,
+        filter_pattern: str | None = None,
     ) -> Callable[[HookFunc], HookFunc]:
         return self.hook(HookEvent.SPAN_END, priority, filter_pattern=filter_pattern)
     
@@ -441,7 +429,7 @@ class HookManager:
     async def emit(
         self,
         event: str,
-        context: Optional[HookContext] = None,
+        context: HookContext | None = None,
         **kwargs,
     ) -> HookResult:
         """
@@ -455,8 +443,6 @@ class HookManager:
         Returns:
             HookResult
         """
-        import time
-        
         result = HookResult(event=event)
         
         if not self._enabled:
@@ -476,7 +462,7 @@ class HookManager:
         context.data.update(kwargs)
         
         # 삭제할 훅 (once=True)
-        to_remove: List[HookRegistration] = []
+        to_remove: list[HookRegistration] = []
         
         for hook in hooks:
             if not hook.enabled:
@@ -527,7 +513,7 @@ class HookManager:
     def emit_sync(
         self,
         event: str,
-        context: Optional[HookContext] = None,
+        context: HookContext | None = None,
         **kwargs,
     ) -> HookResult:
         """훅 이벤트 발행 (동기)"""
@@ -553,17 +539,17 @@ class HookManager:
         """훅 시스템 비활성화"""
         self._enabled = False
     
-    def get_hooks(self, event: Optional[str] = None) -> List[HookRegistration]:
+    def get_hooks(self, event: str | None = None) -> list[HookRegistration]:
         """등록된 훅 목록"""
         if event:
             return list(self._hooks.get(event, []))
         else:
-            result: List[HookRegistration] = []
+            result: list[HookRegistration] = []
             for hooks in self._hooks.values():
                 result.extend(hooks)
             return result
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """훅 통계"""
         stats = {
             "enabled": self._enabled,
@@ -588,13 +574,11 @@ class HookManager:
         
         return stats
 
-
 # ============================================================================
 # 전역 훅 매니저
 # ============================================================================
 
-_global_hook_manager: Optional[HookManager] = None
-
+_global_hook_manager: HookManager | None = None
 
 def get_hook_manager() -> HookManager:
     """전역 훅 매니저 반환"""
@@ -603,12 +587,10 @@ def get_hook_manager() -> HookManager:
         _global_hook_manager = HookManager()
     return _global_hook_manager
 
-
 def set_hook_manager(manager: HookManager) -> None:
     """전역 훅 매니저 설정"""
     global _global_hook_manager
     _global_hook_manager = manager
-
 
 # ============================================================================
 # 편의 함수
@@ -620,29 +602,25 @@ def on_trace_start(
     """전역 트레이스 시작 훅"""
     return get_hook_manager().on_trace_start(priority)
 
-
 def on_trace_end(
     priority: HookPriority = HookPriority.NORMAL,
 ) -> Callable[[HookFunc], HookFunc]:
     """전역 트레이스 종료 훅"""
     return get_hook_manager().on_trace_end(priority)
 
-
 def on_span_start(
     priority: HookPriority = HookPriority.NORMAL,
-    filter_pattern: Optional[str] = None,
+    filter_pattern: str | None = None,
 ) -> Callable[[HookFunc], HookFunc]:
     """전역 스팬 시작 훅"""
     return get_hook_manager().on_span_start(priority, filter_pattern)
 
-
 def on_span_end(
     priority: HookPriority = HookPriority.NORMAL,
-    filter_pattern: Optional[str] = None,
+    filter_pattern: str | None = None,
 ) -> Callable[[HookFunc], HookFunc]:
     """전역 스팬 종료 훅"""
     return get_hook_manager().on_span_end(priority, filter_pattern)
-
 
 def on_llm_call(
     priority: HookPriority = HookPriority.NORMAL,
@@ -650,13 +628,11 @@ def on_llm_call(
     """전역 LLM 호출 훅"""
     return get_hook_manager().on_llm_call(priority)
 
-
 def on_tool_call(
     priority: HookPriority = HookPriority.NORMAL,
 ) -> Callable[[HookFunc], HookFunc]:
     """전역 도구 호출 훅"""
     return get_hook_manager().on_tool_call(priority)
-
 
 def on_reward(
     priority: HookPriority = HookPriority.NORMAL,
@@ -664,14 +640,12 @@ def on_reward(
     """전역 리워드 발행 훅"""
     return get_hook_manager().on_reward(priority)
 
-
 async def emit_hook(
     event: str,
     **kwargs,
 ) -> HookResult:
     """전역 훅 이벤트 발행"""
     return await get_hook_manager().emit(event, **kwargs)
-
 
 # ============================================================================
 # 훅 인터셉터
@@ -686,7 +660,7 @@ class HookInterceptor:
     
     def __init__(
         self,
-        hook_manager: Optional[HookManager] = None,
+        hook_manager: HookManager | None = None,
     ):
         self._manager = hook_manager or get_hook_manager()
     
@@ -694,7 +668,7 @@ class HookInterceptor:
         self,
         start_event: str,
         end_event: str,
-        error_event: Optional[str] = None,
+        error_event: str | None = None,
     ) -> Callable:
         """
         함수 인터셉트 데코레이터
@@ -708,8 +682,6 @@ class HookInterceptor:
             if asyncio.iscoroutinefunction(func):
                 @functools.wraps(func)
                 async def async_wrapper(*args, **kwargs):
-                    import time
-                    
                     context = HookContext(
                         event=start_event,
                         timestamp=time.time(),
@@ -744,8 +716,6 @@ class HookInterceptor:
             else:
                 @functools.wraps(func)
                 def sync_wrapper(*args, **kwargs):
-                    import time
-                    
                     context = HookContext(
                         event=start_event,
                         timestamp=time.time(),
@@ -780,7 +750,6 @@ class HookInterceptor:
         
         return decorator
 
-
 # ============================================================================
 # 내장 훅
 # ============================================================================
@@ -789,7 +758,7 @@ class BuiltinHooks:
     """기본 제공 훅"""
     
     @staticmethod
-    def logging_hook(logger: Optional[StructuredLogger] = None) -> HookFunc:
+    def logging_hook(logger: StructuredLogger | None = None) -> HookFunc:
         """로깅 훅"""
         _logger = logger or StructuredLogger("hooks.logging")
         
@@ -804,7 +773,7 @@ class BuiltinHooks:
     
     @staticmethod
     def metrics_hook(
-        metrics_collector: Optional[Any] = None,
+        metrics_collector: Any | None = None,
     ) -> HookFunc:
         """메트릭 수집 훅"""
         async def hook(context: HookContext):
@@ -816,9 +785,7 @@ class BuiltinHooks:
     @staticmethod
     def timing_hook() -> HookFunc:
         """타이밍 훅"""
-        import time
-        
-        _start_times: Dict[str, float] = {}
+        _start_times: dict[str, float] = {}
         
         async def hook(context: HookContext):
             event = context.event
@@ -836,7 +803,6 @@ class BuiltinHooks:
         
         return hook
 
-
 # ============================================================================
 # 훅 컨텍스트 매니저
 # ============================================================================
@@ -846,7 +812,7 @@ async def hooked_context(
     manager: HookManager,
     start_event: str,
     end_event: str,
-    error_event: Optional[str] = None,
+    error_event: str | None = None,
     **initial_data,
 ):
     """
@@ -857,8 +823,6 @@ async def hooked_context(
             # 작업 수행
             ctx["result"] = result
     """
-    import time
-    
     context = HookContext(
         event=start_event,
         timestamp=time.time(),

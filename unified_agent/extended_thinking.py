@@ -53,18 +53,12 @@ from enum import Enum
 from typing import (
     Any,
     Callable,
-    Dict,
     Generator,
     Generic,
-    List,
-    Optional,
-    Set,
-    Tuple,
     TypeVar,
 )
 
 from .utils import StructuredLogger
-
 
 __all__ = [
     # 설정
@@ -84,7 +78,6 @@ __all__ = [
     "ThinkingStore",
 ]
 
-
 # ============================================================================
 # 설정 및 타입
 # ============================================================================
@@ -95,7 +88,6 @@ class ThinkingMode(str, Enum):
     BRANCHING = "branching"       # 분기 사고
     ITERATIVE = "iterative"       # 반복 사고
     PARALLEL = "parallel"         # 병렬 사고
-
 
 class ThinkingStepType(str, Enum):
     """사고 단계 유형"""
@@ -109,8 +101,7 @@ class ThinkingStepType(str, Enum):
     REFLECTION = "reflection"     # 반성
     CORRECTION = "correction"     # 수정
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ThinkingConfig:
     """
     Extended Thinking 설정
@@ -130,12 +121,11 @@ class ThinkingConfig:
     record_timestamps: bool = True
     record_token_usage: bool = True
 
-
 # ============================================================================
 # Thinking Step - 사고 단계
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ThinkingStep:
     """
     사고 단계
@@ -146,7 +136,7 @@ class ThinkingStep:
     step_type: ThinkingStepType
     title: str
     content: str
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     depth: int = 0
     
     # 메타데이터
@@ -156,13 +146,13 @@ class ThinkingStep:
     confidence: float = 1.0
     
     # 연결
-    children: List[str] = field(default_factory=list)
-    references: List[str] = field(default_factory=list)
+    children: list[str] = field(default_factory=list)
+    references: list[str] = field(default_factory=list)
     
     # 추가 정보
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "step_type": self.step_type.value,
@@ -180,12 +170,11 @@ class ThinkingStep:
     def __repr__(self) -> str:
         return f"ThinkingStep({self.step_type.value}: {self.title[:30]}...)"
 
-
 # ============================================================================
 # Thinking Chain - 사고 체인
 # ============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class ThinkingChain:
     """
     사고 체인 (연결된 사고 과정)
@@ -195,16 +184,16 @@ class ThinkingChain:
     id: str
     name: str
     mode: ThinkingMode
-    steps: List[ThinkingStep] = field(default_factory=list)
+    steps: list[ThinkingStep] = field(default_factory=list)
     
     # 상태
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     status: str = "pending"  # pending, running, completed, failed
     
     # 결과
-    conclusion: Optional[str] = None
-    final_answer: Optional[str] = None
+    conclusion: str | None = None
+    final_answer: str | None = None
     
     # 메트릭
     total_steps: int = 0
@@ -212,7 +201,7 @@ class ThinkingChain:
     total_duration_ms: float = 0.0
     
     # 메타데이터
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     def add_step(self, step: ThinkingStep) -> None:
         """단계 추가"""
@@ -221,22 +210,22 @@ class ThinkingChain:
         self.total_tokens += step.tokens_used
         self.total_duration_ms += step.duration_ms
     
-    def get_step(self, step_id: str) -> Optional[ThinkingStep]:
+    def get_step(self, step_id: str) -> ThinkingStep | None:
         """ID로 단계 조회"""
         for step in self.steps:
             if step.id == step_id:
                 return step
         return None
     
-    def get_root_steps(self) -> List[ThinkingStep]:
+    def get_root_steps(self) -> list[ThinkingStep]:
         """루트 단계 (부모 없음) 조회"""
         return [s for s in self.steps if s.parent_id is None]
     
-    def get_children(self, parent_id: str) -> List[ThinkingStep]:
+    def get_children(self, parent_id: str) -> list[ThinkingStep]:
         """자식 단계 조회"""
         return [s for s in self.steps if s.parent_id == parent_id]
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -290,7 +279,6 @@ class ThinkingChain:
         }
         return icons.get(step_type, "•")
 
-
 # ============================================================================
 # Thinking Context - 사고 컨텍스트
 # ============================================================================
@@ -306,13 +294,13 @@ class ThinkingContext:
         self,
         chain: ThinkingChain,
         tracker: "ThinkingTracker",
-        parent_step: Optional[ThinkingStep] = None,
+        parent_step: ThinkingStep | None = None,
     ):
         self._chain = chain
         self._tracker = tracker
         self._parent_step = parent_step
-        self._current_step: Optional[ThinkingStep] = None
-        self._start_time: Optional[float] = None
+        self._current_step: ThinkingStep | None = None
+        self._start_time: float | None = None
     
     def add_step(
         self,
@@ -320,7 +308,7 @@ class ThinkingContext:
         content: str = "",
         step_type: ThinkingStepType = ThinkingStepType.REASONING,
         confidence: float = 1.0,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> ThinkingStep:
         """
         사고 단계 추가
@@ -421,7 +409,7 @@ class ThinkingContext:
         finally:
             pass  # 분기 종료
     
-    def set_conclusion(self, conclusion: str, answer: Optional[str] = None):
+    def set_conclusion(self, conclusion: str, answer: str | None = None):
         """결론 설정"""
         self._chain.conclusion = conclusion
         self._chain.final_answer = answer
@@ -429,7 +417,6 @@ class ThinkingContext:
     @property
     def chain(self) -> ThinkingChain:
         return self._chain
-
 
 # ============================================================================
 # Thinking Tracker - 사고 추적기
@@ -458,10 +445,10 @@ class ThinkingTracker:
         >>> print(tracker.get_chain("problem_solving").visualize())
     """
     
-    def __init__(self, config: Optional[ThinkingConfig] = None):
+    def __init__(self, config: ThinkingConfig | None = None):
         self._config = config or ThinkingConfig()
-        self._chains: Dict[str, ThinkingChain] = {}
-        self._current_chain: Optional[ThinkingChain] = None
+        self._chains: dict[str, ThinkingChain] = {}
+        self._current_chain: ThinkingChain | None = None
         self._logger = StructuredLogger("thinking_tracker")
     
     @contextmanager
@@ -524,11 +511,11 @@ class ThinkingTracker:
         with self.thinking_context(name, mode) as ctx:
             yield ctx
     
-    def get_chain(self, name: str) -> Optional[ThinkingChain]:
+    def get_chain(self, name: str) -> ThinkingChain | None:
         """이름으로 체인 조회"""
         return self._chains.get(name)
     
-    def get_all_chains(self) -> List[ThinkingChain]:
+    def get_all_chains(self) -> list[ThinkingChain]:
         """모든 체인 조회"""
         return list(self._chains.values())
     
@@ -537,12 +524,11 @@ class ThinkingTracker:
         self._chains.clear()
         self._current_chain = None
 
-
 # ============================================================================
 # Thinking Analyzer - 사고 분석기
 # ============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class ThinkingMetrics:
     """사고 메트릭"""
     total_steps: int = 0
@@ -550,7 +536,7 @@ class ThinkingMetrics:
     total_duration_ms: float = 0.0
     
     # 단계 유형별 카운트
-    step_type_counts: Dict[str, int] = field(default_factory=dict)
+    step_type_counts: dict[str, int] = field(default_factory=dict)
     
     # 깊이 분석
     max_depth: int = 0
@@ -563,7 +549,7 @@ class ThinkingMetrics:
     # 분기 분석
     branch_count: int = 0
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "total_steps": self.total_steps,
             "total_tokens": self.total_tokens,
@@ -575,7 +561,6 @@ class ThinkingMetrics:
             "min_confidence": round(self.min_confidence, 2),
             "branch_count": self.branch_count,
         }
-
 
 class ThinkingAnalyzer:
     """
@@ -612,9 +597,9 @@ class ThinkingAnalyzer:
             return metrics
         
         # 단계 유형별 카운트
-        type_counts: Dict[str, int] = {}
-        depths: List[int] = []
-        confidences: List[float] = []
+        type_counts: dict[str, int] = {}
+        depths: list[int] = []
+        confidences: list[float] = []
         
         for step in chain.steps:
             type_key = step.step_type.value
@@ -634,7 +619,7 @@ class ThinkingAnalyzer:
         
         return metrics
     
-    def assess_quality(self, chain: ThinkingChain) -> Dict[str, Any]:
+    def assess_quality(self, chain: ThinkingChain) -> dict[str, Any]:
         """
         사고 품질 평가
         
@@ -723,7 +708,7 @@ class ThinkingAnalyzer:
         self,
         chain1: ThinkingChain,
         chain2: ThinkingChain,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         두 체인 비교
         
@@ -754,7 +739,6 @@ class ThinkingAnalyzer:
             }
         }
 
-
 # ============================================================================
 # Thinking Store - 사고 저장소
 # ============================================================================
@@ -766,7 +750,7 @@ class ThinkingStore:
     사고 체인을 저장하고 조회
     """
     
-    def __init__(self, storage_path: Optional[str] = None):
+    def __init__(self, storage_path: str | None = None):
         from pathlib import Path
         self._storage_path = Path(storage_path or "~/.thinking_store").expanduser()
         self._storage_path.mkdir(parents=True, exist_ok=True)
@@ -782,7 +766,7 @@ class ThinkingStore:
         
         self._logger.debug("Chain saved", id=chain.id)
     
-    async def load(self, chain_id: str) -> Optional[ThinkingChain]:
+    async def load(self, chain_id: str) -> ThinkingChain | None:
         """체인 로드"""
         import pickle
         file_path = self._storage_path / f"{chain_id}.thinking"
@@ -793,7 +777,7 @@ class ThinkingStore:
         with open(file_path, 'rb') as f:
             return pickle.load(f)
     
-    async def list_chains(self, limit: int = 100) -> List[str]:
+    async def list_chains(self, limit: int = 100) -> list[str]:
         """체인 ID 목록"""
         files = list(self._storage_path.glob("*.thinking"))[:limit]
         return [f.stem for f in files]

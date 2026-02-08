@@ -64,18 +64,11 @@ from typing import (
     Any,
     Callable,
     Coroutine,
-    Dict,
     Generic,
-    List,
-    Optional,
-    Set,
-    Tuple,
     TypeVar,
-    Union,
 )
 
 from .utils import StructuredLogger
-
 
 __all__ = [
     # 설정
@@ -100,7 +93,6 @@ __all__ = [
     "FileWorkflowStore",
 ]
 
-
 # ============================================================================
 # 상태 및 설정
 # ============================================================================
@@ -115,7 +107,6 @@ class WorkflowStatus(str, Enum):
     CANCELLED = "cancelled"       # 취소됨
     TIMED_OUT = "timed_out"       # 타임아웃
 
-
 class ActivityStatus(str, Enum):
     """활동 상태"""
     PENDING = "pending"
@@ -124,23 +115,21 @@ class ActivityStatus(str, Enum):
     FAILED = "failed"
     RETRYING = "retrying"
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class RetryPolicy:
     """재시도 정책"""
     max_attempts: int = 3
     initial_delay_seconds: float = 1.0
     max_delay_seconds: float = 60.0
     backoff_multiplier: float = 2.0
-    retryable_exceptions: Tuple[type, ...] = (Exception,)
+    retryable_exceptions: tuple[type, ...] = (Exception,)
     
     def get_delay(self, attempt: int) -> float:
         """지수 백오프 지연 계산"""
         delay = self.initial_delay_seconds * (self.backoff_multiplier ** attempt)
         return min(delay, self.max_delay_seconds)
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ActivityConfig:
     """활동 설정"""
     name: str
@@ -148,8 +137,7 @@ class ActivityConfig:
     retry_policy: RetryPolicy = field(default_factory=RetryPolicy)
     heartbeat_timeout_seconds: float = 30.0
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class DurableConfig:
     """
     Durable Agent 설정
@@ -167,32 +155,29 @@ class DurableConfig:
     enable_versioning: bool = True
     max_concurrent_activities: int = 10
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class CheckpointData:
     """체크포인트 데이터"""
     checkpoint_id: str
     workflow_id: str
     checkpoint_name: str
-    state: Dict[str, Any]
+    state: dict[str, Any]
     created_at: datetime
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-
-@dataclass
+@dataclass(slots=True)
 class ActivityResult:
     """활동 실행 결과"""
     activity_name: str
     status: ActivityStatus
-    result: Optional[Any] = None
-    error: Optional[str] = None
+    result: Any | None = None
+    error: str | None = None
     attempts: int = 0
     duration_ms: float = 0.0
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
-
-@dataclass
+@dataclass(slots=True)
 class WorkflowState:
     """
     워크플로우 상태
@@ -202,28 +187,28 @@ class WorkflowState:
     workflow_id: str
     workflow_name: str
     status: WorkflowStatus
-    input_data: Dict[str, Any]
-    output_data: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
+    input_data: dict[str, Any]
+    output_data: dict[str, Any] | None = None
+    error: str | None = None
     
     # 실행 정보
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    last_checkpoint: Optional[str] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    last_checkpoint: str | None = None
     
     # 체크포인트 및 활동
-    checkpoints: List[CheckpointData] = field(default_factory=list)
-    activities: Dict[str, ActivityResult] = field(default_factory=dict)
+    checkpoints: list[CheckpointData] = field(default_factory=list)
+    activities: dict[str, ActivityResult] = field(default_factory=dict)
     
     # 대기 중인 이벤트/타이머
-    pending_events: Dict[str, datetime] = field(default_factory=dict)
-    pending_timers: Dict[str, datetime] = field(default_factory=dict)
+    pending_events: dict[str, datetime] = field(default_factory=dict)
+    pending_timers: dict[str, datetime] = field(default_factory=dict)
     
     # 메타데이터
     version: str = "1.0"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "workflow_id": self.workflow_id,
             "workflow_name": self.workflow_name,
@@ -239,7 +224,6 @@ class WorkflowState:
             "version": self.version,
         }
 
-
 # ============================================================================
 # 워크플로우 저장소
 # ============================================================================
@@ -253,7 +237,7 @@ class WorkflowStore(ABC):
         pass
     
     @abstractmethod
-    async def load(self, workflow_id: str) -> Optional[WorkflowState]:
+    async def load(self, workflow_id: str) -> WorkflowState | None:
         """상태 로드"""
         pass
     
@@ -265,12 +249,11 @@ class WorkflowStore(ABC):
     @abstractmethod
     async def list_workflows(
         self,
-        status: Optional[WorkflowStatus] = None,
+        status: WorkflowStatus | None = None,
         limit: int = 100
-    ) -> List[WorkflowState]:
+    ) -> list[WorkflowState]:
         """워크플로우 목록 조회"""
         pass
-
 
 class FileWorkflowStore(WorkflowStore):
     """파일 기반 워크플로우 저장소"""
@@ -293,7 +276,7 @@ class FileWorkflowStore(WorkflowStore):
         
         self._logger.debug("Workflow saved", workflow_id=state.workflow_id)
     
-    async def load(self, workflow_id: str) -> Optional[WorkflowState]:
+    async def load(self, workflow_id: str) -> WorkflowState | None:
         file_path = self._get_file_path(workflow_id)
         
         if not file_path.exists():
@@ -317,9 +300,9 @@ class FileWorkflowStore(WorkflowStore):
     
     async def list_workflows(
         self,
-        status: Optional[WorkflowStatus] = None,
+        status: WorkflowStatus | None = None,
         limit: int = 100
-    ) -> List[WorkflowState]:
+    ) -> list[WorkflowState]:
         workflows = []
         
         for file_path in list(self._storage_dir.glob("*.workflow"))[:limit * 2]:
@@ -331,7 +314,6 @@ class FileWorkflowStore(WorkflowStore):
                         break
         
         return workflows
-
 
 # ============================================================================
 # Durable Context
@@ -364,7 +346,7 @@ class DurableContext:
         self._activity_semaphore = asyncio.Semaphore(config.max_concurrent_activities)
         
         # 이벤트 큐
-        self._event_queue: Dict[str, asyncio.Queue] = {}
+        self._event_queue: dict[str, asyncio.Queue] = {}
     
     @property
     def workflow_id(self) -> str:
@@ -375,7 +357,7 @@ class DurableContext:
         """재실행 중인지 여부 (체크포인트에서 복구 중)"""
         return self._state.last_checkpoint is not None
     
-    async def checkpoint(self, name: str, state_data: Optional[Dict[str, Any]] = None):
+    async def checkpoint(self, name: str, state_data: dict[str, Any] | None = None):
         """
         체크포인트 저장
         
@@ -401,7 +383,7 @@ class DurableContext:
         self,
         activity_func: Callable[..., Coroutine],
         *args,
-        config: Optional[ActivityConfig] = None,
+        config: ActivityConfig | None = None,
         **kwargs,
     ) -> Any:
         """
@@ -512,10 +494,10 @@ class DurableContext:
     
     async def create_timer(
         self,
-        seconds: Optional[float] = None,
-        minutes: Optional[float] = None,
-        hours: Optional[float] = None,
-        until: Optional[datetime] = None,
+        seconds: float | None = None,
+        minutes: float | None = None,
+        hours: float | None = None,
+        until: datetime | None = None,
     ):
         """
         지속적 타이머 생성
@@ -553,7 +535,7 @@ class DurableContext:
     async def wait_for_event(
         self,
         event_name: str,
-        timeout_seconds: Optional[float] = None,
+        timeout_seconds: float | None = None,
     ) -> Any:
         """
         외부 이벤트 대기
@@ -607,8 +589,8 @@ class DurableContext:
     async def call_sub_workflow(
         self,
         workflow_class: type,
-        input_data: Dict[str, Any],
-        workflow_id: Optional[str] = None,
+        input_data: dict[str, Any],
+        workflow_id: str | None = None,
     ) -> Any:
         """
         서브 워크플로우 호출
@@ -635,7 +617,6 @@ class DurableContext:
     def get_state(self) -> WorkflowState:
         """현재 상태 조회"""
         return self._state
-
 
 # ============================================================================
 # Durable Agent (추상 클래스)
@@ -666,7 +647,7 @@ class DurableAgent(ABC):
         return getattr(self, '_version', '1.0')
     
     @abstractmethod
-    async def run(self, ctx: DurableContext, input_data: Dict[str, Any]) -> Any:
+    async def run(self, ctx: DurableContext, input_data: dict[str, Any]) -> Any:
         """
         워크플로우 실행
         
@@ -679,7 +660,7 @@ class DurableAgent(ABC):
         """
         pass
     
-    async def on_error(self, ctx: DurableContext, error: Exception) -> Optional[Any]:
+    async def on_error(self, ctx: DurableContext, error: Exception) -> Any | None:
         """
         에러 핸들러 (선택적 오버라이드)
         
@@ -695,7 +676,6 @@ class DurableAgent(ABC):
     async def on_complete(self, ctx: DurableContext, result: Any):
         """완료 핸들러 (선택적 오버라이드)"""
         pass
-
 
 # ============================================================================
 # Durable Orchestrator
@@ -725,19 +705,19 @@ class DurableOrchestrator:
     
     def __init__(
         self,
-        config: Optional[DurableConfig] = None,
-        store: Optional[WorkflowStore] = None,
+        config: DurableConfig | None = None,
+        store: WorkflowStore | None = None,
     ):
         self.config = config or DurableConfig()
         self._store = store or FileWorkflowStore(self.config.storage_path)
         self._logger = StructuredLogger("durable_orchestrator")
-        self._active_contexts: Dict[str, DurableContext] = {}
+        self._active_contexts: dict[str, DurableContext] = {}
     
     async def start_workflow(
         self,
         workflow_class: type,
-        input_data: Dict[str, Any],
-        workflow_id: Optional[str] = None,
+        input_data: dict[str, Any],
+        workflow_id: str | None = None,
     ) -> Any:
         """
         워크플로우 시작
@@ -890,25 +870,24 @@ class DurableOrchestrator:
         self._logger.info("Workflow cancelled", workflow_id=workflow_id)
         return True
     
-    async def get_status(self, workflow_id: str) -> Optional[WorkflowState]:
+    async def get_status(self, workflow_id: str) -> WorkflowState | None:
         """워크플로우 상태 조회"""
         return await self._store.load(workflow_id)
     
     async def list_workflows(
         self,
-        status: Optional[WorkflowStatus] = None,
+        status: WorkflowStatus | None = None,
         limit: int = 100
-    ) -> List[WorkflowState]:
+    ) -> list[WorkflowState]:
         """워크플로우 목록 조회"""
         return await self._store.list_workflows(status, limit)
-
 
 # ============================================================================
 # 데코레이터
 # ============================================================================
 
 def activity(
-    name: Optional[str] = None,
+    name: str | None = None,
     timeout_seconds: float = 300.0,
     retry_count: int = 3,
     retry_delay: float = 1.0,
@@ -934,7 +913,6 @@ def activity(
         func._activity_config = config
         return func
     return decorator
-
 
 def workflow(version: str = "1.0"):
     """

@@ -43,13 +43,16 @@ Unified Agent Framework - Responses API 모듈 (Responses API Module)
     - OpenAI Responses API: https://platform.openai.com/docs/guides/responses
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
+import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 __all__ = [
     "ResponseStatus",
@@ -63,7 +66,6 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-
 # ============================================================================
 # Enums
 # ============================================================================
@@ -76,7 +78,6 @@ class ResponseStatus(Enum):
     CANCELLED = "cancelled"
     QUEUED = "queued"
 
-
 class ToolType(Enum):
     """Responses API 내장 도구 타입"""
     WEB_SEARCH = "web_search"
@@ -84,7 +85,6 @@ class ToolType(Enum):
     FILE_SEARCH = "file_search"
     FUNCTION = "function"
     MCP = "mcp"
-
 
 # ============================================================================
 # Data Models
@@ -104,12 +104,11 @@ class ResponseConfig:
     """
     model: str = "gpt-5.2"
     max_tokens: int = 4096
-    temperature: Optional[float] = None
+    temperature: float | None = None
     timeout: int = 120
     pool_size: int = 10
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ResponseObject:
     """
     Responses API 응답 객체
@@ -127,10 +126,9 @@ class ResponseObject:
     status: ResponseStatus = ResponseStatus.COMPLETED
     output: str = ""
     model: str = ""
-    usage: Dict[str, int] = field(default_factory=dict)
+    usage: dict[str, int] = field(default_factory=dict)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    tools_used: List[str] = field(default_factory=list)
-
+    tools_used: list[str] = field(default_factory=list)
 
 # ============================================================================
 # ConversationState — 대화 상태 서버사이드 관리
@@ -155,17 +153,17 @@ class ConversationState:
         >>> print(state.turn_count)        # 대화 턴 수
     """
 
-    def __init__(self, session_id: Optional[str] = None):
+    def __init__(self, session_id: str | None = None):
         self.session_id = session_id or f"session_{uuid.uuid4().hex[:12]}"
-        self._responses: List[ResponseObject] = []
-        self._metadata: Dict[str, Any] = {}
+        self._responses: list[ResponseObject] = []
+        self._metadata: dict[str, Any] = {}
         self._created_at = datetime.now(timezone.utc)
 
     def __repr__(self) -> str:
         return f"ConversationState(session={self.session_id!r}, turns={self.turn_count})"
 
     @property
-    def last_response_id(self) -> Optional[str]:
+    def last_response_id(self) -> str | None:
         """가장 최근 응답 ID 반환"""
         return self._responses[-1].id if self._responses else None
 
@@ -186,7 +184,7 @@ class ConversationState:
         self._responses.append(response)
         logger.debug(f"[ConversationState] 응답 추가: {response.id} (턴 #{self.turn_count})")
 
-    def get_history(self, last_n: Optional[int] = None) -> List[ResponseObject]:
+    def get_history(self, last_n: int | None = None) -> list[ResponseObject]:
         """대화 히스토리 조회"""
         if last_n:
             return self._responses[-last_n:]
@@ -197,7 +195,6 @@ class ConversationState:
         self._responses.clear()
         self._metadata.clear()
         logger.info(f"[ConversationState] 세션 초기화: {self.session_id}")
-
 
 # ============================================================================
 # BackgroundMode — 장시간 태스크 백그라운드 실행
@@ -223,8 +220,8 @@ class BackgroundMode:
     """
 
     def __init__(self):
-        self._tasks: Dict[str, Dict[str, Any]] = {}
-        self._results: Dict[str, ResponseObject] = {}
+        self._tasks: dict[str, dict[str, Any]] = {}
+        self._results: dict[str, ResponseObject] = {}
 
     def __repr__(self) -> str:
         return f"BackgroundMode(tasks={len(self._tasks)})"
@@ -278,7 +275,7 @@ class BackgroundMode:
         task_id: str,
         timeout: float = 300.0,
         poll_interval: float = 1.0
-    ) -> Optional[ResponseObject]:
+    ) -> ResponseObject | None:
         """
         태스크 완료 대기
 
@@ -290,7 +287,6 @@ class BackgroundMode:
         Returns:
             완료된 응답 객체 (타임아웃 시 None)
         """
-        import time
         start = time.monotonic()
         while time.monotonic() - start < timeout:
             status = await self.poll(task_id)
@@ -302,7 +298,6 @@ class BackgroundMode:
             await asyncio.sleep(poll_interval)
         logger.warning(f"[BackgroundMode] 태스크 타임아웃: {task_id}")
         return None
-
 
 # ============================================================================
 # ResponsesClient — Responses API 클라이언트
@@ -335,7 +330,7 @@ class ResponsesClient:
         ... )
     """
 
-    def __init__(self, config: Optional[ResponseConfig] = None):
+    def __init__(self, config: ResponseConfig | None = None):
         self.config = config or ResponseConfig()
         self._background = BackgroundMode()
         self._state = ConversationState()
@@ -347,11 +342,11 @@ class ResponsesClient:
     async def create(
         self,
         input: str,
-        model: Optional[str] = None,
-        tools: Optional[List[Dict[str, Any]]] = None,
-        previous_response_id: Optional[str] = None,
+        model: str | None = None,
+        tools: list[dict[str, Any]] | None = None,
+        previous_response_id: str | None = None,
         background: bool = False,
-        instructions: Optional[str] = None,
+        instructions: str | None = None,
         **kwargs: Any
     ) -> ResponseObject:
         """

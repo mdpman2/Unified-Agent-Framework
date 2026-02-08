@@ -29,13 +29,14 @@ Unified Agent Framework - Google ADK 브릿지 모듈
     - Google ADK: https://github.com/google/adk-python
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 __all__ = ["GoogleADKBridge"]
 
 logger = logging.getLogger(__name__)
-
 
 class GoogleADKBridge:
     """
@@ -56,7 +57,7 @@ class GoogleADKBridge:
 
     def __init__(self, model: str = "gemini-2.5-flash"):
         self._model = model
-        self._agents: Dict[str, Dict] = {}
+        self._agents: dict[str, dict] = {}
         logger.info(f"[GoogleADKBridge] 초기화 (model={model})")
 
     def __repr__(self) -> str:
@@ -65,10 +66,10 @@ class GoogleADKBridge:
     def create_workflow_agent(
         self,
         type: str = "sequential",
-        sub_agents: Optional[List[str]] = None,
-        name: Optional[str] = None,
+        sub_agents: list[str] | None = None,
+        name: str | None = None,
         **kwargs: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Workflow Agent 생성"""
         agent_name = name or f"adk_{type}_agent"
         agent = {
@@ -83,12 +84,12 @@ class GoogleADKBridge:
 
     async def run(
         self,
-        agent: Optional[Dict[str, Any]] = None,
-        input: Optional[str] = None,
+        agent: dict[str, Any] | None = None,
+        input: str | None = None,
         *,
-        task: Optional[str] = None,
+        task: str | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """에이전트 실행 (UniversalAgentBridge 호환)
 
         Args:

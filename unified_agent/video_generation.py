@@ -35,12 +35,13 @@ Unified Agent Framework - 비디오 생성 모듈 (Video Generation Module)
     - Sora 2: https://openai.com/sora
 """
 
+from __future__ import annotations
+
 import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
 
 __all__ = [
     "VideoModel",
@@ -53,12 +54,10 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-
 class VideoModel(Enum):
     """지원 비디오 모델"""
     SORA_2 = "sora-2"
     SORA_2_PRO = "sora-2-pro"
-
 
 class VideoStatus(Enum):
     """비디오 생성 상태"""
@@ -66,7 +65,6 @@ class VideoStatus(Enum):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
-
 
 @dataclass(frozen=True, slots=True)
 class VideoConfig:
@@ -86,10 +84,9 @@ class VideoConfig:
     resolution: str = "1080p"
     fps: int = 24
     with_audio: bool = False
-    style: Optional[str] = None
+    style: str | None = None
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class VideoResult:
     """
     비디오 생성 결과
@@ -109,7 +106,6 @@ class VideoResult:
     model: str = ""
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
-
 class Sora2Client:
     """
     Sora 2/2 Pro API 클라이언트
@@ -123,7 +119,7 @@ class Sora2Client:
     Sora 2 Pro는 오디오까지 동시 생성합니다.
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         self._api_key = api_key
         logger.info("[Sora2Client] 초기화")
 
@@ -133,7 +129,7 @@ class Sora2Client:
     async def generate_from_text(
         self,
         prompt: str,
-        config: Optional[VideoConfig] = None
+        config: VideoConfig | None = None
     ) -> VideoResult:
         """텍스트→비디오 생성"""
         cfg = config or VideoConfig()
@@ -151,7 +147,7 @@ class Sora2Client:
         self,
         image_url: str,
         prompt: str,
-        config: Optional[VideoConfig] = None
+        config: VideoConfig | None = None
     ) -> VideoResult:
         """이미지→비디오 생성"""
         cfg = config or VideoConfig()
@@ -163,7 +159,6 @@ class Sora2Client:
             duration=cfg.duration,
             model=cfg.model,
         )
-
 
 class VideoGenerator:
     """
@@ -191,8 +186,8 @@ class VideoGenerator:
     async def generate(
         self,
         prompt: str,
-        config: Optional[VideoConfig] = None,
-        source_image: Optional[str] = None
+        config: VideoConfig | None = None,
+        source_image: str | None = None
     ) -> VideoResult:
         """
         비디오 생성

@@ -30,13 +30,14 @@ Unified Agent Framework - SK Agent Framework 브릿지 모듈
     - Semantic Kernel: https://github.com/microsoft/semantic-kernel
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 __all__ = ["SemanticKernelAgentBridge"]
 
 logger = logging.getLogger(__name__)
-
 
 class SemanticKernelAgentBridge:
     """
@@ -66,7 +67,7 @@ class SemanticKernelAgentBridge:
     }
 
     def __init__(self):
-        self._orchestrations: Dict[str, Dict] = {}
+        self._orchestrations: dict[str, dict] = {}
         logger.info("[SemanticKernelAgentBridge] 초기화")
 
     def __repr__(self) -> str:
@@ -75,11 +76,11 @@ class SemanticKernelAgentBridge:
     def create_orchestration(
         self,
         pattern: str = "sequential",
-        agents: Optional[List[str]] = None,
+        agents: list[str] | None = None,
         human_in_the_loop: bool = False,
-        name: Optional[str] = None,
+        name: str | None = None,
         **kwargs: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Orchestration 생성"""
         if pattern not in self.PATTERNS:
             raise ValueError(f"지원되지 않는 패턴: {pattern}. 가능한 값: {self.PATTERNS}")
@@ -99,10 +100,10 @@ class SemanticKernelAgentBridge:
     def create_agent(
         self,
         type: str = "ChatCompletionAgent",
-        plugins: Optional[List[str]] = None,
-        name: Optional[str] = None,
+        plugins: list[str] | None = None,
+        name: str | None = None,
         **kwargs: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """SK Agent 생성"""
         return {
             "name": name or f"sk_agent_{type}",
@@ -113,12 +114,12 @@ class SemanticKernelAgentBridge:
 
     async def run(
         self,
-        orchestration: Optional[Dict[str, Any]] = None,
-        input: Optional[str] = None,
+        orchestration: dict[str, Any] | None = None,
+        input: str | None = None,
         *,
-        task: Optional[str] = None,
+        task: str | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Orchestration 실행 (UniversalAgentBridge 호환)
 
         Args:

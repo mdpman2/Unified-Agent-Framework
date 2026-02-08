@@ -65,17 +65,12 @@ from typing import (
     Any,
     Callable,
     Coroutine,
-    Dict,
     Generic,
-    List,
-    Optional,
-    Set,
-    Tuple,
+    Protocol,
     TypeVar,
 )
 
 from .utils import StructuredLogger, CircuitBreaker
-
 
 __all__ = [
     # 설정
@@ -98,7 +93,6 @@ __all__ = [
     "HealthStatus",
 ]
 
-
 # ============================================================================
 # 설정 및 상태
 # ============================================================================
@@ -111,14 +105,12 @@ class ConnectionState(str, Enum):
     ERROR = "error"
     RECONNECTING = "reconnecting"
 
-
 class LoadBalanceStrategy(str, Enum):
     """로드 밸런싱 전략"""
     ROUND_ROBIN = "round_robin"     # 순환
     RANDOM = "random"               # 랜덤
     LEAST_CONN = "least_conn"       # 최소 연결
     CAPABILITY = "capability"       # 능력 기반 (기본)
-
 
 class HealthStatus(str, Enum):
     """헬스 상태"""
@@ -127,8 +119,7 @@ class HealthStatus(str, Enum):
     UNHEALTHY = "unhealthy"
     UNKNOWN = "unknown"
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class McpServerConfig:
     """
     MCP 서버 설정
@@ -146,20 +137,19 @@ class McpServerConfig:
     """
     name: str
     uri: str
-    capabilities: List[str] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
     priority: int = 1
     max_connections: int = 5
     timeout_seconds: float = 30.0
     retry_count: int = 3
     healthcheck_interval: float = 30.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     # 인증 (선택적)
-    auth_token: Optional[str] = None
+    auth_token: str | None = field(default=None, repr=False)
     auth_type: str = "bearer"  # bearer, basic, api_key
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class McpWorkbenchConfig:
     """
     MCP Workbench 설정
@@ -178,23 +168,22 @@ class McpWorkbenchConfig:
     default_timeout: float = 30.0
     healthcheck_interval: float = 30.0
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class McpServerInfo:
     """MCP 서버 정보"""
     name: str
     uri: str
     state: ConnectionState
     health: HealthStatus
-    capabilities: List[str]
+    capabilities: list[str]
     active_connections: int
     total_calls: int = 0
     failed_calls: int = 0
     avg_latency_ms: float = 0.0
-    last_healthcheck: Optional[datetime] = None
-    last_error: Optional[str] = None
+    last_healthcheck: datetime | None = None
+    last_error: str | None = None
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "uri": self.uri,
@@ -207,7 +196,6 @@ class McpServerInfo:
             "avg_latency_ms": round(self.avg_latency_ms, 2),
             "success_rate": f"{(1 - self.failed_calls / max(1, self.total_calls)) * 100:.1f}%",
         }
-
 
 # ============================================================================
 # MCP 서버 연결
@@ -233,9 +221,9 @@ class McpServerConnection:
         # 통계
         self._total_calls = 0
         self._failed_calls = 0
-        self._latencies: List[float] = []
-        self._last_error: Optional[str] = None
-        self._last_healthcheck: Optional[datetime] = None
+        self._latencies: list[float] = []
+        self._last_error: str | None = None
+        self._last_healthcheck: datetime | None = None
         
         # 회로 차단기
         self._circuit_breaker = CircuitBreaker(
@@ -247,10 +235,10 @@ class McpServerConnection:
         self._lock = asyncio.Lock()
         
         # 실제 연결 객체 (구현에 따라 다름)
-        self._connection: Optional[Any] = None
+        self._connection: Any | None = None
         
         # 제공하는 도구 목록 (연결 후 조회)
-        self._tools: Dict[str, Dict[str, Any]] = {}
+        self._tools: dict[str, dict[str, Any]] = {}
     
     @property
     def state(self) -> ConnectionState:
@@ -331,8 +319,8 @@ class McpServerConnection:
     async def call_tool(
         self,
         tool_name: str,
-        arguments: Dict[str, Any],
-        timeout: Optional[float] = None,
+        arguments: dict[str, Any],
+        timeout: float | None = None,
     ) -> Any:
         """
         도구 호출
@@ -378,7 +366,7 @@ class McpServerConnection:
     async def _execute_tool(
         self,
         tool_name: str,
-        arguments: Dict[str, Any],
+        arguments: dict[str, Any],
         timeout: float,
     ) -> Any:
         """실제 도구 실행 (프로토콜별 구현)"""
@@ -447,7 +435,6 @@ class McpServerConnection:
             self._last_error = str(e)
             return self._health
 
-
 # ============================================================================
 # MCP Router - 라우팅
 # ============================================================================
@@ -459,11 +446,10 @@ class McpRouter(ABC):
     def select_server(
         self,
         tool_name: str,
-        servers: List[McpServerConnection],
-    ) -> Optional[McpServerConnection]:
+        servers: list[McpServerConnection],
+    ) -> McpServerConnection | None:
         """서버 선택"""
         pass
-
 
 class CapabilityRouter(McpRouter):
     """능력 기반 라우터"""
@@ -471,8 +457,8 @@ class CapabilityRouter(McpRouter):
     def select_server(
         self,
         tool_name: str,
-        servers: List[McpServerConnection],
-    ) -> Optional[McpServerConnection]:
+        servers: list[McpServerConnection],
+    ) -> McpServerConnection | None:
         # 능력이 있는 서버 필터링
         capable = [s for s in servers if s.has_capability(tool_name)]
         
@@ -491,7 +477,6 @@ class CapabilityRouter(McpRouter):
             key=lambda s: (-s.config.priority, s.active_connections)
         )
 
-
 class RoundRobinRouter(McpRouter):
     """라운드 로빈 라우터"""
     
@@ -501,8 +486,8 @@ class RoundRobinRouter(McpRouter):
     def select_server(
         self,
         tool_name: str,
-        servers: List[McpServerConnection],
-    ) -> Optional[McpServerConnection]:
+        servers: list[McpServerConnection],
+    ) -> McpServerConnection | None:
         capable = [
             s for s in servers 
             if s.has_capability(tool_name) and s.state == ConnectionState.CONNECTED
@@ -513,7 +498,6 @@ class RoundRobinRouter(McpRouter):
         
         self._index = (self._index + 1) % len(capable)
         return capable[self._index]
-
 
 # ============================================================================
 # Health Checker - 헬스체크
@@ -528,13 +512,13 @@ class HealthChecker:
     
     def __init__(
         self,
-        servers: Dict[str, McpServerConnection],
+        servers: dict[str, McpServerConnection],
         interval: float = 30.0,
     ):
         self._servers = servers
         self._interval = interval
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._logger = StructuredLogger("mcp_healthcheck")
     
     async def start(self):
@@ -564,7 +548,7 @@ class HealthChecker:
             except Exception as e:
                 self._logger.error("Healthcheck error", error=str(e))
     
-    async def check_all(self) -> Dict[str, HealthStatus]:
+    async def check_all(self) -> dict[str, HealthStatus]:
         """모든 서버 헬스체크"""
         results = {}
         
@@ -582,13 +566,12 @@ class HealthChecker:
         
         return results
     
-    def get_healthy_servers(self) -> List[str]:
+    def get_healthy_servers(self) -> list[str]:
         """건강한 서버 목록"""
         return [
             name for name, server in self._servers.items()
             if server.health == HealthStatus.HEALTHY
         ]
-
 
 # ============================================================================
 # MCP Tool Registry - 도구 레지스트리
@@ -602,15 +585,15 @@ class McpToolRegistry:
     """
     
     def __init__(self):
-        self._tools: Dict[str, List[str]] = {}  # tool_name -> [server_names]
-        self._schemas: Dict[str, Dict[str, Any]] = {}
+        self._tools: dict[str, list[str]] = {}  # tool_name -> [server_names]
+        self._schemas: dict[str, dict[str, Any]] = {}
         self._logger = StructuredLogger("mcp_tool_registry")
     
     def register_tool(
         self,
         tool_name: str,
         server_name: str,
-        schema: Optional[Dict[str, Any]] = None,
+        schema: dict[str, Any] | None = None,
     ):
         """도구 등록"""
         if tool_name not in self._tools:
@@ -629,19 +612,19 @@ class McpToolRegistry:
                 s for s in self._tools[tool_name] if s != server_name
             ]
     
-    def get_servers_for_tool(self, tool_name: str) -> List[str]:
+    def get_servers_for_tool(self, tool_name: str) -> list[str]:
         """도구를 제공하는 서버 목록"""
         return self._tools.get(tool_name, [])
     
-    def get_all_tools(self) -> List[str]:
+    def get_all_tools(self) -> list[str]:
         """모든 도구 목록"""
         return list(self._tools.keys())
     
     def get_tool_schema(
         self,
         tool_name: str,
-        server_name: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+        server_name: str | None = None,
+    ) -> dict[str, Any] | None:
         """도구 스키마 조회"""
         if server_name:
             return self._schemas.get(f"{server_name}.{tool_name}")
@@ -652,7 +635,6 @@ class McpToolRegistry:
             return self._schemas.get(f"{servers[0]}.{tool_name}")
         
         return None
-
 
 # ============================================================================
 # MCP Workbench - 메인 클래스
@@ -684,10 +666,10 @@ class McpWorkbench:
         >>> status = workbench.get_status()
     """
     
-    def __init__(self, config: Optional[McpWorkbenchConfig] = None):
+    def __init__(self, config: McpWorkbenchConfig | None = None):
         self.config = config or McpWorkbenchConfig()
         
-        self._servers: Dict[str, McpServerConnection] = {}
+        self._servers: dict[str, McpServerConnection] = {}
         self._tool_registry = McpToolRegistry()
         self._logger = StructuredLogger("mcp_workbench")
         
@@ -698,7 +680,7 @@ class McpWorkbench:
             self._router = CapabilityRouter()
         
         # 헬스체커
-        self._health_checker: Optional[HealthChecker] = None
+        self._health_checker: HealthChecker | None = None
     
     def register_server(self, server_config: McpServerConfig) -> McpServerConnection:
         """
@@ -740,7 +722,7 @@ class McpWorkbench:
         
         return False
     
-    async def connect_all(self) -> Dict[str, bool]:
+    async def connect_all(self) -> dict[str, bool]:
         """모든 서버 연결"""
         results = {}
         
@@ -788,8 +770,8 @@ class McpWorkbench:
     async def call_tool(
         self,
         tool_name: str,
-        server_name: Optional[str] = None,
-        timeout: Optional[float] = None,
+        server_name: str | None = None,
+        timeout: float | None = None,
         **arguments,
     ) -> Any:
         """
@@ -837,7 +819,7 @@ class McpWorkbench:
             timeout or self.config.default_timeout
         )
     
-    def get_all_tools(self) -> List[Dict[str, Any]]:
+    def get_all_tools(self) -> list[dict[str, Any]]:
         """모든 사용 가능한 도구 목록"""
         tools = []
         
@@ -853,12 +835,12 @@ class McpWorkbench:
         
         return tools
     
-    def get_server_info(self, name: str) -> Optional[McpServerInfo]:
+    def get_server_info(self, name: str) -> McpServerInfo | None:
         """서버 정보 조회"""
         server = self._servers.get(name)
         return server.get_info() if server else None
     
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """전체 상태 조회"""
         servers = {
             name: server.get_info().to_dict()
@@ -878,7 +860,7 @@ class McpWorkbench:
             "servers": servers,
         }
     
-    def get_tool_schema_for_llm(self) -> List[Dict[str, Any]]:
+    def get_tool_schema_for_llm(self) -> list[dict[str, Any]]:
         """LLM Function Calling용 스키마 생성"""
         schemas = []
         

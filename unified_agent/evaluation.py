@@ -60,6 +60,8 @@ Unified Agent Framework - 평가 모듈 (Evaluation Module)
     - Anthropic Evaluator-Optimizer: https://www.anthropic.com/research
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -69,8 +71,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import (
-    Any, Callable, Dict, Generic, List, Optional, 
-    Protocol, Tuple, TypeVar, Union
+    Any,
+    Callable,
+    Generic,
+    Protocol,
+    TypeVar,
 )
 
 __all__ = [
@@ -102,9 +107,7 @@ __all__ = [
     "Optimizer",
 ]
 
-
 T = TypeVar("T")
-
 
 # ============================================================================
 # Enums
@@ -116,7 +119,6 @@ class PDCAPhase(str, Enum):
     DO = "do"             # 실행: 계획 실행
     CHECK = "check"       # 점검: 결과 평가
     ACT = "act"           # 조치: 개선 적용
-
 
 class EvaluationDimension(str, Enum):
     """평가 차원"""
@@ -130,7 +132,6 @@ class EvaluationDimension(str, Enum):
     EFFICIENCY = "efficiency"                 # 효율성
     SAFETY = "safety"                         # 안전성
 
-
 class QualityLevel(str, Enum):
     """품질 수준"""
     EXCELLENT = "excellent"    # 90%+
@@ -139,7 +140,6 @@ class QualityLevel(str, Enum):
     POOR = "poor"              # 30-49%
     FAIL = "fail"              # 0-29%
 
-
 class GapSeverity(str, Enum):
     """갭 심각도"""
     CRITICAL = "critical"      # 치명적: 즉시 수정 필요
@@ -147,28 +147,25 @@ class GapSeverity(str, Enum):
     MINOR = "minor"            # 경미: 개선 권장
     TRIVIAL = "trivial"        # 사소: 선택적 개선
 
-
 # ============================================================================
 # Protocols
 # ============================================================================
 
 class Evaluator(Protocol):
     """평가자 프로토콜"""
-    async def evaluate(self, output: str, context: Dict[str, Any]) -> "EvaluationResult":
+    async def evaluate(self, output: str, context: dict[str, Any]) -> "EvaluationResult":
         ...
-
 
 class Optimizer(Protocol):
     """최적화자 프로토콜"""
     async def optimize(self, output: str, feedback: str) -> str:
         ...
 
-
 # ============================================================================
 # Data Classes - Config
 # ============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class EvaluationConfig:
     """
     평가 설정
@@ -180,12 +177,12 @@ class EvaluationConfig:
         model: 평가에 사용할 LLM 모델
         detailed_feedback: 상세 피드백 생성 여부
     """
-    dimensions: List[EvaluationDimension] = field(default_factory=lambda: [
+    dimensions: list[EvaluationDimension] = field(default_factory=lambda: [
         EvaluationDimension.TASK_COMPLETION,
         EvaluationDimension.FACTUAL_ACCURACY,
         EvaluationDimension.RESPONSE_QUALITY,
     ])
-    weights: Dict[EvaluationDimension, float] = field(default_factory=dict)
+    weights: dict[EvaluationDimension, float] = field(default_factory=dict)
     threshold: float = 0.7  # 70% 기본 임계값
     model: str = "gpt-5.2"
     detailed_feedback: bool = True
@@ -195,8 +192,7 @@ class EvaluationConfig:
         if not self.weights:
             self.weights = {dim: 1.0 / len(self.dimensions) for dim in self.dimensions}
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class JudgeConfig:
     """
     LLM Judge 설정
@@ -209,14 +205,13 @@ class JudgeConfig:
         multi_judge: 다중 판사 앙상블 사용
     """
     judge_model: str = "gpt-5.2"
-    reference_model: Optional[str] = None
-    rubric: Optional[str] = None
+    reference_model: str | None = None
+    rubric: str | None = None
     temperature: float = 0.1
     multi_judge: bool = False
     num_judges: int = 3
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class IterationConfig:
     """
     Check-Act Iteration 설정 (bkit 스타일)
@@ -234,12 +229,11 @@ class IterationConfig:
     early_stop: bool = True
     verbose: bool = True
 
-
 # ============================================================================
 # Data Classes - Results
 # ============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class EvaluationResult:
     """
     평가 결과
@@ -254,12 +248,12 @@ class EvaluationResult:
         metadata: 추가 메타데이터
     """
     overall_score: float
-    dimension_scores: Dict[EvaluationDimension, float] = field(default_factory=dict)
+    dimension_scores: dict[EvaluationDimension, float] = field(default_factory=dict)
     quality_level: QualityLevel = QualityLevel.ACCEPTABLE
     passed: bool = False
     feedback: str = ""
-    suggestions: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    suggestions: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     def __post_init__(self):
@@ -275,8 +269,7 @@ class EvaluationResult:
         else:
             self.quality_level = QualityLevel.FAIL
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class JudgeVerdict:
     """
     LLM Judge 판결
@@ -290,13 +283,12 @@ class JudgeVerdict:
     """
     score: float
     reasoning: str = ""
-    strengths: List[str] = field(default_factory=list)
-    weaknesses: List[str] = field(default_factory=list)
-    comparison: Optional[str] = None  # "A > B", "A < B", "A = B"
+    strengths: list[str] = field(default_factory=list)
+    weaknesses: list[str] = field(default_factory=list)
+    comparison: str | None = None  # "A > B", "A < B", "A = B"
     confidence: float = 1.0
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class GapAnalysisResult:
     """
     갭 분석 결과 (bkit 스타일)
@@ -309,14 +301,13 @@ class GapAnalysisResult:
         severity_summary: 심각도별 요약
     """
     match_rate: float
-    gaps: List[Dict[str, Any]] = field(default_factory=list)
-    missing_features: List[str] = field(default_factory=list)
-    extra_features: List[str] = field(default_factory=list)
-    severity_summary: Dict[GapSeverity, int] = field(default_factory=dict)
-    recommendations: List[str] = field(default_factory=list)
+    gaps: list[dict[str, Any]] = field(default_factory=list)
+    missing_features: list[str] = field(default_factory=list)
+    extra_features: list[str] = field(default_factory=list)
+    severity_summary: dict[GapSeverity, int] = field(default_factory=dict)
+    recommendations: list[str] = field(default_factory=list)
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class IterationResult:
     """
     Check-Act Iteration 결과
@@ -330,14 +321,13 @@ class IterationResult:
     """
     final_output: str
     iterations: int
-    score_history: List[float] = field(default_factory=list)
-    feedback_history: List[str] = field(default_factory=list)
+    score_history: list[float] = field(default_factory=list)
+    feedback_history: list[str] = field(default_factory=list)
     converged: bool = False
     improvement: float = 0.0
     final_score: float = 0.0
 
-
-@dataclass
+@dataclass(slots=True)
 class BenchmarkResult:
     """
     벤치마크 결과
@@ -357,17 +347,16 @@ class BenchmarkResult:
     total_tests: int
     passed: int = 0
     failed: int = 0
-    scores: List[float] = field(default_factory=list)
+    scores: list[float] = field(default_factory=list)
     avg_score: float = 0.0
     percentile: float = 0.0
-    details: List[Dict[str, Any]] = field(default_factory=list)
+    details: list[dict[str, Any]] = field(default_factory=list)
     
     def __post_init__(self):
         if self.scores:
             self.avg_score = statistics.mean(self.scores)
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class QualityReport:
     """
     품질 리포트
@@ -381,11 +370,10 @@ class QualityReport:
     """
     summary: str
     overall_score: float
-    dimension_breakdown: Dict[str, float] = field(default_factory=dict)
-    trends: List[Dict[str, Any]] = field(default_factory=list)
-    recommendations: List[str] = field(default_factory=list)
+    dimension_breakdown: dict[str, float] = field(default_factory=dict)
+    trends: list[dict[str, Any]] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
     generated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-
 
 # ============================================================================
 # PDCA Evaluator
@@ -424,8 +412,8 @@ class PDCAEvaluator:
     
     def __init__(
         self,
-        config: Optional[EvaluationConfig] = None,
-        llm_client: Optional[Any] = None
+        config: EvaluationConfig | None = None,
+        llm_client: Any | None = None
     ):
         self.config = config or EvaluationConfig()
         self.llm_client = llm_client
@@ -436,8 +424,8 @@ class PDCAEvaluator:
         self,
         plan: str,
         implementation: str,
-        expected_outcome: Optional[str] = None,
-        actual_outcome: Optional[str] = None
+        expected_outcome: str | None = None,
+        actual_outcome: str | None = None
     ) -> GapAnalysisResult:
         """
         전체 PDCA 사이클 평가
@@ -602,7 +590,6 @@ class PDCAEvaluator:
         
         return 0.5
 
-
 # ============================================================================
 # LLM Judge
 # ============================================================================
@@ -653,8 +640,8 @@ class LLMJudge:
     
     def __init__(
         self,
-        config: Optional[JudgeConfig] = None,
-        llm_client: Optional[Any] = None
+        config: JudgeConfig | None = None,
+        llm_client: Any | None = None
     ):
         self.config = config or JudgeConfig()
         self.llm_client = llm_client
@@ -664,8 +651,8 @@ class LLMJudge:
         self,
         output: str,
         criteria: str,
-        context: Optional[Dict[str, Any]] = None,
-        reference: Optional[str] = None
+        context: dict[str, Any] | None = None,
+        reference: str | None = None
     ) -> JudgeVerdict:
         """
         단일 출력 평가
@@ -698,7 +685,7 @@ class LLMJudge:
         output_a: str,
         output_b: str,
         criteria: str,
-        context: Optional[Dict[str, Any]] = None
+        context: dict[str, Any] | None = None
     ) -> JudgeVerdict:
         """
         A/B 비교 평가
@@ -732,9 +719,9 @@ class LLMJudge:
     async def multi_dimension_evaluate(
         self,
         output: str,
-        dimensions: List[EvaluationDimension],
-        context: Optional[Dict[str, Any]] = None
-    ) -> Dict[EvaluationDimension, JudgeVerdict]:
+        dimensions: list[EvaluationDimension],
+        context: dict[str, Any] | None = None
+    ) -> dict[EvaluationDimension, JudgeVerdict]:
         """
         다차원 평가
         
@@ -759,7 +746,7 @@ class LLMJudge:
         self,
         output: str,
         criteria: str,
-        context: Optional[Dict[str, Any]] = None
+        context: dict[str, Any] | None = None
     ) -> JudgeVerdict:
         """휴리스틱 기반 평가 (LLM 없이)"""
         score = 5.0  # 기본 점수
@@ -820,8 +807,8 @@ class LLMJudge:
         self,
         output: str,
         criteria: str,
-        context: Optional[Dict[str, Any]],
-        reference: Optional[str]
+        context: dict[str, Any] | None,
+        reference: str | None
     ) -> str:
         """평가 프롬프트 생성"""
         rubric = self.config.rubric or self.DEFAULT_RUBRIC
@@ -880,7 +867,6 @@ JSON으로 응답해주세요:
         except (json.JSONDecodeError, KeyError):
             return JudgeVerdict(score=5.0, reasoning="파싱 실패")
 
-
 # ============================================================================
 # Check-Act Iterator (Evaluator-Optimizer Pattern)
 # ============================================================================
@@ -921,9 +907,9 @@ class CheckActIterator:
     
     def __init__(
         self,
-        evaluator: Optional[LLMJudge] = None,
-        optimizer: Optional[Callable] = None,
-        config: Optional[IterationConfig] = None
+        evaluator: LLMJudge | None = None,
+        optimizer: Callable | None = None,
+        config: IterationConfig | None = None
     ):
         self.evaluator = evaluator or LLMJudge()
         self.optimizer = optimizer
@@ -934,7 +920,7 @@ class CheckActIterator:
         self,
         initial_output: str,
         criteria: str = "전반적인 품질",
-        context: Optional[Dict[str, Any]] = None
+        context: dict[str, Any] | None = None
     ) -> IterationResult:
         """
         Check-Act 반복 실행
@@ -1042,7 +1028,6 @@ class CheckActIterator:
         # 실제 구현에서는 LLM을 통한 수정 요청
         return output
 
-
 # ============================================================================
 # Gap Analyzer
 # ============================================================================
@@ -1065,7 +1050,7 @@ class GapAnalyzer:
         >>> print(f"일치율: {result.match_rate:.1%}")
     """
     
-    def __init__(self, llm_client: Optional[Any] = None):
+    def __init__(self, llm_client: Any | None = None):
         self.llm_client = llm_client
         self.logger = logging.getLogger(__name__)
     
@@ -1073,8 +1058,8 @@ class GapAnalyzer:
         self,
         plan: str,
         implementation: str,
-        expected: Optional[str] = None,
-        actual: Optional[str] = None
+        expected: str | None = None,
+        actual: str | None = None
     ) -> GapAnalysisResult:
         """
         갭 분석 수행
@@ -1165,7 +1150,6 @@ class GapAnalyzer:
         
         return keywords
 
-
 # ============================================================================
 # Agent Benchmark
 # ============================================================================
@@ -1198,18 +1182,18 @@ class AgentBenchmark:
     def __init__(
         self,
         suite_name: str = "default",
-        evaluator: Optional[LLMJudge] = None
+        evaluator: LLMJudge | None = None
     ):
         self.suite_name = suite_name
         self.evaluator = evaluator or LLMJudge()
-        self.test_cases: List[Dict[str, Any]] = []
+        self.test_cases: list[dict[str, Any]] = []
         self.logger = logging.getLogger(__name__)
     
     def add_test_case(
         self,
         name: str,
         input_text: str,
-        expected: Optional[str] = None,
+        expected: str | None = None,
         criteria: str = "quality",
         weight: float = 1.0
     ):
@@ -1302,7 +1286,6 @@ class AgentBenchmark:
             details=details
         )
 
-
 # ============================================================================
 # Quality Metrics
 # ============================================================================
@@ -1328,8 +1311,8 @@ class QualityMetrics:
     """
     
     def __init__(self):
-        self.metrics: Dict[str, List[float]] = {}
-        self.timestamps: Dict[str, List[datetime]] = {}
+        self.metrics: dict[str, list[float]] = {}
+        self.timestamps: dict[str, list[datetime]] = {}
         self.logger = logging.getLogger(__name__)
     
     def record(self, name: str, value: float):
@@ -1347,7 +1330,7 @@ class QualityMetrics:
         self.metrics[name].append(value)
         self.timestamps[name].append(datetime.now(timezone.utc))
     
-    def get_stats(self, name: str) -> Dict[str, float]:
+    def get_stats(self, name: str) -> dict[str, float]:
         """
         메트릭 통계 조회
         

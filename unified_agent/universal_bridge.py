@@ -44,13 +44,14 @@ A2A Protocol, SK Agent, MS Agent Framework, AG2 등)를 **하나의 인터페이
     - A2A Protocol: https://github.com/a2aproject/A2A
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 __all__ = ["UniversalAgentBridge", "BridgeProtocol"]
 
 logger = logging.getLogger(__name__)
-
 
 # ============================================================================
 # Bridge Protocol — 모든 브릿지가 구현해야 하는 인터페이스
@@ -63,10 +64,9 @@ class BridgeProtocol(Protocol):
 
     모든 브릿지 모듈이 구현해야 하는 최소 인터페이스입니다.
     """
-    async def run(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+    async def run(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """에이전트/워크플로우 실행"""
         ...
-
 
 # ============================================================================
 # UniversalAgentBridge — 핵심 혁신 #1
@@ -99,9 +99,9 @@ class UniversalAgentBridge:
     """
 
     def __init__(self):
-        self._bridges: Dict[str, Any] = {}
+        self._bridges: dict[str, Any] = {}
         self._a2a_enabled: bool = False
-        self._default_framework: Optional[str] = None
+        self._default_framework: str | None = None
         logger.info("[UniversalAgentBridge] 초기화")
 
     def __repr__(self) -> str:
@@ -129,10 +129,10 @@ class UniversalAgentBridge:
 
     async def run(
         self,
-        framework: Optional[str] = None,
+        framework: str | None = None,
         task: str = "",
         **kwargs: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         지정된 프레임워크로 태스크 실행
 
@@ -166,7 +166,7 @@ class UniversalAgentBridge:
         logger.info("[UniversalAgentBridge] A2A 에이전트 발견 활성화")
 
     @property
-    def registered_frameworks(self) -> List[str]:
+    def registered_frameworks(self) -> list[str]:
         """등록된 프레임워크 목록"""
         return list(self._bridges.keys())
 
@@ -175,6 +175,6 @@ class UniversalAgentBridge:
         """등록된 프레임워크 수"""
         return len(self._bridges)
 
-    def get_bridge(self, name: str) -> Optional[Any]:
+    def get_bridge(self, name: str) -> Any | None:
         """특정 브릿지 인스턴스 반환"""
         return self._bridges.get(name)

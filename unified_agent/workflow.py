@@ -95,9 +95,11 @@ Unified Agent Framework - 워크플로우 모듈 (Workflow Module)
     - Mermaid: https://mermaid.js.org/
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, Set, Optional, Callable, Any
+from typing import Callable, Any
 
 from semantic_kernel import Kernel
 
@@ -111,7 +113,6 @@ __all__ = [
     "Node",
     "Graph",
 ]
-
 
 # ============================================================================
 # Node - 워크플로우 노드
@@ -131,8 +132,8 @@ class Node:
         self,
         name: str,
         agent: Agent,
-        edges: Optional[Dict[str, str]] = None,
-        condition_func: Optional[Callable] = None
+        edges: dict[str, str] | None = None,
+        condition_func: Callable | None = None
     ):
         """
         노드 초기화
@@ -168,7 +169,6 @@ class Node:
         state.visited_nodes.append(self.name)
         return result
 
-
 # ============================================================================
 # Graph - 워크플로우 그래프
 # ============================================================================
@@ -196,15 +196,15 @@ class Graph:
             enable_session_tree: v3.3 SessionTree 기능 활성화 여부
         """
         self.name = name
-        self.nodes: Dict[str, Node] = {}
-        self.start_node: Optional[str] = None
-        self.end_nodes: Set[str] = set()
-        self.loop_nodes: Set[str] = set()
+        self.nodes: dict[str, Node] = {}
+        self.start_node: str | None = None
+        self.end_nodes: set[str] = set()
+        self.loop_nodes: set[str] = set()
         
         # v3.3: SessionTree 통합
         self._enable_session_tree = enable_session_tree
-        self._session_tree: Optional[SessionTree] = None
-        self._current_session_node_id: Optional[str] = None
+        self._session_tree: SessionTree | None = None
+        self._current_session_node_id: str | None = None
     
     def set_session_tree(self, session_tree: SessionTree):
         """v3.3: SessionTree 설정"""
@@ -436,7 +436,7 @@ class Graph:
         lines.append("```")
         return "\n".join(lines)
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         그래프 통계 반환
 

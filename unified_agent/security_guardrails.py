@@ -60,17 +60,20 @@ Unified Agent Framework - 보안 가드레일 모듈 (Security Guardrails Module
     - Groundedness Detection: https://learn.microsoft.com/azure/ai-services/content-safety/concepts/groundedness
 """
 
+from __future__ import annotations
+
 import re
 import hashlib
 import asyncio
 import aiohttp
 import json
 import logging
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Callable
 from functools import lru_cache
 
 __all__ = [
@@ -98,7 +101,6 @@ __all__ = [
     "SecurityAuditLogger",
 ]
 
-
 # ============================================================================
 # Enums
 # ============================================================================
@@ -109,7 +111,6 @@ class ThreatLevel(str, Enum):
     MEDIUM = "medium"     # 패턴 매칭 + 휴리스틱
     HIGH = "high"         # 모든 검증 + API 호출
     PARANOID = "paranoid" # 최대 보안 (성능 저하 가능)
-
 
 class AttackType(str, Enum):
     """공격 유형"""
@@ -123,7 +124,6 @@ class AttackType(str, Enum):
     MULTI_TURN_ATTACK = "multi_turn_attack"     # 다중 턴 공격
     ROLE_PLAY_ATTACK = "role_play_attack"       # 역할극 기반 공격
 
-
 class PIIType(str, Enum):
     """개인정보 유형"""
     EMAIL = "email"
@@ -136,19 +136,17 @@ class PIIType(str, Enum):
     PASSPORT = "passport"
     DRIVER_LICENSE = "driver_license"
 
-
 class ValidationStage(str, Enum):
     """검증 단계"""
     INPUT = "input"           # 사용자 입력 검증
     PROCESSING = "processing" # 처리 중 검증
     OUTPUT = "output"         # 출력 검증
 
-
 # ============================================================================
 # Data Classes
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class SecurityConfig:
     """
     보안 설정 구성
@@ -190,12 +188,12 @@ class SecurityConfig:
     enable_audit_logging: bool = True
     
     # Azure AI Content Safety API (선택적)
-    azure_content_safety_endpoint: Optional[str] = None
-    azure_content_safety_key: Optional[str] = None
+    azure_content_safety_endpoint: str | None = None
+    azure_content_safety_key: str | None = field(default=None, repr=False)
     
     # 동작 설정
     block_on_detection: bool = True
-    custom_blocked_patterns: List[str] = field(default_factory=list)
+    custom_blocked_patterns: list[str] = field(default_factory=list)
     pii_mask_char: str = "*"
     max_input_length: int = 100000  # 100K chars
     
@@ -206,8 +204,7 @@ class SecurityConfig:
         """Azure API 설정 여부 확인"""
         return bool(self.azure_content_safety_endpoint and self.azure_content_safety_key)
 
-
-@dataclass
+@dataclass(slots=True)
 class ShieldResult:
     """
     Prompt Shield 분석 결과
@@ -223,12 +220,11 @@ class ShieldResult:
     is_attack: bool = False
     attack_type: AttackType = AttackType.NONE
     confidence: float = 0.0
-    matched_patterns: List[str] = field(default_factory=list)
-    details: Dict[str, Any] = field(default_factory=dict)
+    matched_patterns: list[str] = field(default_factory=list)
+    details: dict[str, Any] = field(default_factory=dict)
     processing_time_ms: float = 0.0
 
-
-@dataclass
+@dataclass(slots=True)
 class JailbreakResult:
     """
     Jailbreak 탐지 결과
@@ -242,12 +238,11 @@ class JailbreakResult:
     """
     is_jailbreak: bool = False
     confidence: float = 0.0
-    detected_techniques: List[str] = field(default_factory=list)
+    detected_techniques: list[str] = field(default_factory=list)
     risk_score: int = 0
     recommendation: str = ""
 
-
-@dataclass
+@dataclass(slots=True)
 class PIIResult:
     """
     PII 탐지 결과
@@ -260,13 +255,12 @@ class PIIResult:
         pii_count: 탐지된 PII 개수
     """
     has_pii: bool = False
-    detected_types: Set[PIIType] = field(default_factory=set)
-    pii_locations: List[Dict[str, Any]] = field(default_factory=list)
+    detected_types: set[PIIType] = field(default_factory=set)
+    pii_locations: list[dict[str, Any]] = field(default_factory=list)
     masked_text: str = ""
     pii_count: int = 0
 
-
-@dataclass
+@dataclass(slots=True)
 class GroundednessResult:
     """
     Groundedness 검사 결과 (Hallucination 탐지)
@@ -279,11 +273,10 @@ class GroundednessResult:
     """
     is_grounded: bool = True
     groundedness_score: float = 1.0
-    ungrounded_claims: List[str] = field(default_factory=list)
+    ungrounded_claims: list[str] = field(default_factory=list)
     source_coverage: float = 1.0
 
-
-@dataclass
+@dataclass(slots=True)
 class ValidationResult:
     """
     통합 검증 결과
@@ -302,17 +295,16 @@ class ValidationResult:
     """
     is_safe: bool = True
     blocked: bool = False
-    blocked_reason: Optional[str] = None
+    blocked_reason: str | None = None
     stage: ValidationStage = ValidationStage.INPUT
-    shield_result: Optional[ShieldResult] = None
-    jailbreak_result: Optional[JailbreakResult] = None
-    pii_result: Optional[PIIResult] = None
-    groundedness_result: Optional[GroundednessResult] = None
-    sanitized_input: Optional[str] = None
+    shield_result: ShieldResult | None = None
+    jailbreak_result: JailbreakResult | None = None
+    pii_result: PIIResult | None = None
+    groundedness_result: GroundednessResult | None = None
+    sanitized_input: str | None = None
     total_processing_time_ms: float = 0.0
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class AuditLogEntry:
     """
     감사 로그 항목
@@ -334,10 +326,9 @@ class AuditLogEntry:
     input_hash: str = ""
     result: str = ""
     threat_detected: bool = False
-    threat_type: Optional[str] = None
+    threat_type: str | None = None
     action_taken: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 # ============================================================================
 # Prompt Shield - Prompt Injection 탐지
@@ -468,9 +459,9 @@ class PromptShield:
     
     def __init__(
         self,
-        azure_endpoint: Optional[str] = None,
-        azure_key: Optional[str] = None,
-        custom_patterns: Optional[List[str]] = None
+        azure_endpoint: str | None = None,
+        azure_key: str | None = None,
+        custom_patterns: list[str] | None = None
     ):
         """
         PromptShield 초기화
@@ -494,7 +485,7 @@ class PromptShield:
     async def analyze(
         self,
         text: str,
-        documents: Optional[List[str]] = None,
+        documents: list[str] | None = None,
         use_api: bool = False
     ) -> ShieldResult:
         """
@@ -508,7 +499,6 @@ class PromptShield:
         Returns:
             ShieldResult: 분석 결과
         """
-        import time
         start_time = time.perf_counter()
         
         result = ShieldResult()
@@ -630,8 +620,8 @@ class PromptShield:
     async def _call_azure_api(
         self,
         text: str,
-        documents: Optional[List[str]] = None
-    ) -> Optional[Dict[str, Any]]:
+        documents: list[str] | None = None
+    ) -> dict[str, Any] | None:
         """
         Azure Content Safety API 호출 (Prompt Shield)
         
@@ -640,7 +630,7 @@ class PromptShield:
             documents: 함께 분석할 문서
         
         Returns:
-            Optional[Dict]: API 응답 또는 None
+            Dict | None: API 응답 또는 None
         """
         if not self.azure_endpoint or not self.azure_key:
             return None
@@ -673,7 +663,6 @@ class PromptShield:
         except Exception as e:
             self.logger.error(f"Azure API 호출 오류: {e}")
             return None
-
 
 # ============================================================================
 # Jailbreak Detector
@@ -817,7 +806,6 @@ class JailbreakDetector:
         
         return result
 
-
 # ============================================================================
 # PII Detector - 개인정보 탐지
 # ============================================================================
@@ -912,7 +900,6 @@ class PIIDetector:
         
         return result
 
-
 # ============================================================================
 # Output Validator - 출력 검증
 # ============================================================================
@@ -950,7 +937,7 @@ class OutputValidator:
         r"(?i)my\s+initial\s+prompt",
     ]
     
-    def __init__(self, pii_detector: Optional[PIIDetector] = None):
+    def __init__(self, pii_detector: PIIDetector | None = None):
         """
         OutputValidator 초기화
         
@@ -964,7 +951,7 @@ class OutputValidator:
     async def validate(
         self,
         output: str,
-        context: Optional[Dict[str, Any]] = None
+        context: dict[str, Any] | None = None
     ) -> ValidationResult:
         """
         AI 출력 검증
@@ -976,7 +963,6 @@ class OutputValidator:
         Returns:
             ValidationResult: 검증 결과
         """
-        import time
         start_time = time.perf_counter()
         
         result = ValidationResult(stage=ValidationStage.OUTPUT)
@@ -1020,7 +1006,6 @@ class OutputValidator:
         result.total_processing_time_ms = (time.perf_counter() - start_time) * 1000
         return result
 
-
 # ============================================================================
 # Groundedness Checker - 근거 검사
 # ============================================================================
@@ -1049,8 +1034,8 @@ class GroundednessChecker:
     
     def __init__(
         self,
-        azure_endpoint: Optional[str] = None,
-        azure_key: Optional[str] = None
+        azure_endpoint: str | None = None,
+        azure_key: str | None = None
     ):
         self.azure_endpoint = azure_endpoint
         self.azure_key = azure_key
@@ -1059,8 +1044,8 @@ class GroundednessChecker:
     async def check(
         self,
         response: str,
-        sources: List[str],
-        query: Optional[str] = None
+        sources: list[str],
+        query: str | None = None
     ) -> GroundednessResult:
         """
         응답의 근거 검사
@@ -1108,9 +1093,9 @@ class GroundednessChecker:
     async def _call_groundedness_api(
         self,
         response: str,
-        sources: List[str],
-        query: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+        sources: list[str],
+        query: str | None = None
+    ) -> dict[str, Any] | None:
         """Azure Groundedness Detection API 호출"""
         if not self.azure_endpoint or not self.azure_key:
             return None
@@ -1145,7 +1130,6 @@ class GroundednessChecker:
             self.logger.error(f"Groundedness API 호출 실패: {e}")
             return None
 
-
 # ============================================================================
 # Security Audit Logger
 # ============================================================================
@@ -1168,7 +1152,7 @@ class SecurityAuditLogger:
         ... ))
     """
     
-    def __init__(self, log_file: Optional[str] = None):
+    def __init__(self, log_file: str | None = None):
         """
         SecurityAuditLogger 초기화
         
@@ -1209,7 +1193,6 @@ class SecurityAuditLogger:
     def hash_input(text: str) -> str:
         """입력 텍스트의 SHA-256 해시 생성"""
         return hashlib.sha256(text.encode()).hexdigest()[:16]
-
 
 # ============================================================================
 # Security Orchestrator - 통합 보안 파이프라인
@@ -1252,7 +1235,7 @@ class SecurityOrchestrator:
         ...     return output_result.sanitized_input  # 정화된 출력
     """
     
-    def __init__(self, config: Optional[SecurityConfig] = None):
+    def __init__(self, config: SecurityConfig | None = None):
         """
         SecurityOrchestrator 초기화
         
@@ -1293,7 +1276,7 @@ class SecurityOrchestrator:
         self,
         text: str,
         session_id: str = "",
-        documents: Optional[List[str]] = None
+        documents: list[str] | None = None
     ) -> ValidationResult:
         """
         사용자 입력 검증
@@ -1306,7 +1289,6 @@ class SecurityOrchestrator:
         Returns:
             ValidationResult: 검증 결과
         """
-        import time
         start_time = time.perf_counter()
         
         result = ValidationResult(stage=ValidationStage.INPUT)
@@ -1367,8 +1349,8 @@ class SecurityOrchestrator:
     async def validate_output(
         self,
         output: str,
-        sources: Optional[List[str]] = None,
-        context: Optional[Dict[str, Any]] = None,
+        sources: list[str] | None = None,
+        context: dict[str, Any] | None = None,
         session_id: str = ""
     ) -> ValidationResult:
         """
@@ -1383,7 +1365,6 @@ class SecurityOrchestrator:
         Returns:
             ValidationResult: 검증 결과
         """
-        import time
         start_time = time.perf_counter()
         
         result = ValidationResult(stage=ValidationStage.OUTPUT)
@@ -1428,7 +1409,7 @@ class SecurityOrchestrator:
         text: str,
         result: str,
         threat_detected: bool,
-        threat_type: Optional[str]
+        threat_type: str | None
     ) -> None:
         """감사 로그 기록"""
         if self.audit_logger:

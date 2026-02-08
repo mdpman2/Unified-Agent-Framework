@@ -37,22 +37,22 @@ Unified Agent Framework - A2A Protocol 브릿지 모듈
     - A2A Protocol: https://github.com/a2aproject/A2A
 """
 
+from __future__ import annotations
+
 import logging
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Protocol
 
 __all__ = ["A2ABridge", "AgentCard", "TaskMode"]
 
 logger = logging.getLogger(__name__)
-
 
 class TaskMode:
     """A2A 태스크 전송 모드"""
     SYNC = "sync"
     STREAMING = "streaming"
     ASYNC_PUSH = "async_push"
-
 
 @dataclass
 class AgentCard:
@@ -67,12 +67,11 @@ class AgentCard:
     JSON-LD 형식으로 `.well-known/agent-card.json`에 게시됩니다.
     """
     name: str = ""
-    capabilities: List[str] = field(default_factory=list)
-    protocols: List[str] = field(default_factory=lambda: ["a2a-v0.3.0"])
+    capabilities: list[str] = field(default_factory=list)
+    protocols: list[str] = field(default_factory=lambda: ["a2a-v0.3.0"])
     endpoint: str = ""
     description: str = ""
     version: str = "0.3.0"
-
 
 class A2ABridge:
     """
@@ -92,8 +91,8 @@ class A2ABridge:
     """
 
     def __init__(self):
-        self._local_cards: Dict[str, AgentCard] = {}
-        self._remote_cards: Dict[str, AgentCard] = {}
+        self._local_cards: dict[str, AgentCard] = {}
+        self._remote_cards: dict[str, AgentCard] = {}
         logger.info("[A2ABridge] 초기화")
 
     def __repr__(self) -> str:
@@ -121,7 +120,7 @@ class A2ABridge:
         task: str,
         mode: str = TaskMode.SYNC,
         **kwargs: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """A2A 태스크 전송"""
         logger.info(f"[A2ABridge] 태스크 전송 → {to.name} (mode={mode})")
         return {
@@ -131,7 +130,7 @@ class A2ABridge:
             "mode": mode,
         }
 
-    async def run(self, *, task: str = "", **kwargs: Any) -> Dict[str, Any]:
+    async def run(self, *, task: str = "", **kwargs: Any) -> dict[str, Any]:
         """태스크 실행 (UniversalAgentBridge 호환)
 
         A2A 프로토콜을 통해 태스크를 전송합니다.

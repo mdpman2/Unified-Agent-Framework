@@ -35,12 +35,13 @@ Unified Agent Framework - 이미지 생성 모듈 (Image Generation Module)
     - GPT Image: https://platform.openai.com/docs/guides/images
 """
 
+from __future__ import annotations
+
 import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import List, Optional
 
 __all__ = [
     "ImageModel",
@@ -52,12 +53,10 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-
 class ImageModel(Enum):
     """지원 이미지 모델"""
     GPT_IMAGE_1_5 = "gpt-image-1.5"
     GPT_IMAGE_1 = "gpt-image-1"
-
 
 @dataclass(frozen=True, slots=True)
 class ImageConfig:
@@ -77,15 +76,13 @@ class ImageConfig:
     quality: str = "hd"
     style: str = "vivid"
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ImageResult:
     """이미지 생성 결과"""
     id: str = field(default_factory=lambda: f"img_{uuid.uuid4().hex[:12]}")
-    image_urls: List[str] = field(default_factory=list)
+    image_urls: list[str] = field(default_factory=list)
     model: str = ""
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-
 
 class GPTImage1_5Client:
     """
@@ -97,14 +94,14 @@ class GPTImage1_5Client:
     ================================================================================
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         self._api_key = api_key
         logger.info("[GPTImage1_5Client] 초기화")
 
     def __repr__(self) -> str:
         return "GPTImage1_5Client()"
 
-    async def generate(self, prompt: str, config: Optional[ImageConfig] = None) -> ImageResult:
+    async def generate(self, prompt: str, config: ImageConfig | None = None) -> ImageResult:
         """텍스트→이미지 생성"""
         cfg = config or ImageConfig()
         logger.info(f"[GPTImage1_5Client] 이미지 생성: model={cfg.model}, size={cfg.size}, n={cfg.n}")
@@ -119,8 +116,8 @@ class GPTImage1_5Client:
         self,
         image_url: str,
         prompt: str,
-        mask_url: Optional[str] = None,
-        config: Optional[ImageConfig] = None
+        mask_url: str | None = None,
+        config: ImageConfig | None = None
     ) -> ImageResult:
         """이미지 편집 (마스크 기반)"""
         cfg = config or ImageConfig()
@@ -130,7 +127,6 @@ class GPTImage1_5Client:
             image_urls=[f"https://api.openai.com/v1/images/{uuid.uuid4().hex[:8]}"],
             model=cfg.model,
         )
-
 
 class ImageGenerator:
     """
@@ -151,7 +147,7 @@ class ImageGenerator:
     async def generate(
         self,
         prompt: str,
-        config: Optional[ImageConfig] = None
+        config: ImageConfig | None = None
     ) -> ImageResult:
         """이미지 생성"""
         return await self._client.generate(prompt, config)
@@ -160,8 +156,8 @@ class ImageGenerator:
         self,
         image_url: str,
         prompt: str,
-        mask_url: Optional[str] = None,
-        config: Optional[ImageConfig] = None
+        mask_url: str | None = None,
+        config: ImageConfig | None = None
     ) -> ImageResult:
         """이미지 편집"""
         return await self._client.edit(image_url, prompt, mask_url, config)

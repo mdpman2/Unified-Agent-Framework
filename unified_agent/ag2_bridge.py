@@ -32,13 +32,14 @@ Unified Agent Framework - AG2 AgentOS 브릿지 모듈
     - AG2: https://github.com/ag2ai/ag2
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 __all__ = ["AG2Bridge"]
 
 logger = logging.getLogger(__name__)
-
 
 class AG2Bridge:
     """
@@ -56,7 +57,7 @@ class AG2Bridge:
     """
 
     def __init__(self):
-        self._teams: Dict[str, Dict] = {}
+        self._teams: dict[str, dict] = {}
         logger.info("[AG2Bridge] 초기화")
 
     def __repr__(self) -> str:
@@ -64,11 +65,11 @@ class AG2Bridge:
 
     def create_universal_team(
         self,
-        agents: Optional[List[Dict[str, str]]] = None,
-        protocols: Optional[List[str]] = None,
-        name: Optional[str] = None,
+        agents: list[dict[str, str]] | None = None,
+        protocols: list[str] | None = None,
+        name: str | None = None,
         **kwargs: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Universal Team 생성 (다중 프레임워크 혼합)"""
         team_name = name or "ag2_team"
         team = {
@@ -83,10 +84,10 @@ class AG2Bridge:
 
     async def run(
         self,
-        team: Optional[Dict[str, Any]] = None,
+        team: dict[str, Any] | None = None,
         task: str = "",
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """팀 실행 (UniversalAgentBridge 호환)
 
         Args:

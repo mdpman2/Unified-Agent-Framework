@@ -29,13 +29,14 @@ Unified Agent Framework - Microsoft Agent Framework 브릿지 모듈
     - MS Agent Framework: https://github.com/microsoft/agent-framework
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 __all__ = ["MicrosoftAgentBridge"]
 
 logger = logging.getLogger(__name__)
-
 
 class MicrosoftAgentBridge:
     """
@@ -56,7 +57,7 @@ class MicrosoftAgentBridge:
 
     def __init__(self, graph_type: str = "sequential"):
         self._graph_type = graph_type
-        self._graphs: Dict[str, Dict] = {}
+        self._graphs: dict[str, dict] = {}
         logger.info(f"[MicrosoftAgentBridge] 초기화 (graph_type={graph_type})")
 
     def __repr__(self) -> str:
@@ -64,11 +65,11 @@ class MicrosoftAgentBridge:
 
     def create_graph(
         self,
-        type: Optional[str] = None,
-        agents: Optional[List[str]] = None,
-        name: Optional[str] = None,
+        type: str | None = None,
+        agents: list[str] | None = None,
+        name: str | None = None,
         **kwargs: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Graph Workflow 생성"""
         graph_name = name or "ms_graph"
         graph = {
@@ -83,12 +84,12 @@ class MicrosoftAgentBridge:
 
     async def run(
         self,
-        graph: Optional[Dict[str, Any]] = None,
-        input: Optional[str] = None,
+        graph: dict[str, Any] | None = None,
+        input: str | None = None,
         *,
-        task: Optional[str] = None,
+        task: str | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Graph Workflow 실행 (UniversalAgentBridge 호환)
 
         Args:

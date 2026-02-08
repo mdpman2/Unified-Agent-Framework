@@ -85,12 +85,14 @@ Unified Agent Framework - 이벤트 시스템 모듈 (Events Module)
     - asyncio: https://docs.python.org/3/library/asyncio.html
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from collections import defaultdict
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Callable, Dict, List, Optional, Any
+from typing import Callable, Any
 
 from pydantic import BaseModel, Field
 
@@ -99,7 +101,6 @@ __all__ = [
     "AgentEvent",
     "EventBus",
 ]
-
 
 class EventType(str, Enum):
     """
@@ -154,15 +155,13 @@ class EventType(str, Enum):
     MESSAGE_RECEIVED = "message_received"
     MESSAGE_SENT = "message_sent"
 
-
 class AgentEvent(BaseModel):
     """Agent 이벤트 모델"""
     event_type: EventType
     timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    agent_name: Optional[str] = None
-    node_name: Optional[str] = None
-    data: Dict[str, Any] = Field(default_factory=dict)
-
+    agent_name: str | None = None
+    node_name: str | None = None
+    data: dict[str, Any] = Field(default_factory=dict)
 
 class EventBus:
     """
@@ -236,8 +235,8 @@ class EventBus:
     __slots__ = ('subscribers', 'event_history')
 
     def __init__(self):
-        self.subscribers: Dict[EventType, List[Callable]] = defaultdict(list)
-        self.event_history: List[AgentEvent] = []
+        self.subscribers: dict[EventType, list[Callable]] = defaultdict(list)
+        self.event_history: list[AgentEvent] = []
 
     def subscribe(self, event_type: EventType, handler: Callable):
         """이벤트 구독"""
@@ -282,8 +281,8 @@ class EventBus:
                 if isinstance(result, Exception):
                     logging.error(f"❌ 이벤트 핸들러 오류: {result}")
 
-    def get_event_history(self, event_type: Optional[EventType] = None,
-                         limit: int = 100) -> List[AgentEvent]:
+    def get_event_history(self, event_type: EventType | None = None,
+                         limit: int = 100) -> list[AgentEvent]:
         """이벤트 히스토리 조회 (최적화: 역순 반복)"""
         if event_type is None:
             return self.event_history[-limit:] if len(self.event_history) > limit else list(self.event_history)

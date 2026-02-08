@@ -55,21 +55,15 @@ from pathlib import Path
 from typing import (
     Any,
     Callable,
-    Dict,
     Generic,
-    List,
-    Optional,
     Sequence,
-    Tuple,
     TypeVar,
-    Union,
 )
 
 from pydantic import BaseModel, Field
 
 from .tracer import Span, SpanKind, SpanStatus
 from .utils import StructuredLogger
-
 
 # ============================================================================
 # Rollout & Attempt 모델
@@ -84,7 +78,6 @@ class RolloutStatus(str, Enum):
     FAILED = "failed"           # 실패
     CANCELLED = "cancelled"     # 취소됨
 
-
 class AttemptStatus(str, Enum):
     """어템프트 상태"""
     STARTED = "started"
@@ -94,8 +87,7 @@ class AttemptStatus(str, Enum):
     COMPLETED = "completed"      # 성공 완료
     FAILED = "failed"
 
-
-@dataclass
+@dataclass(slots=True)
 class Attempt:
     """
     롤아웃의 개별 시도
@@ -107,19 +99,19 @@ class Attempt:
     rollout_id: str
     status: AttemptStatus = AttemptStatus.STARTED
     started_at: float = field(default_factory=time.time)
-    finished_at: Optional[float] = None
-    worker_id: Optional[str] = None
-    error_message: Optional[str] = None
-    result: Optional[Dict[str, Any]] = None
-    spans: List[Any] = field(default_factory=list)  # Span 리스트
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    finished_at: float | None = None
+    worker_id: str | None = None
+    error_message: str | None = None
+    result: dict[str, Any] | None = None
+    spans: list[Any] = field(default_factory=list)  # Span 리스트
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     def start(self) -> None:
         """어템프트 시작"""
         self.status = AttemptStatus.IN_PROGRESS
         self.started_at = time.time()
     
-    def complete(self, result: Optional[Dict[str, Any]] = None) -> None:
+    def complete(self, result: dict[str, Any] | None = None) -> None:
         """어템프트 성공 완료"""
         self.status = AttemptStatus.COMPLETED
         self.finished_at = time.time()
@@ -135,14 +127,14 @@ class Attempt:
         """스팬 추가"""
         self.spans.append(span)
     
-    def finish(self, status: AttemptStatus, error: Optional[str] = None) -> None:
+    def finish(self, status: AttemptStatus, error: str | None = None) -> None:
         """어템프트 종료 (레거시)"""
         self.status = status
         self.finished_at = time.time()
         if error:
             self.error_message = error
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "attempt_id": self.attempt_id,
             "rollout_id": self.rollout_id,
@@ -155,7 +147,7 @@ class Attempt:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Attempt":
+    def from_dict(cls, data: dict[str, Any]) -> "Attempt":
         return cls(
             attempt_id=data["attempt_id"],
             rollout_id=data["rollout_id"],
@@ -167,11 +159,9 @@ class Attempt:
             metadata=data.get("metadata", {}),
         )
 
-
 T_task = TypeVar("T_task")
 
-
-@dataclass
+@dataclass(slots=True)
 class Rollout(Generic[T_task]):
     """
     작업 단위 (Rollout)
@@ -182,25 +172,25 @@ class Rollout(Generic[T_task]):
     - 리소스 버전과 연결됨
     """
     rollout_id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
-    task: Optional[T_task] = None
+    task: T_task | None = None
     status: RolloutStatus = RolloutStatus.PENDING
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
     
     # 리소스 연결
-    resources_id: Optional[str] = None
+    resources_id: str | None = None
     
     # 어템프트 관리
-    attempts: List[Attempt] = field(default_factory=list)
+    attempts: list[Attempt] = field(default_factory=list)
     max_attempts: int = 3
     
     # 메타데이터
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     priority: int = 0  # 높을수록 우선
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     
     @property
-    def current_attempt(self) -> Optional[Attempt]:
+    def current_attempt(self) -> Attempt | None:
         """현재 어템프트"""
         return self.attempts[-1] if self.attempts else None
     
@@ -209,7 +199,7 @@ class Rollout(Generic[T_task]):
         """시도 횟수"""
         return len(self.attempts)
     
-    def create_attempt(self, worker_id: Optional[str] = None) -> Attempt:
+    def create_attempt(self, worker_id: str | None = None) -> Attempt:
         """새 어템프트 생성"""
         attempt = Attempt(
             attempt_id=uuid.uuid4().hex[:16],
@@ -224,7 +214,7 @@ class Rollout(Generic[T_task]):
     def finish_attempt(
         self,
         success: bool,
-        error: Optional[str] = None,
+        error: str | None = None,
     ) -> None:
         """현재 어템프트 종료"""
         if not self.current_attempt:
@@ -242,7 +232,7 @@ class Rollout(Generic[T_task]):
         
         self.updated_at = time.time()
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "rollout_id": self.rollout_id,
             "task": self.task,
@@ -258,7 +248,7 @@ class Rollout(Generic[T_task]):
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Rollout":
+    def from_dict(cls, data: dict[str, Any]) -> "Rollout":
         rollout = cls(
             rollout_id=data["rollout_id"],
             task=data.get("task"),
@@ -276,12 +266,11 @@ class Rollout(Generic[T_task]):
         ]
         return rollout
 
-
 # ============================================================================
 # Resource 모델
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class NamedResource:
     """이름이 있는 리소스 (프롬프트, 모델 등)"""
     name: str
@@ -289,9 +278,9 @@ class NamedResource:
     content: Any
     version: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
     created_at: float = field(default_factory=time.time)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "resource_type": self.resource_type,
@@ -302,7 +291,7 @@ class NamedResource:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "NamedResource":
+    def from_dict(cls, data: dict[str, Any]) -> "NamedResource":
         return cls(
             name=data["name"],
             resource_type=data["resource_type"],
@@ -312,21 +301,20 @@ class NamedResource:
             metadata=data.get("metadata", {}),
         )
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ResourceBundle:
     """리소스 번들 (여러 리소스의 스냅샷)"""
     bundle_id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
-    resources: Dict[str, NamedResource] = field(default_factory=dict)
+    resources: dict[str, NamedResource] = field(default_factory=dict)
     created_at: float = field(default_factory=time.time)
     
-    def get(self, name: str) -> Optional[NamedResource]:
+    def get(self, name: str) -> NamedResource | None:
         return self.resources.get(name)
     
     def set(self, resource: NamedResource) -> None:
         self.resources[resource.name] = resource
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "bundle_id": self.bundle_id,
             "resources": {
@@ -334,7 +322,6 @@ class ResourceBundle:
             },
             "created_at": self.created_at,
         }
-
 
 # ============================================================================
 # Store 추상 베이스
@@ -362,9 +349,9 @@ class AgentStoreBase(ABC):
     @abstractmethod
     async def dequeue_rollout(
         self,
-        worker_id: Optional[str] = None,
-        tags: Optional[List[str]] = None,
-    ) -> Optional[Rollout]:
+        worker_id: str | None = None,
+        tags: list[str] | None = None,
+    ) -> Rollout | None:
         """롤아웃 가져오기"""
         pass
     
@@ -374,7 +361,7 @@ class AgentStoreBase(ABC):
         pass
     
     @abstractmethod
-    async def get_rollout(self, rollout_id: str) -> Optional[Rollout]:
+    async def get_rollout(self, rollout_id: str) -> Rollout | None:
         """롤아웃 조회"""
         pass
     
@@ -385,7 +372,7 @@ class AgentStoreBase(ABC):
         rollout_id: str,
         attempt_id: str,
         status: AttemptStatus,
-        error: Optional[str] = None,
+        error: str | None = None,
     ) -> None:
         """어템프트 상태 업데이트"""
         pass
@@ -404,11 +391,11 @@ class AgentStoreBase(ABC):
     @abstractmethod
     async def query_spans(
         self,
-        rollout_id: Optional[str] = None,
-        attempt_id: Optional[str] = None,
-        kind: Optional[SpanKind] = None,
+        rollout_id: str | None = None,
+        attempt_id: str | None = None,
+        kind: SpanKind | None = None,
         limit: int = 1000,
-    ) -> List[Span]:
+    ) -> list[Span]:
         """스팬 조회"""
         pass
     
@@ -422,8 +409,8 @@ class AgentStoreBase(ABC):
     async def get_resource(
         self,
         name: str,
-        version: Optional[str] = None,
-    ) -> Optional[NamedResource]:
+        version: str | None = None,
+    ) -> NamedResource | None:
         """리소스 조회"""
         pass
     
@@ -431,7 +418,6 @@ class AgentStoreBase(ABC):
     async def get_latest_resources(self) -> ResourceBundle:
         """최신 리소스 번들"""
         pass
-
 
 # ============================================================================
 # In-Memory Store 구현
@@ -454,10 +440,10 @@ class InMemoryAgentStore(AgentStoreBase):
         self._logger = StructuredLogger("agent_store.memory")
         
         # 저장소
-        self._rollouts: Dict[str, Rollout] = {}
-        self._rollout_queue: List[Tuple[int, str]] = []  # (-priority, rollout_id) for bisect
-        self._spans: Dict[str, List[Span]] = defaultdict(list)  # rollout_id -> spans
-        self._resources: Dict[str, List[NamedResource]] = defaultdict(list)  # name -> versions
+        self._rollouts: dict[str, Rollout] = {}
+        self._rollout_queue: list[tuple[int, str]] = []  # (-priority, rollout_id) for bisect
+        self._spans: dict[str, list[Span]] = defaultdict(list)  # rollout_id -> spans
+        self._resources: dict[str, list[NamedResource]] = defaultdict(list)  # name -> versions
         
         # 동기화
         self._lock = asyncio.Lock()
@@ -501,10 +487,10 @@ class InMemoryAgentStore(AgentStoreBase):
     
     async def dequeue_rollout(
         self,
-        worker_id: Optional[str] = None,
-        tags: Optional[List[str]] = None,
-        timeout: Optional[float] = None,
-    ) -> Optional[Rollout]:
+        worker_id: str | None = None,
+        tags: list[str] | None = None,
+        timeout: float | None = None,
+    ) -> Rollout | None:
         """롤아웃 가져오기 - 최적화된 버전"""
         start_time = time.time()
         tags_set = frozenset(tags) if tags else None
@@ -566,7 +552,7 @@ class InMemoryAgentStore(AgentStoreBase):
             rollout.updated_at = time.time()
             self._rollouts[rollout.rollout_id] = rollout
     
-    async def get_rollout(self, rollout_id: str) -> Optional[Rollout]:
+    async def get_rollout(self, rollout_id: str) -> Rollout | None:
         """롤아웃 조회"""
         async with self._lock:
             return self._rollouts.get(rollout_id)
@@ -576,7 +562,7 @@ class InMemoryAgentStore(AgentStoreBase):
         rollout_id: str,
         attempt_id: str,
         status: AttemptStatus,
-        error: Optional[str] = None,
+        error: str | None = None,
     ) -> None:
         """어템프트 상태 업데이트"""
         async with self._lock:
@@ -616,14 +602,14 @@ class InMemoryAgentStore(AgentStoreBase):
     
     async def query_spans(
         self,
-        rollout_id: Optional[str] = None,
-        attempt_id: Optional[str] = None,
-        kind: Optional[SpanKind] = None,
+        rollout_id: str | None = None,
+        attempt_id: str | None = None,
+        kind: SpanKind | None = None,
         limit: int = 1000,
-    ) -> List[Span]:
+    ) -> list[Span]:
         """스팬 조회"""
         async with self._lock:
-            result: List[Span] = []
+            result: list[Span] = []
             
             if rollout_id:
                 spans = self._spans.get(rollout_id, [])
@@ -675,8 +661,8 @@ class InMemoryAgentStore(AgentStoreBase):
     async def get_resource(
         self,
         name: str,
-        version: Optional[str] = None,
-    ) -> Optional[NamedResource]:
+        version: str | None = None,
+    ) -> NamedResource | None:
         """리소스 조회"""
         async with self._lock:
             versions = self._resources.get(name, [])
@@ -714,7 +700,7 @@ class InMemoryAgentStore(AgentStoreBase):
     async def get_rollouts_by_status(
         self,
         status: RolloutStatus,
-    ) -> List[Rollout]:
+    ) -> list[Rollout]:
         """상태별 롤아웃 조회"""
         async with self._lock:
             return [
@@ -722,7 +708,7 @@ class InMemoryAgentStore(AgentStoreBase):
                 if r.status == status
             ]
     
-    async def clear_completed(self, older_than: Optional[float] = None) -> int:
+    async def clear_completed(self, older_than: float | None = None) -> int:
         """완료된 롤아웃 정리"""
         async with self._lock:
             now = time.time()
@@ -739,7 +725,6 @@ class InMemoryAgentStore(AgentStoreBase):
             
             return len(to_remove)
 
-
 # ============================================================================
 # SQLite Store 구현
 # ============================================================================
@@ -753,7 +738,7 @@ class SQLiteAgentStore(AgentStoreBase):
     
     def __init__(
         self,
-        db_path: Union[str, Path] = ":memory:",
+        db_path: str | Path = ":memory:",
         max_spans_per_rollout: int = 10000,
     ):
         """
@@ -765,7 +750,7 @@ class SQLiteAgentStore(AgentStoreBase):
         self._max_spans = max_spans_per_rollout
         self._logger = StructuredLogger("agent_store.sqlite")
         
-        self._conn: Optional[sqlite3.Connection] = None
+        self._conn: sqlite3.Connection | None = None
         self._lock = asyncio.Lock()
         self._initialized = False
     
@@ -874,10 +859,10 @@ class SQLiteAgentStore(AgentStoreBase):
     
     async def dequeue_rollout(
         self,
-        worker_id: Optional[str] = None,
-        tags: Optional[List[str]] = None,
-        timeout: Optional[float] = None,
-    ) -> Optional[Rollout]:
+        worker_id: str | None = None,
+        tags: list[str] | None = None,
+        timeout: float | None = None,
+    ) -> Rollout | None:
         """롤아웃 가져오기"""
         async with self._lock:
             # 조건에 맞는 롤아웃 찾기
@@ -932,7 +917,7 @@ class SQLiteAgentStore(AgentStoreBase):
             
             return rollout
     
-    def _row_to_rollout(self, row: Dict[str, Any]) -> Rollout:
+    def _row_to_rollout(self, row: dict[str, Any]) -> Rollout:
         """Row를 Rollout으로 변환"""
         return Rollout(
             rollout_id=row["rollout_id"],
@@ -947,7 +932,7 @@ class SQLiteAgentStore(AgentStoreBase):
             tags=json.loads(row["tags_json"]) if row.get("tags_json") else [],
         )
     
-    def _row_to_attempt(self, row: Dict[str, Any]) -> Attempt:
+    def _row_to_attempt(self, row: dict[str, Any]) -> Attempt:
         """Row를 Attempt로 변환"""
         return Attempt(
             attempt_id=row["attempt_id"],
@@ -984,7 +969,7 @@ class SQLiteAgentStore(AgentStoreBase):
             ))
             self._conn.commit()
     
-    async def get_rollout(self, rollout_id: str) -> Optional[Rollout]:
+    async def get_rollout(self, rollout_id: str) -> Rollout | None:
         """롤아웃 조회"""
         async with self._lock:
             cursor = self._conn.execute(
@@ -1016,7 +1001,7 @@ class SQLiteAgentStore(AgentStoreBase):
         rollout_id: str,
         attempt_id: str,
         status: AttemptStatus,
-        error: Optional[str] = None,
+        error: str | None = None,
     ) -> None:
         """어템프트 상태 업데이트"""
         async with self._lock:
@@ -1086,11 +1071,11 @@ class SQLiteAgentStore(AgentStoreBase):
     
     async def query_spans(
         self,
-        rollout_id: Optional[str] = None,
-        attempt_id: Optional[str] = None,
-        kind: Optional[SpanKind] = None,
+        rollout_id: str | None = None,
+        attempt_id: str | None = None,
+        kind: SpanKind | None = None,
         limit: int = 1000,
-    ) -> List[Span]:
+    ) -> list[Span]:
         """스팬 조회"""
         async with self._lock:
             conditions = []
@@ -1119,7 +1104,7 @@ class SQLiteAgentStore(AgentStoreBase):
             
             return [self._row_to_span(dict(row)) for row in cursor.fetchall()]
     
-    def _row_to_span(self, row: Dict[str, Any]) -> Span:
+    def _row_to_span(self, row: dict[str, Any]) -> Span:
         """Row를 Span으로 변환"""
         return Span(
             span_id=row["span_id"],
@@ -1159,8 +1144,8 @@ class SQLiteAgentStore(AgentStoreBase):
     async def get_resource(
         self,
         name: str,
-        version: Optional[str] = None,
-    ) -> Optional[NamedResource]:
+        version: str | None = None,
+    ) -> NamedResource | None:
         """리소스 조회"""
         async with self._lock:
             if version:
@@ -1216,7 +1201,6 @@ class SQLiteAgentStore(AgentStoreBase):
             
             return bundle
 
-
 # ============================================================================
 # Store Factory
 # ============================================================================
@@ -1242,10 +1226,8 @@ def create_agent_store(
     else:
         raise ValueError(f"Unknown store type: {store_type}")
 
-
 # 기본 스토어 (싱글톤)
-_default_store: Optional[AgentStoreBase] = None
-
+_default_store: AgentStoreBase | None = None
 
 async def get_default_store() -> AgentStoreBase:
     """기본 스토어 가져오기 (비동기)"""
@@ -1257,12 +1239,10 @@ async def get_default_store() -> AgentStoreBase:
     
     return _default_store
 
-
 async def set_default_store(store: AgentStoreBase) -> None:
     """기본 스토어 설정 (비동기)"""
     global _default_store
     _default_store = store
-
 
 def get_store() -> AgentStoreBase:
     """기본 스토어 가져오기 (동기)"""
@@ -1272,7 +1252,6 @@ def get_store() -> AgentStoreBase:
         _default_store = InMemoryAgentStore()
     
     return _default_store
-
 
 def set_store(store: AgentStoreBase) -> None:
     """기본 스토어 설정 (동기)"""

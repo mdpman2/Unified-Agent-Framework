@@ -75,6 +75,8 @@ Unified Agent Framework - 메모리 관리 모듈 (Memory Module)
     - LRU Cache 알고리즘: https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU
 """
 
+from __future__ import annotations
+
 import os
 import json
 import fnmatch
@@ -83,7 +85,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict, OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any
+from typing import Any
 
 from .models import AgentState
 from .utils import StructuredLogger
@@ -96,7 +98,6 @@ __all__ = [
     "MemorySessionManager",
     "StateManager",
 ]
-
 
 # ============================================================================
 # 메모리 저장소 인터페이스
@@ -123,7 +124,7 @@ class MemoryStore(ABC):
         ...         # Redis에 저장
         ...         pass
         ...
-        ...     async def load(self, key: str) -> Optional[Dict]:
+        ...     async def load(self, key: str) -> Dict | None:
         ...         # Redis에서 로드
         ...         pass
 
@@ -136,11 +137,11 @@ class MemoryStore(ABC):
     """
 
     @abstractmethod
-    async def save(self, key: str, data: Dict) -> None:
+    async def save(self, key: str, data: dict) -> None:
         pass
 
     @abstractmethod
-    async def load(self, key: str) -> Optional[Dict]:
+    async def load(self, key: str) -> dict | None:
         pass
 
     @abstractmethod
@@ -148,10 +149,9 @@ class MemoryStore(ABC):
         pass
 
     @abstractmethod
-    async def list_keys(self, pattern: str = "*") -> List[str]:
+    async def list_keys(self, pattern: str = "*") -> list[str]:
         """키 목록 조회"""
         pass
-
 
 class CachedMemoryStore(MemoryStore):
     """
@@ -209,12 +209,12 @@ class CachedMemoryStore(MemoryStore):
                 - 메모리 사용량과 성능 균형 고려하여 설정
                 - 대량 데이터 저장 시 500 이상 권장
         """
-        self.data: Dict[str, Dict] = {}  # 원본 데이터
+        self.data: dict[str, dict] = {}  # 원본 데이터
         self.cache: OrderedDict = OrderedDict()  # 최적화: OrderedDict로 LRU 구현
-        self.access_count: Dict[str, int] = defaultdict(int)  # 접근 횟수
+        self.access_count: dict[str, int] = defaultdict(int)  # 접근 횟수
         self.max_cache_size = max_cache_size
 
-    async def save(self, key: str, data: Dict) -> None:
+    async def save(self, key: str, data: dict) -> None:
         self.data[key] = {
             'data': data,
             'timestamp': datetime.now(timezone.utc).isoformat(),
@@ -226,7 +226,7 @@ class CachedMemoryStore(MemoryStore):
         if self.access_count[key] > 3:
             self._add_to_cache(key, data)
 
-    async def load(self, key: str) -> Optional[Dict]:
+    async def load(self, key: str) -> dict | None:
         self.access_count[key] += 1
 
         # 캐시 확인 (최적화: OrderedDict move_to_end)
@@ -245,7 +245,7 @@ class CachedMemoryStore(MemoryStore):
         if key in self.cache:
             del self.cache[key]
 
-    async def list_keys(self, pattern: str = "*") -> List[str]:
+    async def list_keys(self, pattern: str = "*") -> list[str]:
         """키 목록 조회 (최적화: 모듈 레벨 fnmatch import)"""
         if pattern == "*":
             return list(self.data.keys())
@@ -260,12 +260,11 @@ class CachedMemoryStore(MemoryStore):
         self.cache[key] = data
         self.cache.move_to_end(key)  # 최신으로 이동
 
-
 # ============================================================================
 # 대화 메시지 모델
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ConversationMessage:
     """
     대화 메시지 데이터 모델 (AgentCore Memory 패턴)
@@ -311,10 +310,9 @@ class ConversationMessage:
     content: str  # 메시지 내용
     role: str  # 발화자 역할: USER, ASSISTANT, TOOL, SYSTEM
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))  # 생성 시간 (UTC)
-    agent_name: Optional[str] = None  # 에이전트 이름 (선택)
-    session_id: Optional[str] = None  # 세션 ID (선택)
-    metadata: Dict[str, Any] = field(default_factory=dict)  # 추가 메타데이터
-
+    agent_name: str | None = None  # 에이전트 이름 (선택)
+    session_id: str | None = None  # 세션 ID (선택)
+    metadata: dict[str, Any] = field(default_factory=dict)  # 추가 메타데이터
 
 # ============================================================================
 # Memory Hook Provider
@@ -345,10 +343,10 @@ class MemoryHookProvider:
         self.actor_id = actor_id
         self.max_context_turns = max_context_turns
         self.namespace = namespace
-        self.conversation_history: List[ConversationMessage] = []
+        self.conversation_history: list[ConversationMessage] = []
         self._logger = StructuredLogger("memory_hook")
 
-    async def on_agent_initialized(self, agent_name: str) -> List[ConversationMessage]:
+    async def on_agent_initialized(self, agent_name: str) -> list[ConversationMessage]:
         """
         에이전트 초기화 시 최근 대화 기록 로드
         """
@@ -376,7 +374,7 @@ class MemoryHookProvider:
         self,
         content: str,
         role: str,
-        agent_name: Optional[str] = None
+        agent_name: str | None = None
     ):
         """
         메시지 추가 시 자동 저장
@@ -407,7 +405,7 @@ class MemoryHookProvider:
         except Exception as e:
             self._logger.error(f"Failed to save message: {e}")
 
-    async def get_last_k_turns(self, k: int = 5) -> List[ConversationMessage]:
+    async def get_last_k_turns(self, k: int = 5) -> list[ConversationMessage]:
         """최근 k개 대화 턴 조회"""
         return self.conversation_history[-k:]
 
@@ -417,7 +415,6 @@ class MemoryHookProvider:
         await self.memory_store.delete(key)
         self.conversation_history = []
         self._logger.info("Session cleared", session_id=self.session_id)
-
 
 # ============================================================================
 # Memory Session Manager
@@ -436,7 +433,7 @@ class MemorySessionManager:
     def __init__(self, memory_store: MemoryStore, default_ttl_hours: int = 24):
         self.memory_store = memory_store
         self.default_ttl_hours = default_ttl_hours
-        self._sessions: Dict[str, MemoryHookProvider] = {}
+        self._sessions: dict[str, MemoryHookProvider] = {}
         self._logger = StructuredLogger("session_manager")
 
     def get_or_create_session(
@@ -463,7 +460,7 @@ class MemorySessionManager:
 
         return self._sessions[key]
 
-    async def list_sessions(self, actor_id: Optional[str] = None) -> List[str]:
+    async def list_sessions(self, actor_id: str | None = None) -> list[str]:
         """세션 목록 조회"""
         sessions = []
         for key in self._sessions.keys():
@@ -475,7 +472,6 @@ class MemorySessionManager:
         """만료된 세션 정리"""
         # 구현: TTL 기반 세션 정리
         pass
-
 
 # ============================================================================
 # State Manager
@@ -494,10 +490,10 @@ class StateManager:
     6. rollback(steps): 이전 상태로 롤백
     """
 
-    def __init__(self, memory_store: MemoryStore, checkpoint_dir: Optional[str] = None):
+    def __init__(self, memory_store: MemoryStore, checkpoint_dir: str | None = None):
         self.memory_store = memory_store
         self.checkpoint_dir = checkpoint_dir
-        self.state_versions: Dict[str, List[str]] = defaultdict(list)
+        self.state_versions: dict[str, list[str]] = defaultdict(list)
 
         if checkpoint_dir and not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
@@ -512,7 +508,7 @@ class StateManager:
         await self.memory_store.save(version_key, state_dict)
         self.state_versions[state.session_id].append(version_key)
 
-    async def load_state(self, session_id: str, version: Optional[int] = None) -> Optional[AgentState]:
+    async def load_state(self, session_id: str, version: int | None = None) -> AgentState | None:
         """상태 로드 (특정 버전 지원)"""
         if version is not None:
             version_key = f"state:{session_id}:v{version}"
@@ -524,7 +520,7 @@ class StateManager:
             return AgentState(**data)
         return None
 
-    async def save_checkpoint(self, state: AgentState, tag: Optional[str] = None) -> str:
+    async def save_checkpoint(self, state: AgentState, tag: str | None = None) -> str:
         """체크포인트 저장"""
         if not self.checkpoint_dir:
             raise ValueError("체크포인트 디렉토리 미설정")
@@ -542,7 +538,7 @@ class StateManager:
         logging.info(f"💾 체크포인트 저장: {checkpoint_file}")
         return checkpoint_file
 
-    async def restore_checkpoint(self, session_id: str, tag: Optional[str] = None) -> Optional[AgentState]:
+    async def restore_checkpoint(self, session_id: str, tag: str | None = None) -> AgentState | None:
         """체크포인트 복원"""
         if not self.checkpoint_dir:
             return None
@@ -567,7 +563,7 @@ class StateManager:
         logging.info(f"📂 체크포인트 복원: {latest}")
         return AgentState(**data)
 
-    async def list_checkpoints(self, session_id: str) -> List[str]:
+    async def list_checkpoints(self, session_id: str) -> list[str]:
         """체크포인트 목록"""
         if not self.checkpoint_dir or not os.path.exists(self.checkpoint_dir):
             return []
@@ -578,7 +574,7 @@ class StateManager:
         ]
         return sorted(checkpoints)
 
-    async def rollback(self, session_id: str, steps: int = 1) -> Optional[AgentState]:
+    async def rollback(self, session_id: str, steps: int = 1) -> AgentState | None:
         """이전 상태로 롤백"""
         versions = self.state_versions.get(session_id, [])
         if len(versions) < steps:

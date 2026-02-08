@@ -87,6 +87,8 @@ Unified Agent Framework - 예외 클래스 모듈 (Exceptions Module)
     - Azure Content Safety: https://learn.microsoft.com/azure/ai-services/content-safety/
 """
 
+from __future__ import annotations
+
 __all__ = [
     "FrameworkError",
     "ConfigurationError",
@@ -95,7 +97,6 @@ __all__ = [
     "ApprovalError",
     "RAIValidationError",
 ]
-
 
 class FrameworkError(Exception):
     """
@@ -111,7 +112,6 @@ class FrameworkError(Exception):
         ...     logger.error(f"프레임워크 오류: {e}")
     """
     pass
-
 
 class ConfigurationError(FrameworkError):
     """
@@ -130,7 +130,6 @@ class ConfigurationError(FrameworkError):
     """
     pass
 
-
 class WorkflowError(FrameworkError):
     """
     워크플로우 실행 예외
@@ -147,7 +146,6 @@ class WorkflowError(FrameworkError):
     - loop_nodes 및 max_iterations 확인
     """
     pass
-
 
 class AgentError(FrameworkError):
     """
@@ -166,7 +164,6 @@ class AgentError(FrameworkError):
     """
     pass
 
-
 class ApprovalError(FrameworkError):
     """
     승인 처리 예외
@@ -182,7 +179,6 @@ class ApprovalError(FrameworkError):
     - 자동 승인 규칙 검토
     """
     pass
-
 
 class RAIValidationError(FrameworkError):
     """

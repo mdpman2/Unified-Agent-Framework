@@ -43,10 +43,12 @@ Unified Agent Framework - 설정 모듈 (Configuration Module)
     - Microsoft Agent Framework: https://github.com/microsoft/agent-framework
 """
 
+from __future__ import annotations
+from typing import Protocol
+
 import os
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
 from dotenv import load_dotenv
 from semantic_kernel.connectors.ai.open_ai.prompt_execution_settings.azure_chat_prompt_execution_settings import (
@@ -69,7 +71,6 @@ __all__ = [
     "get_model_context_window",
     "create_execution_settings",
 ]
-
 
 class Settings:
     """
@@ -252,7 +253,6 @@ class Settings:
     ENABLE_TRACE_LOGGING: bool = True        # 트레이스 로깅 활성화
     TRACE_EXPORT_ENDPOINT: str = ""          # 트레이스 내보내기 엔드포인트
 
-
 # 하위 호환성을 위한 전역 변수 (Settings 클래스 참조)
 DEFAULT_LLM_MODEL = Settings.DEFAULT_MODEL
 DEFAULT_API_VERSION = Settings.DEFAULT_API_VERSION
@@ -260,8 +260,7 @@ SUPPORTED_MODELS = Settings.SUPPORTED_MODELS
 MODELS_WITHOUT_TEMPERATURE = Settings.MODELS_WITHOUT_TEMPERATURE
 O_SERIES_MODELS = Settings.MODELS_WITHOUT_TEMPERATURE  # o-시리즈 모델 (temperature 미지원)
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class FrameworkConfig:
     """
     프레임워크 인스턴스 설정 (Dataclass)
@@ -321,9 +320,9 @@ class FrameworkConfig:
     max_tokens: int = field(default_factory=lambda: Settings.DEFAULT_MAX_TOKENS)
 
     # Azure 설정 (환경변수에서 로드)
-    api_key: Optional[str] = None
-    endpoint: Optional[str] = None
-    deployment_name: Optional[str] = None
+    api_key: str | None = field(default=None, repr=False)
+    endpoint: str | None = None
+    deployment_name: str | None = None
 
     # 프레임워크 설정 - Settings 클래스 참조
     checkpoint_dir: str = field(default_factory=lambda: Settings.CHECKPOINT_DIR)
@@ -344,10 +343,10 @@ class FrameworkConfig:
 
     # 로깅 설정 - Settings 클래스 참조
     log_level: str = field(default_factory=lambda: Settings.LOG_LEVEL)
-    log_file: Optional[str] = field(default_factory=lambda: Settings.LOG_FILE)
+    log_file: str | None = field(default_factory=lambda: Settings.LOG_FILE)
 
     @classmethod
-    def from_env(cls, dotenv_path: Optional[str] = None) -> 'FrameworkConfig':
+    def from_env(cls, dotenv_path: str | None = None) -> 'FrameworkConfig':
         """
         환경변수에서 설정 로드
 
@@ -401,7 +400,6 @@ class FrameworkConfig:
                 "\n\n💡 .env 파일을 생성하거나 환경변수를 설정하세요."
             )
         return True
-
 
 def supports_temperature(model: str) -> bool:
     """
@@ -472,7 +470,6 @@ def supports_temperature(model: str) -> bool:
     )
     return not any(model_lower.startswith(prefix) for prefix in reasoning_prefixes)
 
-
 def is_multimodal_model(model: str) -> bool:
     """
     모델의 멀티모달 (이미지/오디오/비디오 입력) 지원 여부 확인
@@ -515,7 +512,6 @@ def is_multimodal_model(model: str) -> bool:
     _MULTIMODAL = frozenset(m.lower() for m in Settings.MULTIMODAL_MODELS)
     return model.lower() in _MULTIMODAL
 
-
 def is_large_context_model(model: str) -> bool:
     """
     모델의 대용량 컨텍스트 (100K+ 토큰) 지원 여부 확인
@@ -555,7 +551,6 @@ def is_large_context_model(model: str) -> bool:
     """
     _LARGE_CTX = frozenset(m.lower() for m in Settings.LARGE_CONTEXT_MODELS)
     return model.lower() in _LARGE_CTX
-
 
 def get_model_context_window(model: str) -> int:
     """
@@ -631,12 +626,11 @@ def get_model_context_window(model: str) -> int:
 
     return context_windows.get(model_lower, Settings.DEFAULT_CONTEXT_WINDOW)
 
-
 def create_execution_settings(
     model: str,
     temperature: float = 0.7,
     max_tokens: int = 1000,
-    service_id: Optional[str] = None,
+    service_id: str | None = None,
     **kwargs
 ) -> AzureChatPromptExecutionSettings:
     """

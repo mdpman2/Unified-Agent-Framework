@@ -54,21 +54,14 @@ from typing import (
     AsyncGenerator,
     Callable,
     ContextManager,
-    Dict,
     Generator,
     Generic,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
     TypeVar,
-    Union,
 )
 
 from pydantic import BaseModel, Field
 
 from .utils import StructuredLogger
-
 
 # ============================================================================
 # Span 관련 타입 정의
@@ -84,13 +77,11 @@ class SpanKind(str, Enum):
     REWARD = "reward"         # 리워드 기록
     ANNOTATION = "annotation" # 주석/메타데이터
 
-
 class SpanStatus(str, Enum):
     """스팬 상태"""
     UNSET = "unset"
     OK = "ok"
     ERROR = "error"
-
 
 class TraceStatus(str, Enum):
     """트레이스 상태"""
@@ -99,15 +90,14 @@ class TraceStatus(str, Enum):
     FAILED = "failed"
     CANCELLED = "cancelled"
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class SpanContext:
     """스팬 컨텍스트 (트레이스 연결 정보)"""
     trace_id: str
     span_id: str
-    parent_span_id: Optional[str] = None
+    parent_span_id: str | None = None
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "trace_id": self.trace_id,
             "span_id": self.span_id,
@@ -115,15 +105,14 @@ class SpanContext:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SpanContext":
+    def from_dict(cls, data: dict[str, Any]) -> "SpanContext":
         return cls(
             trace_id=data["trace_id"],
             span_id=data["span_id"],
             parent_span_id=data.get("parent_span_id"),
         )
 
-
-@dataclass
+@dataclass(slots=True)
 class Span:
     """
     에이전트 실행 추적을 위한 Span
@@ -135,26 +124,26 @@ class Span:
     name: str
     kind: SpanKind
     start_time: float
-    end_time: Optional[float] = None
+    end_time: float | None = None
     status: SpanStatus = SpanStatus.UNSET
     
     # 컨텍스트
     trace_id: str = ""
-    parent_span_id: Optional[str] = None
-    rollout_id: Optional[str] = None
-    attempt_id: Optional[str] = None
+    parent_span_id: str | None = None
+    rollout_id: str | None = None
+    attempt_id: str | None = None
     sequence_id: int = 0
     
     # 속성 및 이벤트
-    attributes: Dict[str, Any] = field(default_factory=dict)
-    events: List[Dict[str, Any]] = field(default_factory=list)
+    attributes: dict[str, Any] = field(default_factory=dict)
+    events: list[dict[str, Any]] = field(default_factory=list)
     
     # 메타데이터
-    agent_name: Optional[str] = None
-    error_message: Optional[str] = None
+    agent_name: str | None = None
+    error_message: str | None = None
     
     @property
-    def duration_ms(self) -> Optional[float]:
+    def duration_ms(self) -> float | None:
         """실행 시간 (밀리초)"""
         if self.end_time is None:
             return None
@@ -164,7 +153,7 @@ class Span:
         """속성 설정"""
         self.attributes[key] = value
     
-    def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+    def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         """이벤트 추가"""
         self.events.append({
             "name": name,
@@ -172,19 +161,19 @@ class Span:
             "attributes": attributes or {},
         })
     
-    def set_status(self, status: SpanStatus, message: Optional[str] = None) -> None:
+    def set_status(self, status: SpanStatus, message: str | None = None) -> None:
         """상태 설정"""
         self.status = status
         if message:
             self.error_message = message
     
-    def end(self, end_time: Optional[float] = None) -> None:
+    def end(self, end_time: float | None = None) -> None:
         """스팬 종료"""
         self.end_time = end_time or time.time()
         if self.status == SpanStatus.UNSET:
             self.status = SpanStatus.OK
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """딕셔너리 변환"""
         return {
             "span_id": self.span_id,
@@ -206,7 +195,7 @@ class Span:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Span":
+    def from_dict(cls, data: dict[str, Any]) -> "Span":
         """딕셔너리에서 생성"""
         return cls(
             span_id=data["span_id"],
@@ -226,7 +215,6 @@ class Span:
             error_message=data.get("error_message"),
         )
 
-
 # ============================================================================
 # Span Recording Context
 # ============================================================================
@@ -241,7 +229,7 @@ class SpanRecordingContext:
     ):
         self._tracer = tracer
         self._span = span
-        self._token: Optional[Any] = None
+        self._token: Any | None = None
     
     @property
     def span(self) -> Span:
@@ -250,12 +238,11 @@ class SpanRecordingContext:
     def set_attribute(self, key: str, value: Any) -> None:
         self._span.set_attribute(key, value)
     
-    def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+    def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         self._span.add_event(name, attributes)
     
-    def set_status(self, status: SpanStatus, message: Optional[str] = None) -> None:
+    def set_status(self, status: SpanStatus, message: str | None = None) -> None:
         self._span.set_status(status, message)
-
 
 # ============================================================================
 # Tracer 베이스 클래스
@@ -284,13 +271,13 @@ class Tracer(ABC):
         self,
         name: str,
         kind: SpanKind = SpanKind.INTERNAL,
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ) -> ContextManager[SpanRecordingContext]:
         """스팬 시작"""
         pass
     
     @abstractmethod
-    def get_last_trace(self) -> List[Span]:
+    def get_last_trace(self) -> list[Span]:
         """마지막 트레이스의 스팬들 반환"""
         pass
     
@@ -298,7 +285,6 @@ class Tracer(ABC):
     def close(self) -> None:
         """리소스 정리"""
         pass
-
 
 # ============================================================================
 # Agent Tracer 구현
@@ -337,41 +323,41 @@ class AgentTracer(Tracer):
         self._logger = StructuredLogger(f"tracer.{name}")
         
         # 현재 트레이스 상태
-        self._current_trace_id: Optional[str] = None
-        self._current_rollout_id: Optional[str] = None
-        self._current_attempt_id: Optional[str] = None
+        self._current_trace_id: str | None = None
+        self._current_rollout_id: str | None = None
+        self._current_attempt_id: str | None = None
         
         # 스팬 버퍼 (스레드 안전)
-        self._spans: List[Span] = []
-        self._span_stack: List[Span] = []  # 활성 스팬 스택
+        self._spans: list[Span] = []
+        self._span_stack: list[Span] = []  # 활성 스팬 스택
         self._sequence_counter: int = 0
         self._lock = threading.RLock()
         
         # 마지막 완료된 트레이스
-        self._last_trace: List[Span] = []
+        self._last_trace: list[Span] = []
         
         # 이벤트 루프 (비동기 제출용)
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._loop: asyncio.AbstractEventLoop | None = None
         self._initialized = False
         
         # 콜백
-        self._on_span_end_callbacks: List[Callable[[Span], None]] = []
-        self._on_trace_end_callbacks: List[Callable[[List[Span]], None]] = []
+        self._on_span_end_callbacks: list[Callable[[Span], None]] = []
+        self._on_trace_end_callbacks: list[Callable[[list[Span]], None]] = []
     
     @property
     def name(self) -> str:
         return self._name
     
     @property
-    def current_trace_id(self) -> Optional[str]:
+    def current_trace_id(self) -> str | None:
         return self._current_trace_id
     
     @property
-    def current_rollout_id(self) -> Optional[str]:
+    def current_rollout_id(self) -> str | None:
         return self._current_rollout_id
     
     @property
-    def current_attempt_id(self) -> Optional[str]:
+    def current_attempt_id(self) -> str | None:
         return self._current_attempt_id
     
     async def initialize(self) -> None:
@@ -402,7 +388,7 @@ class AgentTracer(Tracer):
         self,
         rollout_id: str,
         attempt_id: str,
-        trace_id: Optional[str] = None,
+        trace_id: str | None = None,
         **kwargs: Any,
     ) -> AsyncGenerator[None, None]:
         """
@@ -460,7 +446,7 @@ class AgentTracer(Tracer):
         self,
         name: str,
         kind: SpanKind = SpanKind.INTERNAL,
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ) -> Generator[SpanRecordingContext, None, None]:
         """
         새 스팬 시작
@@ -517,8 +503,8 @@ class AgentTracer(Tracer):
         self,
         name: str,
         kind: SpanKind = SpanKind.INTERNAL,
-        attributes: Optional[Dict[str, Any]] = None,
-        start_time: Optional[float] = None,
+        attributes: dict[str, Any] | None = None,
+        start_time: float | None = None,
     ) -> Span:
         """
         스팬 직접 생성 (수동 관리용)
@@ -563,17 +549,17 @@ class AgentTracer(Tracer):
         
         self._trigger_span_end_callbacks(span)
     
-    def get_last_trace(self) -> List[Span]:
+    def get_last_trace(self) -> list[Span]:
         """마지막 완료된 트레이스 반환"""
         with self._lock:
             return list(self._last_trace)
     
-    def get_current_spans(self) -> List[Span]:
+    def get_current_spans(self) -> list[Span]:
         """현재 트레이스의 스팬들 반환"""
         with self._lock:
             return list(self._spans)
     
-    def get_active_span(self) -> Optional[Span]:
+    def get_active_span(self) -> Span | None:
         """현재 활성 스팬 반환"""
         with self._lock:
             return self._span_stack[-1] if self._span_stack else None
@@ -582,7 +568,7 @@ class AgentTracer(Tracer):
         """스팬 종료 콜백 등록"""
         self._on_span_end_callbacks.append(callback)
     
-    def add_callback_on_trace_end(self, callback: Callable[[List[Span]], None]) -> None:
+    def add_callback_on_trace_end(self, callback: Callable[[list[Span]], None]) -> None:
         """트레이스 종료 콜백 등록"""
         self._on_trace_end_callbacks.append(callback)
     
@@ -594,7 +580,7 @@ class AgentTracer(Tracer):
             except Exception as e:
                 self._logger.error("Span end callback error", error=str(e))
     
-    def _trigger_trace_end_callbacks(self, spans: List[Span]) -> None:
+    def _trigger_trace_end_callbacks(self, spans: list[Span]) -> None:
         """트레이스 종료 콜백 실행"""
         for callback in self._on_trace_end_callbacks:
             try:
@@ -611,7 +597,6 @@ class AgentTracer(Tracer):
             self._span_stack = []
         
         self._logger.info("Tracer closed", name=self._name)
-
 
 # ============================================================================
 # LLM Tracer (LLM 호출 전용 추적)
@@ -635,8 +620,8 @@ class LLMCallTracer:
     def trace_llm_call(
         self,
         model: str,
-        prompt: Optional[str] = None,
-        messages: Optional[List[Dict[str, str]]] = None,
+        prompt: str | None = None,
+        messages: list[dict[str, str]] | None = None,
         **kwargs: Any,
     ) -> Generator[SpanRecordingContext, None, None]:
         """
@@ -673,8 +658,8 @@ class LLMCallTracer:
         self,
         ctx: SpanRecordingContext,
         response: str,
-        tokens: Optional[Dict[str, int]] = None,
-        finish_reason: Optional[str] = None,
+        tokens: dict[str, int] | None = None,
+        finish_reason: str | None = None,
     ) -> None:
         """
         LLM 응답 기록
@@ -698,7 +683,6 @@ class LLMCallTracer:
         if finish_reason:
             ctx.set_attribute("llm.finish_reason", finish_reason)
 
-
 # ============================================================================
 # Tool Tracer (도구 실행 추적)
 # ============================================================================
@@ -715,7 +699,7 @@ class ToolCallTracer:
     def trace_tool_call(
         self,
         tool_name: str,
-        input_args: Optional[Dict[str, Any]] = None,
+        input_args: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> Generator[SpanRecordingContext, None, None]:
         """
@@ -765,7 +749,6 @@ class ToolCallTracer:
         if not success:
             ctx.set_status(SpanStatus.ERROR, result_str[:500])
 
-
 # ============================================================================
 # Tracer Factory
 # ============================================================================
@@ -786,14 +769,12 @@ def create_tracer(
     """
     return AgentTracer(name=name, max_spans_per_trace=max_spans)
 
-
 # ============================================================================
 # 전역 트레이서 관리
 # ============================================================================
 
-_global_tracer: Optional[AgentTracer] = None
+_global_tracer: AgentTracer | None = None
 _tracer_lock = threading.Lock()
-
 
 def get_tracer(name: str = "global") -> AgentTracer:
     """전역 트레이서 가져오기 또는 생성"""
@@ -804,7 +785,6 @@ def get_tracer(name: str = "global") -> AgentTracer:
             _global_tracer = create_tracer(name)
         return _global_tracer
 
-
 def set_tracer(tracer: AgentTracer) -> None:
     """전역 트레이서 설정"""
     global _global_tracer
@@ -812,13 +792,12 @@ def set_tracer(tracer: AgentTracer) -> None:
     with _tracer_lock:
         _global_tracer = tracer
 
-
 @asynccontextmanager
 async def trace_context(
-    tracer: Optional[AgentTracer] = None,
+    tracer: AgentTracer | None = None,
     name: str = "trace",
-    rollout_id: Optional[str] = None,
-    attempt_id: Optional[str] = None,
+    rollout_id: str | None = None,
+    attempt_id: str | None = None,
     **kwargs: Any,
 ) -> AsyncGenerator[SpanRecordingContext, None]:
     """
@@ -859,8 +838,7 @@ async def trace_context(
         
         yield root_span
 
-
-def current_span() -> Optional[Span]:
+def current_span() -> Span | None:
     """
     현재 활성 스팬 반환
     

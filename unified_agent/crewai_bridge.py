@@ -29,13 +29,14 @@ Unified Agent Framework - CrewAI 브릿지 모듈
     - CrewAI: https://github.com/crewAIInc/crewAI
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 __all__ = ["CrewAIBridge"]
 
 logger = logging.getLogger(__name__)
-
 
 class CrewAIBridge:
     """
@@ -50,7 +51,7 @@ class CrewAIBridge:
 
     def __init__(self, process: str = "sequential"):
         self._process = process
-        self._crews: Dict[str, Dict] = {}
+        self._crews: dict[str, dict] = {}
         logger.info(f"[CrewAIBridge] 초기화 (process={process})")
 
     def __repr__(self) -> str:
@@ -58,11 +59,11 @@ class CrewAIBridge:
 
     def create_crew(
         self,
-        agents: Optional[List[str]] = None,
-        process: Optional[str] = None,
-        name: Optional[str] = None,
+        agents: list[str] | None = None,
+        process: str | None = None,
+        name: str | None = None,
         **kwargs: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Crew 생성"""
         crew_name = name or "default_crew"
         crew = {
@@ -77,10 +78,10 @@ class CrewAIBridge:
 
     async def run(
         self,
-        crew: Optional[Dict[str, Any]] = None,
+        crew: dict[str, Any] | None = None,
         task: str = "",
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Crew 실행 (UniversalAgentBridge 호환)
 
         Args:

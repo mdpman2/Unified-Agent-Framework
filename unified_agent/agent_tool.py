@@ -45,6 +45,7 @@ import asyncio
 import inspect
 import json
 import logging
+import time
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -54,20 +55,13 @@ from typing import (
     Any,
     Callable,
     Coroutine,
-    Dict,
     Generic,
-    List,
-    Optional,
-    Set,
-    Tuple,
     Type,
     TypeVar,
-    Union,
 )
 
 from .utils import StructuredLogger
 from .tools import AIFunction
-
 
 __all__ = [
     # 설정
@@ -84,7 +78,6 @@ __all__ = [
     "ChainStep",
 ]
 
-
 # ============================================================================
 # 설정 및 정책
 # ============================================================================
@@ -96,8 +89,7 @@ class DelegationPolicy(str, Enum):
     AUTO = "auto"              # 자동 판단
     NEVER = "never"            # 위임 안함
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class AgentToolConfig:
     """
     AgentTool 설정
@@ -116,20 +108,19 @@ class AgentToolConfig:
     include_history: bool = False
     max_history_turns: int = 5
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class DelegationResult:
     """위임 결과"""
     success: bool
     agent_id: str
     agent_name: str
     result: Any = None
-    error: Optional[str] = None
+    error: str | None = None
     duration_ms: float = 0.0
     delegated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "success": self.success,
             "agent_id": self.agent_id,
@@ -138,7 +129,6 @@ class DelegationResult:
             "error": self.error,
             "duration_ms": self.duration_ms,
         }
-
 
 # ============================================================================
 # AgentTool - 에이전트를 도구로 래핑
@@ -170,8 +160,8 @@ class AgentTool(AIFunction):
         name: str,
         description: str,
         agent: Any,
-        config: Optional[AgentToolConfig] = None,
-        input_schema: Optional[Dict[str, Any]] = None,
+        config: AgentToolConfig | None = None,
+        input_schema: dict[str, Any] | None = None,
     ):
         """
         AgentTool 초기화
@@ -198,10 +188,10 @@ class AgentTool(AIFunction):
     def from_agent(
         cls,
         agent: Any,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        config: Optional[AgentToolConfig] = None,
-        parameters: Optional[Dict[str, Any]] = None,
+        name: str | None = None,
+        description: str | None = None,
+        config: AgentToolConfig | None = None,
+        parameters: dict[str, Any] | None = None,
     ) -> "AgentTool":
         """
         에이전트로부터 AgentTool 생성
@@ -243,7 +233,7 @@ class AgentTool(AIFunction):
             input_schema=parameters or default_schema,
         )
     
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """OpenAI Function Calling 스키마"""
         return {
             "type": "function",
@@ -273,7 +263,6 @@ class AgentTool(AIFunction):
         Returns:
             위임 결과
         """
-        import time
         start_time = time.time()
         
         result = DelegationResult(
@@ -312,7 +301,7 @@ class AgentTool(AIFunction):
         
         return result
     
-    async def _call_agent(self, kwargs: Dict[str, Any]) -> Any:
+    async def _call_agent(self, kwargs: dict[str, Any]) -> Any:
         """에이전트 호출 (다양한 인터페이스 지원)"""
         query = kwargs.get('query', '')
         context = kwargs.get('context', '')
@@ -351,7 +340,6 @@ class AgentTool(AIFunction):
     def __repr__(self) -> str:
         return f"AgentTool(name={self.name}, agent={self.agent_name})"
 
-
 # ============================================================================
 # AgentToolRegistry - 에이전트 도구 레지스트리
 # ============================================================================
@@ -374,19 +362,19 @@ class AgentToolRegistry:
         >>> schemas = registry.get_all_schemas()
     """
     
-    def __init__(self, config: Optional[AgentToolConfig] = None):
+    def __init__(self, config: AgentToolConfig | None = None):
         self._config = config or AgentToolConfig()
-        self._tools: Dict[str, AgentTool] = {}
-        self._capabilities: Dict[str, Set[str]] = {}  # capability -> tool names
+        self._tools: dict[str, AgentTool] = {}
+        self._capabilities: dict[str, set[str]] = {}  # capability -> tool names
         self._logger = StructuredLogger("agent_tool_registry")
     
     def register(
         self,
         agent: Any,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        capabilities: Optional[List[str]] = None,
-        config: Optional[AgentToolConfig] = None,
+        name: str | None = None,
+        description: str | None = None,
+        capabilities: list[str] | None = None,
+        config: AgentToolConfig | None = None,
     ) -> AgentTool:
         """
         에이전트를 도구로 등록
@@ -436,20 +424,20 @@ class AgentToolRegistry:
             return True
         return False
     
-    def get(self, name: str) -> Optional[AgentTool]:
+    def get(self, name: str) -> AgentTool | None:
         """이름으로 도구 조회"""
         return self._tools.get(name)
     
-    def find_by_capability(self, capability: str) -> List[AgentTool]:
+    def find_by_capability(self, capability: str) -> list[AgentTool]:
         """능력으로 도구 찾기"""
         tool_names = self._capabilities.get(capability, set())
         return [self._tools[name] for name in tool_names if name in self._tools]
     
-    def get_all_tools(self) -> List[AgentTool]:
+    def get_all_tools(self) -> list[AgentTool]:
         """모든 도구 조회"""
         return list(self._tools.values())
     
-    def get_all_schemas(self) -> List[Dict[str, Any]]:
+    def get_all_schemas(self) -> list[dict[str, Any]]:
         """모든 도구의 스키마 조회"""
         return [tool.get_schema() for tool in self._tools.values()]
     
@@ -458,7 +446,6 @@ class AgentToolRegistry:
     
     def __contains__(self, name: str) -> bool:
         return name in self._tools
-
 
 # ============================================================================
 # DelegationManager - 위임 관리자
@@ -489,16 +476,16 @@ class DelegationManager:
     def __init__(
         self,
         registry: AgentToolRegistry,
-        config: Optional[AgentToolConfig] = None,
+        config: AgentToolConfig | None = None,
     ):
         self._registry = registry
         self._config = config or AgentToolConfig()
         self._logger = StructuredLogger("delegation_manager")
         
         # 라우팅 함수 (커스터마이징 가능)
-        self._router: Optional[Callable[[str], Optional[str]]] = None
+        self._router: Callable[[str], str | None] | None = None
     
-    def set_router(self, router: Callable[[str, List[str]], Optional[str]]):
+    def set_router(self, router: Callable[[str, list[str]], str | None]):
         """
         커스텀 라우터 설정
         
@@ -510,9 +497,9 @@ class DelegationManager:
     async def delegate(
         self,
         task: str,
-        hint: Optional[str] = None,
-        context: Optional[str] = None,
-        exclude: Optional[List[str]] = None,
+        hint: str | None = None,
+        context: str | None = None,
+        exclude: list[str] | None = None,
     ) -> DelegationResult:
         """
         자동 위임 (적절한 에이전트 선택)
@@ -564,7 +551,7 @@ class DelegationManager:
         self,
         agent_name: str,
         task: str,
-        context: Optional[str] = None,
+        context: str | None = None,
     ) -> DelegationResult:
         """
         특정 에이전트에 위임
@@ -592,9 +579,9 @@ class DelegationManager:
     async def delegate_chain(
         self,
         task: str,
-        agent_sequence: List[str],
-        context: Optional[str] = None,
-    ) -> List[DelegationResult]:
+        agent_sequence: list[str],
+        context: str | None = None,
+    ) -> list[DelegationResult]:
         """
         에이전트 체인으로 위임 (순차 실행)
         
@@ -627,20 +614,18 @@ class DelegationManager:
         
         return results
 
-
 # ============================================================================
 # AgentChain - 에이전트 체인
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ChainStep:
     """체인 단계 정의"""
     agent_name: str
-    transform_input: Optional[Callable[[Any], Dict[str, Any]]] = None
-    transform_output: Optional[Callable[[DelegationResult], Any]] = None
-    condition: Optional[Callable[[Any], bool]] = None
-    on_error: Optional[Callable[[Exception], Any]] = None
-
+    transform_input: Callable[[Any], dict[str, Any]] | None = None
+    transform_output: Callable[[DelegationResult], Any] | None = None
+    condition: Callable[[Any], bool] | None = None
+    on_error: Callable[[Exception], Any] | None = None
 
 class AgentChain:
     """
@@ -659,16 +644,16 @@ class AgentChain:
     
     def __init__(self, registry: AgentToolRegistry):
         self._registry = registry
-        self._steps: List[ChainStep] = []
+        self._steps: list[ChainStep] = []
         self._logger = StructuredLogger("agent_chain")
     
     def add_step(
         self,
         agent_name: str,
-        transform_input: Optional[Callable[[Any], Dict[str, Any]]] = None,
-        transform_output: Optional[Callable[[DelegationResult], Any]] = None,
-        condition: Optional[Callable[[Any], bool]] = None,
-        on_error: Optional[Callable[[Exception], Any]] = None,
+        transform_input: Callable[[Any], dict[str, Any]] | None = None,
+        transform_output: Callable[[DelegationResult], Any] | None = None,
+        condition: Callable[[Any], bool] | None = None,
+        on_error: Callable[[Exception], Any] | None = None,
     ) -> "AgentChain":
         """
         체인에 단계 추가
@@ -692,7 +677,7 @@ class AgentChain:
         ))
         return self
     
-    async def run(self, initial_input: Any) -> List[DelegationResult]:
+    async def run(self, initial_input: Any) -> list[DelegationResult]:
         """
         체인 실행
         

@@ -36,6 +36,8 @@ Unified Agent Framework - 영속 메모리 시스템 (Persistent Memory Module)
     - sqlite-vec: https://github.com/asg017/sqlite-vec
 """
 
+from __future__ import annotations
+
 import os
 import re
 import json
@@ -46,7 +48,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, date
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple, Callable
+from typing import Any, Callable
 from enum import Enum
 
 from .utils import StructuredLogger
@@ -70,7 +72,6 @@ __all__ = [
     "MemoryIndexer",
 ]
 
-
 # ============================================================================
 # Enums & Constants
 # ============================================================================
@@ -81,7 +82,6 @@ class MemoryLayer(Enum):
     LONG_TERM = "long_term"        # Layer 2: 장기 기억 (MEMORY.md)
     BOOTSTRAP = "bootstrap"        # Bootstrap 파일 (AGENTS.md, SOUL.md 등)
 
-
 class BootstrapFileType(Enum):
     """Bootstrap 파일 유형 (Clawdbot 패턴)"""
     AGENTS = "AGENTS.md"     # 에이전트 지시사항, 메모리 가이드라인
@@ -90,12 +90,11 @@ class BootstrapFileType(Enum):
     TOOLS = "TOOLS.md"       # 외부 도구 사용 가이드
     MEMORY = "MEMORY.md"     # 장기 기억
 
-
 # ============================================================================
 # Configuration
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MemoryConfig:
     """
     영속 메모리 설정
@@ -120,12 +119,11 @@ class MemoryConfig:
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536
 
-
 # ============================================================================
 # Data Models
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MemoryChunk:
     """메모리 청크 (인덱싱 단위)"""
     id: str
@@ -137,8 +135,7 @@ class MemoryChunk:
     layer: MemoryLayer
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MemorySearchResult:
     """메모리 검색 결과"""
     path: str
@@ -150,7 +147,7 @@ class MemorySearchResult:
     vector_score: float = 0.0
     text_score: float = 0.0
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "path": self.path,
             "startLine": self.start_line,
@@ -161,7 +158,6 @@ class MemorySearchResult:
             "vectorScore": round(self.vector_score, 3),
             "textScore": round(self.text_score, 3),
         }
-
 
 # ============================================================================
 # Memory Indexer (SQLite + FTS5)
@@ -180,14 +176,14 @@ class MemoryIndexer:
     def __init__(
         self,
         db_path: str,
-        embedding_func: Optional[Callable[[str], List[float]]] = None,
-        config: Optional[MemoryConfig] = None
+        embedding_func: Callable[[str], list[float]] | None = None,
+        config: MemoryConfig | None = None
     ):
         self.db_path = db_path
         self.config = config or MemoryConfig()
         self._embedding_func = embedding_func
         self._logger = StructuredLogger("memory_indexer")
-        self._conn: Optional[sqlite3.Connection] = None
+        self._conn: sqlite3.Connection | None = None
         self._init_database()
     
     def _init_database(self):
@@ -236,7 +232,7 @@ class MemoryIndexer:
         self._conn.commit()
         self._logger.info("Database initialized", db_path=self.db_path)
     
-    def set_embedding_function(self, func: Callable[[str], List[float]]):
+    def set_embedding_function(self, func: Callable[[str], list[float]]) -> None:
         """임베딩 함수 설정"""
         self._embedding_func = func
     
@@ -244,7 +240,7 @@ class MemoryIndexer:
         """텍스트 해시 계산"""
         return hashlib.sha256(text.encode('utf-8')).hexdigest()[:16]
     
-    def _chunk_text(self, text: str, path: str, layer: MemoryLayer) -> List[MemoryChunk]:
+    def _chunk_text(self, text: str, path: str, layer: MemoryLayer) -> list[MemoryChunk]:
         """텍스트를 청크로 분할"""
         lines = text.split('\n')
         chunks = []
@@ -323,7 +319,7 @@ class MemoryIndexer:
         self._logger.info("File indexed", path=file_path, chunks=len(chunks))
         return len(chunks)
     
-    async def search_bm25(self, query: str, limit: int = 10) -> List[Tuple[str, float]]:
+    async def search_bm25(self, query: str, limit: int = 10) -> list[tuple[str, float]]:
         """BM25 키워드 검색"""
         cursor = self._conn.execute("""
             SELECT chunks.id, bm25(chunks_fts) as score
@@ -342,7 +338,7 @@ class MemoryIndexer:
         
         return results
     
-    async def search_vector(self, query: str, limit: int = 10) -> List[Tuple[str, float]]:
+    async def search_vector(self, query: str, limit: int = 10) -> list[tuple[str, float]]:
         """벡터 시맨틱 검색"""
         if not self._embedding_func:
             self._logger.debug("Embedding function not set, skipping vector search")
@@ -372,7 +368,7 @@ class MemoryIndexer:
         results.sort(key=lambda x: x[1], reverse=True)
         return results[:limit]
     
-    def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
+    def _cosine_similarity(self, vec1: list[float], vec2: list[float]) -> float:
         """코사인 유사도 계산"""
         dot_product = sum(a * b for a, b in zip(vec1, vec2))
         norm1 = sum(a * a for a in vec1) ** 0.5
@@ -387,7 +383,7 @@ class MemoryIndexer:
         query: str,
         limit: int = 10,
         min_score: float = 0.35
-    ) -> List[MemorySearchResult]:
+    ) -> list[MemorySearchResult]:
         """
         하이브리드 검색 (Vector 70% + BM25 30%)
         """
@@ -395,7 +391,7 @@ class MemoryIndexer:
         bm25_results = await self.search_bm25(query, limit * 2)
         
         # 점수 결합
-        combined_scores: Dict[str, Dict[str, float]] = {}
+        combined_scores: dict[str, dict[str, float]] = {}
         
         for chunk_id, score in vector_results:
             combined_scores[chunk_id] = {'vector': score, 'text': 0.0}
@@ -440,7 +436,7 @@ class MemoryIndexer:
         
         return results
     
-    def get_chunk_by_id(self, chunk_id: str) -> Optional[MemoryChunk]:
+    def get_chunk_by_id(self, chunk_id: str) -> MemoryChunk | None:
         """청크 조회"""
         cursor = self._conn.execute("SELECT * FROM chunks WHERE id = ?", (chunk_id,))
         row = cursor.fetchone()
@@ -457,7 +453,7 @@ class MemoryIndexer:
             )
         return None
     
-    async def store_embedding(self, content_hash: str, embedding: List[float], model: str):
+    async def store_embedding(self, content_hash: str, embedding: list[float], model: str) -> None:
         """임베딩 저장"""
         self._conn.execute("""
             INSERT OR REPLACE INTO embeddings (content_hash, vector, model, created_at)
@@ -470,11 +466,10 @@ class MemoryIndexer:
         ))
         self._conn.commit()
     
-    def close(self):
+    def close(self) -> None:
         """연결 종료"""
         if self._conn:
             self._conn.close()
-
 
 # ============================================================================
 # Bootstrap File Manager
@@ -568,7 +563,7 @@ Before answering questions about:
         self.workspace_dir = Path(workspace_dir)
         self._logger = StructuredLogger("bootstrap_files")
     
-    def ensure_bootstrap_files(self):
+    def ensure_bootstrap_files(self) -> None:
         """Bootstrap 파일들이 존재하는지 확인하고 없으면 생성"""
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
         
@@ -596,13 +591,13 @@ Before answering questions about:
             return file_path.read_text(encoding='utf-8')
         return ""
     
-    def write_file(self, file_type: BootstrapFileType, content: str):
+    def write_file(self, file_type: BootstrapFileType, content: str) -> None:
         """Bootstrap 파일 쓰기"""
         file_path = self.get_file_path(file_type)
         file_path.write_text(content, encoding='utf-8')
         self._logger.info(f"Updated {file_type.value}")
     
-    def append_to_file(self, file_type: BootstrapFileType, content: str):
+    def append_to_file(self, file_type: BootstrapFileType, content: str) -> None:
         """Bootstrap 파일에 추가"""
         existing = self.read_file(file_type)
         self.write_file(file_type, existing + "\n" + content)
@@ -618,7 +613,6 @@ Before answering questions about:
                 context_parts.append(f"=== {file_type.value} ===\n{content}")
         
         return "\n\n".join(context_parts)
-
 
 # ============================================================================
 # Persistent Memory System
@@ -662,9 +656,9 @@ class PersistentMemory:
     def __init__(
         self,
         agent_id: str = "main",
-        config: Optional[MemoryConfig] = None,
-        embedding_func: Optional[Callable[[str], List[float]]] = None,
-        compaction_manager: Optional[Any] = None  # v3.3: CompactionManager 연동
+        config: MemoryConfig | None = None,
+        embedding_func: Callable[[str], list[float]] | None = None,
+        compaction_manager: Any | None = None  # v3.3: CompactionManager 연동
     ):
         self.agent_id = agent_id
         self.config = config or MemoryConfig()
@@ -688,7 +682,7 @@ class PersistentMemory:
         
         self._logger = StructuredLogger("persistent_memory")
     
-    def set_compaction_manager(self, manager: Any):
+    def set_compaction_manager(self, manager: Any) -> None:
         """v3.3: CompactionManager 설정"""
         self._compaction_manager = manager
         # Memory writer 연결
@@ -707,9 +701,9 @@ class PersistentMemory:
     
     async def check_and_compact(
         self,
-        turns: List[Any],
-        agent_respond_func: Optional[Callable] = None
-    ) -> List[Any]:
+        turns: list[Any],
+        agent_respond_func: Callable | None = None
+    ) -> list[Any]:
         """
         v3.3: 컨텍스트 체크 및 자동 Compaction
         
@@ -726,7 +720,7 @@ class PersistentMemory:
         # CompactionManager.process_turns() 호출
         return await self._compaction_manager.process_turns(turns, agent_respond_func)
     
-    async def initialize(self):
+    async def initialize(self) -> None:
         """메모리 시스템 초기화"""
         # 디렉토리 생성
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
@@ -760,7 +754,7 @@ class PersistentMemory:
         today = date.today().isoformat()  # YYYY-MM-DD
         return self.memory_dir / f"{today}.md"
     
-    async def add_daily_note(self, content: str, timestamp: Optional[datetime] = None):
+    async def add_daily_note(self, content: str, timestamp: datetime | None = None) -> None:
         """
         오늘 기록에 메모 추가 (Layer 1)
         
@@ -787,7 +781,7 @@ class PersistentMemory:
         
         self._logger.info("Added daily note", time=time_str)
     
-    async def add_long_term_memory(self, content: str, section: Optional[str] = None):
+    async def add_long_term_memory(self, content: str, section: str | None = None) -> None:
         """
         장기 기억에 추가 (Layer 2)
         
@@ -823,8 +817,8 @@ class PersistentMemory:
         query: str,
         max_results: int = 6,
         min_score: float = 0.35,
-        layer: Optional[MemoryLayer] = None
-    ) -> List[MemorySearchResult]:
+        layer: MemoryLayer | None = None
+    ) -> list[MemorySearchResult]:
         """
         메모리 검색 (하이브리드: Vector 70% + BM25 30%)
         
@@ -850,7 +844,7 @@ class PersistentMemory:
         path: str,
         start_line: int = 1,
         lines: int = 15
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         특정 메모리 파일의 내용 읽기
         
@@ -872,7 +866,7 @@ class PersistentMemory:
         end_line = min(start_line + lines - 1, len(all_lines))
         return "".join(all_lines[start_line - 1:end_line])
     
-    async def get_recent_daily_logs(self, days: int = 2) -> List[Dict[str, Any]]:
+    async def get_recent_daily_logs(self, days: int = 2) -> list[dict[str, Any]]:
         """
         최근 N일간의 일별 로그 조회
         
@@ -903,16 +897,15 @@ class PersistentMemory:
         """에이전트 초기화용 프로젝트 컨텍스트"""
         return self.bootstrap.get_project_context()
     
-    def close(self):
+    def close(self) -> None:
         """리소스 정리"""
         self.indexer.close()
-
 
 # ============================================================================
 # Memory Tools (에이전트가 사용하는 도구)
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MemorySearchTool:
     """
     memory_search 도구 - 메모리에서 관련 정보 검색
@@ -930,9 +923,9 @@ class MemorySearchTool:
     description: str = """Mandatory recall step: semantically search MEMORY.md + memory/*.md 
 before answering questions about prior work, decisions, dates, people, preferences, or todos"""
     
-    memory: Optional[PersistentMemory] = None
+    memory: PersistentMemory | None = None
     
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """OpenAI Function Calling 스키마"""
         return {
             "type": "function",
@@ -967,7 +960,7 @@ before answering questions about prior work, decisions, dates, people, preferenc
         query: str,
         maxResults: int = 6,
         minScore: float = 0.35
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """도구 실행"""
         if not self.memory:
             return {"error": "Memory system not initialized"}
@@ -980,8 +973,7 @@ before answering questions about prior work, decisions, dates, people, preferenc
             "model": self.memory.config.embedding_model
         }
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MemoryGetTool:
     """
     memory_get 도구 - 특정 메모리 파일 내용 읽기
@@ -992,9 +984,9 @@ class MemoryGetTool:
     name: str = "memory_get"
     description: str = "Read specific lines from a memory file after memory_search"
     
-    memory: Optional[PersistentMemory] = None
+    memory: PersistentMemory | None = None
     
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return {
             "type": "function",
             "function": {
@@ -1027,7 +1019,7 @@ class MemoryGetTool:
         self,
         path: str,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """도구 실행"""
         if not self.memory:
             return {"error": "Memory system not initialized"}
@@ -1045,8 +1037,7 @@ class MemoryGetTool:
             "text": content
         }
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MemoryWriteTool:
     """
     memory_write 도구 - 메모리에 기록
@@ -1058,9 +1049,9 @@ class MemoryWriteTool:
     name: str = "memory_write"
     description: str = "Write to memory files (daily log or long-term memory)"
     
-    memory: Optional[PersistentMemory] = None
+    memory: PersistentMemory | None = None
     
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return {
             "type": "function",
             "function": {
@@ -1093,8 +1084,8 @@ class MemoryWriteTool:
         self,
         content: str,
         layer: str = "daily",
-        section: Optional[str] = None
-    ) -> Dict[str, Any]:
+        section: str | None = None
+    ) -> dict[str, Any]:
         """도구 실행"""
         if not self.memory:
             return {"error": "Memory system not initialized"}
@@ -1105,7 +1096,6 @@ class MemoryWriteTool:
         else:
             await self.memory.add_long_term_memory(content, section)
             return {"success": True, "layer": "long_term", "section": section}
-
 
 # 추가 import
 from datetime import timedelta

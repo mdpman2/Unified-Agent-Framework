@@ -33,14 +33,15 @@ Unified Agent Framework - OpenAI Agents SDK 브릿지 모듈
     - OpenAI Agents SDK: https://github.com/openai/openai-agents-python
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 __all__ = ["OpenAIAgentsBridge", "AgentHandoff", "SessionBackend"]
 
 logger = logging.getLogger(__name__)
-
 
 class SessionBackend:
     """세션 백엔드 상수"""
@@ -48,15 +49,13 @@ class SessionBackend:
     REDIS = "redis"
     SQLALCHEMY = "sqlalchemy"
 
-
 @dataclass(frozen=True, slots=True)
 class AgentHandoff:
     """에이전트 Handoff 설정"""
     source_agent: str = ""
     target_agent: str = ""
-    condition: Optional[str] = None
+    condition: str | None = None
     transfer_context: bool = True
-
 
 class OpenAIAgentsBridge:
     """
@@ -78,8 +77,8 @@ class OpenAIAgentsBridge:
 
     def __init__(self, session_backend: str = SessionBackend.SQLITE):
         self._session_backend = session_backend
-        self._agents: Dict[str, Dict] = {}
-        self._handoffs: List[AgentHandoff] = []
+        self._agents: dict[str, dict] = {}
+        self._handoffs: list[AgentHandoff] = []
         logger.info(f"[OpenAIAgentsBridge] 초기화 (session={session_backend})")
 
     def __repr__(self) -> str:
@@ -89,11 +88,11 @@ class OpenAIAgentsBridge:
         self,
         name: str,
         instructions: str = "",
-        tools: Optional[List[Dict[str, Any]]] = None,
-        handoff_targets: Optional[List[str]] = None,
+        tools: list[dict[str, Any]] | None = None,
+        handoff_targets: list[str] | None = None,
         model: str = "gpt-5.2",
         **kwargs: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """에이전트 생성"""
         agent = {
             "name": name,
@@ -108,12 +107,12 @@ class OpenAIAgentsBridge:
 
     async def run(
         self,
-        agent: Optional[Dict[str, Any]] = None,
-        input: Optional[str] = None,
+        agent: dict[str, Any] | None = None,
+        input: str | None = None,
         *,
-        task: Optional[str] = None,
+        task: str | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """에이전트 실행 (UniversalAgentBridge 호환)
 
         Args:
@@ -138,5 +137,5 @@ class OpenAIAgentsBridge:
         self._handoffs.append(handoff)
 
     @property
-    def agents(self) -> Dict[str, Dict]:
+    def agents(self) -> dict[str, dict]:
         return dict(self._agents)

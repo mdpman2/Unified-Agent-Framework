@@ -93,6 +93,8 @@ Unified Agent Framework - 에이전트 모듈 (Agents Module)
     - Circuit Breaker: unified_agent.utils.CircuitBreaker
 """
 
+from __future__ import annotations
+
 import re
 import json
 import time
@@ -100,7 +102,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any, Callable
+from typing import Any, Callable
 
 from semantic_kernel import Kernel
 from semantic_kernel.connectors.ai.chat_completion_client_base import ChatCompletionClientBase
@@ -131,7 +133,6 @@ __all__ = [
     "InvestigationPlan",
     "SupervisorAgent",
 ]
-
 
 # ============================================================================
 # Agent 기본 클래스
@@ -203,8 +204,8 @@ class Agent(ABC):
         temperature: float = 0.7,
         max_tokens: int = 1000,
         enable_streaming: bool = False,
-        event_bus: Optional[EventBus] = None,
-        service_id: Optional[str] = None
+        event_bus: EventBus | None = None,
+        service_id: str | None = None
     ):
         self.name = name
         self.role = role
@@ -232,7 +233,7 @@ class Agent(ABC):
     async def _get_llm_response(
         self,
         kernel: Kernel,
-        messages: List[Message],
+        messages: list[Message],
         streaming: bool = False
     ) -> str:
         """LLM 응답 가져오기"""
@@ -283,7 +284,7 @@ class Agent(ABC):
         print()
         return "".join(full_response)
 
-    async def _emit_event(self, event_type: EventType, data: Dict[str, Any]):
+    async def _emit_event(self, event_type: EventType, data: dict[str, Any]):
         """이벤트 발행"""
         if self.event_bus:
             event = AgentEvent(
@@ -292,7 +293,6 @@ class Agent(ABC):
                 data=data
             )
             await self.event_bus.publish(event)
-
 
 # ============================================================================
 # SimpleAgent - 단순 대화 에이전트
@@ -424,7 +424,6 @@ class SimpleAgent(Agent):
                 error=str(e)
             )
 
-
 # ============================================================================
 # ApprovalAgent - 승인 필요 에이전트
 # ============================================================================
@@ -487,7 +486,6 @@ class ApprovalAgent(Agent):
                 error=str(e)
             )
 
-
 # ============================================================================
 # RouterAgent - 라우팅 에이전트
 # ============================================================================
@@ -502,12 +500,12 @@ class RouterAgent(Agent):
     3. 메타데이터에 confidence 추가
     """
 
-    def __init__(self, *args, routes: Dict[str, str],
-                 default_route: Optional[str] = None, **kwargs):
+    def __init__(self, *args, routes: dict[str, str],
+                 default_route: str | None = None, **kwargs):
         super().__init__(*args, role=AgentRole.ROUTER, **kwargs)
         self.routes = routes
         self.default_route = default_route or list(routes.values())[0] if routes else None
-        self.routing_history: List[Dict[str, Any]] = []
+        self.routing_history: list[dict[str, Any]] = []
 
     async def execute(self, state: AgentState, kernel: Kernel) -> NodeResult:
         start_time = time.time()
@@ -558,7 +556,6 @@ Respond with ONLY the category name (one word)."""
                 error=str(e)
             )
 
-
 # ============================================================================
 # ProxyAgent - 사용자 명확화 요청 에이전트 (Microsoft Pattern)
 # ============================================================================
@@ -579,7 +576,7 @@ class ProxyAgent(Agent):
     def __init__(
         self,
         *args,
-        clarification_callback: Optional[Callable] = None,
+        clarification_callback: Callable | None = None,
         max_wait_seconds: int = 300,
         auto_proceed_on_timeout: bool = False,
         **kwargs
@@ -588,15 +585,15 @@ class ProxyAgent(Agent):
         self.clarification_callback = clarification_callback
         self.max_wait_seconds = max_wait_seconds
         self.auto_proceed_on_timeout = auto_proceed_on_timeout
-        self.pending_clarifications: List[Dict[str, Any]] = []
+        self.pending_clarifications: list[dict[str, Any]] = []
 
     async def request_clarification(
         self,
         question: str,
-        options: Optional[List[str]] = None,
+        options: list[str] | None = None,
         context: str = "",
         required: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """사용자에게 명확화 요청"""
         clarification_request = {
             "id": f"clarify-{int(time.time()*1000)}",
@@ -710,7 +707,6 @@ If no clarification is needed, respond with:
                 return True
         return False
 
-
 # ============================================================================
 # InvestigationPlan & SupervisorAgent
 # ============================================================================
@@ -722,13 +718,13 @@ class InvestigationPlan:
 
     참조: amazon-bedrock-agentcore-samples/SRE-agent/supervisor.py
     """
-    steps: List[str]
-    agents_sequence: List[str]
+    steps: list[str]
+    agents_sequence: list[str]
     complexity: str = "simple"
     auto_execute: bool = True
     reasoning: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "steps": self.steps,
             "agents_sequence": self.agents_sequence,
@@ -736,7 +732,6 @@ class InvestigationPlan:
             "auto_execute": self.auto_execute,
             "reasoning": self.reasoning
         }
-
 
 class SupervisorAgent(Agent):
     """
@@ -754,9 +749,9 @@ class SupervisorAgent(Agent):
     def __init__(
         self,
         *args,
-        sub_agents: List[Agent],
+        sub_agents: list[Agent],
         max_rounds: int = 3,
-        memory_hook: Optional[Any] = None,
+        memory_hook: Any | None = None,
         auto_approve_simple: bool = True,
         **kwargs
     ):
@@ -765,8 +760,8 @@ class SupervisorAgent(Agent):
         self.max_rounds = max_rounds
         self.memory_hook = memory_hook
         self.auto_approve_simple = auto_approve_simple
-        self.execution_log: List[Dict[str, Any]] = []
-        self.investigation_history: List[InvestigationPlan] = []
+        self.execution_log: list[dict[str, Any]] = []
+        self.investigation_history: list[InvestigationPlan] = []
 
     async def create_investigation_plan(
         self,
@@ -910,7 +905,7 @@ REASONING: explanation
     async def _aggregate_responses(
         self,
         kernel: Kernel,
-        responses: List[str]
+        responses: list[str]
     ) -> str:
         """응답 집계"""
         if not responses:

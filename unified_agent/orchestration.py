@@ -11,12 +11,14 @@ Microsoft Multi-Agent-Custom-Automation-Engine 패턴 구현
     - TYPE_CHECKING 블록에서 런타임 의존성 제거
 """
 
+from __future__ import annotations
+
 import re
 import json
 import time
 import logging
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any, Callable, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 
 from semantic_kernel import Kernel
 
@@ -35,7 +37,6 @@ __all__ = [
     "AgentFactory",
 ]
 
-
 # ============================================================================
 # AgentFactory - 에이전트 생성 팩토리
 # ============================================================================
@@ -47,7 +48,7 @@ class AgentFactory:
     TeamConfiguration에서 에이전트 팀을 생성합니다.
     """
 
-    def __init__(self, framework: Optional[IFramework] = None):
+    def __init__(self, framework: IFramework | None = None):
         """
         팩토리 초기화
 
@@ -57,7 +58,7 @@ class AgentFactory:
         self.framework = framework
         self._logger = StructuredLogger("agent_factory")
 
-    def create_team(self, config: TeamConfiguration) -> Dict[str, Agent]:
+    def create_team(self, config: TeamConfiguration) -> dict[str, Agent]:
         """
         팀 설정에서 에이전트 딕셔너리 생성
 
@@ -69,7 +70,7 @@ class AgentFactory:
         """
         from .agents import SimpleAgent
 
-        agents: Dict[str, Agent] = {}
+        agents: dict[str, Agent] = {}
 
         for agent_config in config.agents:
             agent = SimpleAgent(
@@ -83,7 +84,6 @@ class AgentFactory:
             self._logger.info("Agent created", name=agent_config.name, role=agent_config.role.value)
 
         return agents
-
 
 # ============================================================================
 # OrchestrationManager - 팀 기반 오케스트레이션
@@ -127,11 +127,11 @@ class OrchestrationManager:
     def __init__(
         self,
         team_config: TeamConfiguration,
-        framework: Optional[IFramework] = None,
-        kernel: Optional[Kernel] = None,
+        framework: IFramework | None = None,
+        kernel: Kernel | None = None,
         require_plan_approval: bool = False,
-        rai_validator: Optional[RAIValidator] = None,
-        ws_callback: Optional[Callable] = None
+        rai_validator: RAIValidator | None = None,
+        ws_callback: Callable | None = None
     ):
         """
         오케스트레이션 매니저 초기화
@@ -153,9 +153,9 @@ class OrchestrationManager:
 
         self._logger = StructuredLogger("orchestration_manager")
         self._factory = AgentFactory(framework=framework)
-        self._agents: Dict[str, Agent] = {}
-        self.current_plan: Optional[MPlan] = None
-        self.execution_history: List[Dict[str, Any]] = []
+        self._agents: dict[str, Agent] = {}
+        self.current_plan: MPlan | None = None
+        self.execution_history: list[dict[str, Any]] = []
 
         # 에이전트 생성
         self._initialize_agents()
@@ -267,7 +267,7 @@ Respond in JSON format:
 
         return plan
 
-    def _create_default_plan(self, task: str) -> Dict[str, Any]:
+    def _create_default_plan(self, task: str) -> dict[str, Any]:
         """기본 계획 생성"""
         agent_names = list(self._agents.keys())
         return {
@@ -302,7 +302,7 @@ Respond in JSON format:
         task: str,
         session_id: str,
         auto_approve: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         작업 실행
 
@@ -349,7 +349,7 @@ Respond in JSON format:
         self,
         plan: MPlan,
         state: AgentState
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """계획 단계별 실행"""
         results = []
         plan.status = PlanStepStatus.IN_PROGRESS
@@ -468,7 +468,7 @@ Respond in JSON format:
             "results": results
         }
 
-    async def continue_execution(self) -> Dict[str, Any]:
+    async def continue_execution(self) -> dict[str, Any]:
         """승인 후 계획 실행 계속"""
         if not self.current_plan:
             return {"status": "error", "message": "No plan to continue"}

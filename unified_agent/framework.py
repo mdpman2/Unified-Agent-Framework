@@ -6,13 +6,15 @@ Unified Agent Framework - 프레임워크 메인 모듈
 UnifiedAgentFramework 클래스 및 데모/유틸리티 함수들
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import time
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Callable
+from typing import Any, Callable, TYPE_CHECKING
 
 from opentelemetry import trace
 
@@ -53,14 +55,7 @@ from .image_generation import ImageGenerator, ImageConfig
 from .open_weight import OpenWeightAdapter, OSSModelConfig
 from .universal_bridge import UniversalAgentBridge, BridgeProtocol
 
-# v4.0 프레임워크 브릿지
-from .sk_agent_bridge import SemanticKernelAgentBridge
-from .openai_agents_bridge import OpenAIAgentsBridge
-from .google_adk_bridge import GoogleADKBridge
-from .crewai_bridge import CrewAIBridge
-from .ag2_bridge import AG2Bridge
-from .ms_agent_bridge import MicrosoftAgentBridge
-from .a2a_bridge import A2ABridge
+# v4.0 프레임워크 브릿지 (지연 임포트 — get_bridge()에서 로드)
 
 __all__ = [
     "UnifiedAgentFramework",
@@ -70,7 +65,6 @@ __all__ = [
 
 # 기본 스킬 디렉토리
 BUILTIN_SKILLS_DIR = Path(__file__).parent.parent / "skills"
-
 
 # ============================================================================
 # UnifiedAgentFramework - 통합 에이전트 프레임워크
@@ -109,14 +103,14 @@ class UnifiedAgentFramework:
     def __init__(
         self,
         kernel: Kernel,
-        config: Optional[FrameworkConfig] = None,
-        memory_store: Optional[MemoryStore] = None,
+        config: FrameworkConfig | None = None,
+        memory_store: MemoryStore | None = None,
         checkpoint_dir: str = "./checkpoints",
         enable_telemetry: bool = True,
         enable_events: bool = True,
-        skill_dirs: Optional[List[str]] = None,
+        skill_dirs: list[str] | None = None,
         load_builtin_skills: bool = True,
-        extensions_config: Optional[ExtensionsConfig] = None,
+        extensions_config: ExtensionsConfig | None = None,
     ):
         """
         프레임워크 초기화
@@ -136,8 +130,8 @@ class UnifiedAgentFramework:
         self.config = config or FrameworkConfig()
         self.memory_store = memory_store or CachedMemoryStore(max_cache_size=self.config.max_cache_size)
         self.state_manager = StateManager(self.memory_store, checkpoint_dir)
-        self.graphs: Dict[str, Graph] = {}
-        self.mcp_tools: Dict[str, MCPTool] = {}
+        self.graphs: dict[str, Graph] = {}
+        self.mcp_tools: dict[str, MCPTool] = {}
         self.event_bus = EventBus() if enable_events else None
 
         # Skills 시스템 초기화
@@ -199,10 +193,10 @@ class UnifiedAgentFramework:
     @classmethod
     def create(
         cls,
-        config: Optional[FrameworkConfig] = None,
-        skill_dirs: Optional[List[str]] = None,
+        config: FrameworkConfig | None = None,
+        skill_dirs: list[str] | None = None,
         load_builtin_skills: bool = True,
-        extensions_config: Optional[ExtensionsConfig] = None,
+        extensions_config: ExtensionsConfig | None = None,
     ) -> 'UnifiedAgentFramework':
         """
         프레임워크 간편 생성 (권장)
@@ -307,7 +301,7 @@ class UnifiedAgentFramework:
 
         return graph
 
-    def create_router_workflow(self, name: str, routes: Dict[str, Dict[str, str]]) -> Graph:
+    def create_router_workflow(self, name: str, routes: dict[str, dict[str, str]]) -> Graph:
         """라우팅 워크플로우 생성"""
         graph = self.create_graph(name)
 
@@ -338,7 +332,7 @@ class UnifiedAgentFramework:
     def create_skilled_agent(
         self,
         name: str,
-        skills: Optional[List[str]] = None,
+        skills: list[str] | None = None,
         base_prompt: str = "",
         auto_detect_skills: bool = True
     ) -> SimpleAgent:
@@ -377,7 +371,7 @@ class UnifiedAgentFramework:
     def create_skill_workflow(
         self,
         name: str,
-        skills: List[str],
+        skills: list[str],
         base_prompt: str = "You are a helpful assistant."
     ) -> Graph:
         """Skills 기반 워크플로우 생성"""
@@ -430,7 +424,7 @@ class UnifiedAgentFramework:
     def create_team_workflow(
         self,
         team_config: TeamConfiguration,
-        name: Optional[str] = None
+        name: str | None = None
     ) -> Graph:
         """Team 기반 워크플로우 생성 (Microsoft Pattern)"""
         workflow_name = name or f"team_{team_config.name}"
@@ -480,7 +474,7 @@ class UnifiedAgentFramework:
         self,
         team_config: TeamConfiguration,
         require_plan_approval: bool = False,
-        ws_callback: Optional[Callable] = None
+        ws_callback: Callable | None = None
     ) -> OrchestrationManager:
         """OrchestrationManager 생성 (Microsoft Pattern)"""
         return OrchestrationManager(
@@ -499,7 +493,7 @@ class UnifiedAgentFramework:
     def create_proxy_agent(
         self,
         name: str = "clarifier",
-        clarification_callback: Optional[Callable] = None
+        clarification_callback: Callable | None = None
     ) -> ProxyAgent:
         """ProxyAgent 생성 (Microsoft Pattern)"""
         return ProxyAgent(
@@ -522,7 +516,7 @@ class UnifiedAgentFramework:
         logging.info(f"🎨 그래프 생성: {name}")
         return graph
 
-    def register_mcp_tool(self, tool: MCPTool):
+    def register_mcp_tool(self, tool: MCPTool) -> None:
         """MCP 도구 등록"""
         self.mcp_tools[tool.name] = tool
         logging.info(f"🔧 MCP 도구 등록: {tool.name}")
@@ -533,7 +527,7 @@ class UnifiedAgentFramework:
         workflow_name: str,
         user_message: str = "",
         restore_from_checkpoint: bool = False,
-        checkpoint_tag: Optional[str] = None
+        checkpoint_tag: str | None = None
     ) -> AgentState:
         """워크플로우 실행"""
         # 상태 복원
@@ -635,14 +629,14 @@ class UnifiedAgentFramework:
             return f"❌ 워크플로우 '{workflow_name}'를 찾을 수 없습니다."
         return graph.visualize()
 
-    def get_workflow_stats(self, workflow_name: str) -> Dict[str, Any]:
+    def get_workflow_stats(self, workflow_name: str) -> dict[str, Any]:
         """워크플로우 통계"""
         graph = self.graphs.get(workflow_name)
         if not graph:
             return {}
         return graph.get_statistics()
 
-    def get_global_metrics(self) -> Dict[str, Any]:
+    def get_global_metrics(self) -> dict[str, Any]:
         """전역 메트릭"""
         return {
             **self.global_metrics,
@@ -654,7 +648,7 @@ class UnifiedAgentFramework:
             ).total_seconds()
         }
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """리소스 정리"""
         logging.info("🧹 프레임워크 정리 시작")
 
@@ -671,7 +665,7 @@ class UnifiedAgentFramework:
     # v4.0 팩토리 메서드 — 새로운 핵심 기능 편의 접근
     # ========================================================================
 
-    def create_responses_client(self, config: Optional['ResponseConfig'] = None) -> ResponsesClient:
+    def create_responses_client(self, config: 'ResponseConfig' | None = None) -> ResponsesClient:
         """
         v4.0 Responses API 클라이언트 생성
 
@@ -702,7 +696,7 @@ class UnifiedAgentFramework:
         """
         return ImageGenerator()
 
-    def create_open_weight_adapter(self, default_endpoint: Optional[str] = None) -> OpenWeightAdapter:
+    def create_open_weight_adapter(self, default_endpoint: str | None = None) -> OpenWeightAdapter:
         """
         v4.0 오픈 가중치 모델 어댑터 생성
 
@@ -734,7 +728,16 @@ class UnifiedAgentFramework:
             bridge = framework.get_bridge("crewai")
             result = await bridge.run(task="데이터를 분석해줘")
         """
-        bridge_map: Dict[str, type] = {
+        # 지연 임포트 — 필요한 브릿지만 로드하여 시작 시간 최적화
+        from .sk_agent_bridge import SemanticKernelAgentBridge
+        from .openai_agents_bridge import OpenAIAgentsBridge
+        from .google_adk_bridge import GoogleADKBridge
+        from .crewai_bridge import CrewAIBridge
+        from .ag2_bridge import AG2Bridge
+        from .ms_agent_bridge import MicrosoftAgentBridge
+        from .a2a_bridge import A2ABridge
+
+        bridge_map: dict[str, type] = {
             "semantic-kernel": SemanticKernelAgentBridge,
             "openai-agents": OpenAIAgentsBridge,
             "google-adk": GoogleADKBridge,
@@ -750,7 +753,6 @@ class UnifiedAgentFramework:
                 f"지원 목록: {', '.join(bridge_map)}"
             )
         return cls()
-
 
 # ============================================================================
 # 간편 사용 함수
@@ -769,7 +771,6 @@ async def quick_run(message: str, system_prompt: str = "You are a helpful assist
     """
     framework = UnifiedAgentFramework.create()
     return await framework.quick_chat(message, system_prompt)
-
 
 def create_framework(
     model: str = None,

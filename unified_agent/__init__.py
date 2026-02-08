@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from __future__ import annotations
 """
 Unified Agent Framework - Enterprise Edition v4.0
 
@@ -245,6 +246,7 @@ __author__ = "Enterprise AI Team"
 # ============================================================================
 # 핵심 Exceptions
 # ============================================================================
+from typing import Protocol
 from .exceptions import (
     FrameworkError,
     ConfigurationError,

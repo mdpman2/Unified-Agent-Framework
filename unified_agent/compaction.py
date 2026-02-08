@@ -36,6 +36,8 @@ Unified Agent Framework - Compaction 시스템 (Context Compaction Module)
     - Clawdbot Compaction: https://manthanguptaa.in/posts/clawdbot_memory/
 """
 
+from __future__ import annotations
+
 import os
 import json
 import logging
@@ -43,7 +45,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Callable, Tuple
+from typing import Any, Callable
 from enum import Enum
 
 from .utils import StructuredLogger
@@ -64,12 +66,11 @@ __all__ = [
     "PruningResult",
 ]
 
-
 # ============================================================================
 # Configuration
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class CompactionConfig:
     """
     Compaction 설정
@@ -92,8 +93,7 @@ class CompactionConfig:
         """Compaction 트리거 토큰 수"""
         return int((self.context_window - self.reserve_tokens) * self.trigger_threshold)
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MemoryFlushConfig:
     """
     Memory Flush 설정
@@ -109,8 +109,7 @@ class MemoryFlushConfig:
     system_prompt: str = "Session nearing compaction. Store durable memories now."
     user_prompt: str = "Write lasting notes to memory/YYYY-MM-DD.md; reply NO_REPLY if nothing to store."
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class PruningConfig:
     """
     Cache-TTL Pruning 설정
@@ -134,12 +133,11 @@ class PruningConfig:
     hard_clear_enabled: bool = True
     hard_clear_placeholder: str = "[Old tool result content cleared]"
 
-
 # ============================================================================
 # Data Models
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class CompactionSummary:
     """Compaction 요약 결과"""
     original_turns: int
@@ -148,9 +146,9 @@ class CompactionSummary:
     summary_tokens: int
     summary_text: str
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "original_turns": self.original_turns,
             "compacted_turns": self.compacted_turns,
@@ -161,8 +159,7 @@ class CompactionSummary:
             "metadata": self.metadata
         }
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class PruningResult:
     """Pruning 결과"""
     pruned_count: int
@@ -171,27 +168,25 @@ class PruningResult:
     mode: str
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
-
 # ============================================================================
 # Message 인터페이스 (프레임워크 호환용)
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ConversationTurn:
     """대화 턴 (메시지 + 메타데이터)"""
     role: str  # 'user', 'assistant', 'tool', 'system'
     content: str
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     token_count: int = 0
-    tool_results: List[Dict[str, Any]] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    tool_results: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     def estimate_tokens(self) -> int:
         """토큰 수 추정 (간단한 휴리스틱: 4 chars ≈ 1 token)"""
         if self.token_count > 0:
             return self.token_count
         return len(self.content) // 4 + sum(len(str(r)) // 4 for r in self.tool_results)
-
 
 # ============================================================================
 # Context Compactor
@@ -218,23 +213,23 @@ class ContextCompactor:
     
     def __init__(
         self,
-        config: Optional[CompactionConfig] = None,
-        summarizer: Optional[Callable[[List[ConversationTurn]], str]] = None
+        config: CompactionConfig | None = None,
+        summarizer: Callable[[list[ConversationTurn]], str] | None = None
     ):
         self.config = config or CompactionConfig()
         self._summarizer = summarizer
         self._logger = StructuredLogger("compactor")
     
-    def set_summarizer(self, func: Callable[[List[ConversationTurn]], str]):
+    def set_summarizer(self, func: Callable[[list[ConversationTurn]], str]):
         """요약 함수 설정 (LLM 호출)"""
         self._summarizer = func
     
-    def should_compact(self, turns: List[ConversationTurn]) -> bool:
+    def should_compact(self, turns: list[ConversationTurn]) -> bool:
         """Compaction 필요 여부 확인"""
         total_tokens = sum(t.estimate_tokens() for t in turns)
         return total_tokens >= self.config.trigger_tokens
     
-    def get_compaction_point(self, turns: List[ConversationTurn]) -> int:
+    def get_compaction_point(self, turns: list[ConversationTurn]) -> int:
         """
         Compaction 분기점 계산
         
@@ -244,9 +239,9 @@ class ContextCompactor:
     
     async def compact(
         self,
-        turns: List[ConversationTurn],
-        focus_hint: Optional[str] = None
-    ) -> Tuple[List[ConversationTurn], CompactionSummary]:
+        turns: list[ConversationTurn],
+        focus_hint: str | None = None
+    ) -> tuple[list[ConversationTurn], CompactionSummary]:
         """
         대화 압축 수행
         
@@ -314,7 +309,6 @@ class ContextCompactor:
         
         return compacted_turns, summary
 
-
 # ============================================================================
 # Memory Flusher
 # ============================================================================
@@ -338,9 +332,9 @@ class MemoryFlusher:
     
     def __init__(
         self,
-        config: Optional[MemoryFlushConfig] = None,
-        compaction_config: Optional[CompactionConfig] = None,
-        memory_write_func: Optional[Callable[[str], None]] = None
+        config: MemoryFlushConfig | None = None,
+        compaction_config: CompactionConfig | None = None,
+        memory_write_func: Callable[[str], None] | None = None
     ):
         self.config = config or MemoryFlushConfig()
         self.compaction_config = compaction_config or CompactionConfig()
@@ -372,15 +366,15 @@ class MemoryFlusher:
         
         return current_tokens >= flush_threshold
     
-    def get_flush_prompt(self) -> Tuple[str, str]:
+    def get_flush_prompt(self) -> tuple[str, str]:
         """플러시 프롬프트 반환 (system, user)"""
         return self.config.system_prompt, self.config.user_prompt
     
     async def flush(
         self,
         agent_response_func: Callable[[str, str], str],
-        turns: List[ConversationTurn]
-    ) -> Optional[str]:
+        turns: list[ConversationTurn]
+    ) -> str | None:
         """
         Memory Flush 수행
         
@@ -407,7 +401,6 @@ class MemoryFlusher:
         
         self._logger.info("Memory flush complete", response_length=len(response))
         return response
-
 
 # ============================================================================
 # Cache-TTL Pruner
@@ -436,10 +429,10 @@ class CacheTTLPruner:
     JSONL 원본은 보존됨
     """
     
-    def __init__(self, config: Optional[PruningConfig] = None):
+    def __init__(self, config: PruningConfig | None = None):
         self.config = config or PruningConfig()
         self._logger = StructuredLogger("pruner")
-        self._last_cache_time: Optional[datetime] = None
+        self._last_cache_time: datetime | None = None
     
     def record_cache_time(self):
         """캐시 시간 기록"""
@@ -478,9 +471,9 @@ class CacheTTLPruner:
     
     def prune_turns(
         self,
-        turns: List[ConversationTurn],
+        turns: list[ConversationTurn],
         in_place: bool = False
-    ) -> Tuple[List[ConversationTurn], PruningResult]:
+    ) -> tuple[list[ConversationTurn], PruningResult]:
         """
         도구 결과 정리
         
@@ -559,7 +552,6 @@ class CacheTTLPruner:
         
         return result_turns, result
 
-
 # ============================================================================
 # Compaction Manager (통합 관리)
 # ============================================================================
@@ -590,10 +582,10 @@ class CompactionManager:
     
     def __init__(
         self,
-        compaction_config: Optional[CompactionConfig] = None,
-        flush_config: Optional[MemoryFlushConfig] = None,
-        pruning_config: Optional[PruningConfig] = None,
-        transcript_dir: Optional[str] = None
+        compaction_config: CompactionConfig | None = None,
+        flush_config: MemoryFlushConfig | None = None,
+        pruning_config: PruningConfig | None = None,
+        transcript_dir: str | None = None
     ):
         self.compaction_config = compaction_config or CompactionConfig()
         self.flush_config = flush_config or MemoryFlushConfig()
@@ -614,7 +606,7 @@ class CompactionManager:
             "total_tokens_saved": 0
         }
     
-    def set_summarizer(self, func: Callable[[List[ConversationTurn]], str]):
+    def set_summarizer(self, func: Callable[[list[ConversationTurn]], str]):
         """요약 함수 설정"""
         self.compactor.set_summarizer(func)
     
@@ -622,15 +614,15 @@ class CompactionManager:
         """메모리 쓰기 함수 설정"""
         self.flusher.set_memory_writer(func)
     
-    def get_current_tokens(self, turns: List[ConversationTurn]) -> int:
+    def get_current_tokens(self, turns: list[ConversationTurn]) -> int:
         """현재 토큰 수 계산"""
         return sum(t.estimate_tokens() for t in turns)
     
     async def process_turns(
         self,
-        turns: List[ConversationTurn],
-        agent_respond_func: Optional[Callable[[str, str], str]] = None
-    ) -> List[ConversationTurn]:
+        turns: list[ConversationTurn],
+        agent_respond_func: Callable[[str, str], str] | None = None
+    ) -> list[ConversationTurn]:
         """
         턴 처리 (필요시 Flush/Compaction/Pruning 수행)
         
@@ -668,9 +660,9 @@ class CompactionManager:
     
     async def force_compact(
         self,
-        turns: List[ConversationTurn],
-        focus_hint: Optional[str] = None
-    ) -> Tuple[List[ConversationTurn], CompactionSummary]:
+        turns: list[ConversationTurn],
+        focus_hint: str | None = None
+    ) -> tuple[list[ConversationTurn], CompactionSummary]:
         """
         강제 Compaction (수동 /compact 명령)
         
@@ -703,7 +695,7 @@ class CompactionManager:
         
         self._logger.info("Transcript saved", file=str(transcript_file))
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """통계 반환"""
         return {
             **self.stats,

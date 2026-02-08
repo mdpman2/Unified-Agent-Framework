@@ -43,22 +43,12 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Sequence,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Sequence, TypeVar
 
 from pydantic import BaseModel, Field
 
 from .tracer import Span, SpanKind, SpanStatus, AgentTracer, get_tracer
 from .utils import StructuredLogger
-
 
 # ============================================================================
 # Reward 모델
@@ -71,16 +61,15 @@ class RewardType(str, Enum):
     BINARY = "binary"           # 0 또는 1
     RANKING = "ranking"         # 순위 기반
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class RewardDimension:
     """리워드 차원 (다차원 리워드용)"""
     name: str
     value: float
     weight: float = 1.0
-    description: Optional[str] = None
+    description: str | None = None
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "value": self.value,
@@ -88,8 +77,7 @@ class RewardDimension:
             "description": self.description,
         }
 
-
-@dataclass
+@dataclass(slots=True)
 class RewardRecord:
     """
     리워드 기록
@@ -103,19 +91,19 @@ class RewardRecord:
     reward_type: RewardType = RewardType.SCALAR
     
     # 다차원 리워드
-    dimensions: List[RewardDimension] = field(default_factory=list)
+    dimensions: list[RewardDimension] = field(default_factory=list)
     
     # 컨텍스트
-    rollout_id: Optional[str] = None
-    attempt_id: Optional[str] = None
-    span_id: Optional[str] = None
+    rollout_id: str | None = None
+    attempt_id: str | None = None
+    span_id: str | None = None
     
     # 타임스탬프
     timestamp: float = field(default_factory=time.time)
     
     # 메타데이터
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    tags: List[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    tags: list[str] = field(default_factory=list)
     
     @property
     def weighted_value(self) -> float:
@@ -129,7 +117,7 @@ class RewardRecord:
         
         return sum(d.value * d.weight for d in self.dimensions) / total_weight
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "reward_id": self.reward_id,
             "value": self.value,
@@ -145,7 +133,7 @@ class RewardRecord:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RewardRecord":
+    def from_dict(cls, data: dict[str, Any]) -> "RewardRecord":
         record = cls(
             reward_id=data.get("reward_id", uuid.uuid4().hex[:16]),
             value=data.get("value", 0.0),
@@ -168,25 +156,24 @@ class RewardRecord:
         
         return record
 
-
 # ============================================================================
 # Span Core Fields (emit 결과)
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class SpanCoreFields:
     """스팬 핵심 필드 (emit 결과로 반환)"""
     span_id: str
     name: str
     kind: SpanKind
     start_time: float
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    attributes: dict[str, Any] = field(default_factory=dict)
     
     def to_span(
         self,
         trace_id: str = "",
-        rollout_id: Optional[str] = None,
-        attempt_id: Optional[str] = None,
+        rollout_id: str | None = None,
+        attempt_id: str | None = None,
         sequence_id: int = 0,
     ) -> Span:
         """Span으로 변환"""
@@ -204,16 +191,15 @@ class SpanCoreFields:
         span.end()
         return span
 
-
 # ============================================================================
 # Reward Emitter 함수들
 # ============================================================================
 
 def emit_reward(
-    reward: Union[float, Dict[str, Any]],
+    reward: float | dict[str, Any],
     *,
-    primary_key: Optional[str] = None,
-    attributes: Optional[Dict[str, Any]] = None,
+    primary_key: str | None = None,
+    attributes: dict[str, Any] | None = None,
     propagate: bool = True,
 ) -> SpanCoreFields:
     """
@@ -245,7 +231,7 @@ def emit_reward(
     timestamp = time.time()
     
     # 속성 구성
-    span_attrs: Dict[str, Any] = {
+    span_attrs: dict[str, Any] = {
         "reward.type": "reward",
         "reward.timestamp": timestamp,
     }
@@ -297,12 +283,11 @@ def emit_reward(
     
     return core_fields
 
-
 def emit_annotation(
     name: str,
     content: Any,
     *,
-    attributes: Optional[Dict[str, Any]] = None,
+    attributes: dict[str, Any] | None = None,
     propagate: bool = True,
 ) -> SpanCoreFields:
     """
@@ -320,7 +305,7 @@ def emit_annotation(
     span_id = uuid.uuid4().hex[:16]
     timestamp = time.time()
     
-    span_attrs: Dict[str, Any] = {
+    span_attrs: dict[str, Any] = {
         "annotation.name": name,
         "annotation.content": str(content)[:10000],  # 길이 제한
         "annotation.timestamp": timestamp,
@@ -348,13 +333,11 @@ def emit_annotation(
     
     return core_fields
 
-
 # ============================================================================
 # Reward 데코레이터
 # ============================================================================
 
 F = TypeVar("F", bound=Callable[..., Any])
-
 
 def reward(fn: F) -> F:
     """
@@ -397,7 +380,6 @@ def reward(fn: F) -> F:
     
     return wrapper  # type: ignore
 
-
 def reward_async(fn: F) -> F:
     """
     비동기 함수용 리워드 데코레이터
@@ -423,7 +405,6 @@ def reward_async(fn: F) -> F:
     
     return wrapper  # type: ignore
 
-
 # ============================================================================
 # Reward Span 유틸리티
 # ============================================================================
@@ -438,8 +419,7 @@ def is_reward_span(span: Span) -> bool:
     
     return False
 
-
-def get_reward_value(span: Span) -> Optional[float]:
+def get_reward_value(span: Span) -> float | None:
     """스팬에서 리워드 값 추출"""
     if not is_reward_span(span):
         return None
@@ -451,13 +431,11 @@ def get_reward_value(span: Span) -> Optional[float]:
     
     return None
 
-
-def find_reward_spans(spans: Sequence[Span]) -> List[Span]:
+def find_reward_spans(spans: Sequence[Span]) -> list[Span]:
     """리워드 스팬들 찾기"""
     return [s for s in spans if is_reward_span(s)]
 
-
-def find_final_reward(spans: Sequence[Span]) -> Optional[float]:
+def find_final_reward(spans: Sequence[Span]) -> float | None:
     """마지막 리워드 값 찾기"""
     reward_spans = find_reward_spans(spans)
     
@@ -469,7 +447,6 @@ def find_final_reward(spans: Sequence[Span]) -> Optional[float]:
     last_span = reward_spans[-1]
     
     return get_reward_value(last_span)
-
 
 def calculate_cumulative_reward(
     spans: Sequence[Span],
@@ -494,7 +471,6 @@ def calculate_cumulative_reward(
     
     return total
 
-
 # ============================================================================
 # Reward Manager
 # ============================================================================
@@ -508,7 +484,7 @@ class RewardManager:
     
     def __init__(
         self,
-        tracer: Optional[AgentTracer] = None,
+        tracer: AgentTracer | None = None,
     ):
         """
         Args:
@@ -518,13 +494,13 @@ class RewardManager:
         self._logger = StructuredLogger("reward_manager")
         
         # 리워드 기록
-        self._records: List[RewardRecord] = []
+        self._records: list[RewardRecord] = []
         
         # 집계
         self._total_rewards: float = 0.0
         self._reward_count: int = 0
-        self._dimension_totals: Dict[str, float] = {}
-        self._dimension_counts: Dict[str, int] = {}
+        self._dimension_totals: dict[str, float] = {}
+        self._dimension_counts: dict[str, int] = {}
     
     @property
     def tracer(self) -> AgentTracer:
@@ -533,10 +509,10 @@ class RewardManager:
     
     def emit(
         self,
-        value: Union[float, Dict[str, float]],
+        value: float | dict[str, float],
         *,
-        tags: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        tags: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> RewardRecord:
         """
         리워드 발행 및 기록
@@ -607,10 +583,10 @@ class RewardManager:
     
     def get_records(
         self,
-        rollout_id: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        rollout_id: str | None = None,
+        tags: list[str] | None = None,
         limit: int = 1000,
-    ) -> List[RewardRecord]:
+    ) -> list[RewardRecord]:
         """
         리워드 기록 조회
         
@@ -662,7 +638,7 @@ class RewardManager:
             return 0.0
         return self._dimension_totals.get(dimension, 0.0) / count
     
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """통계 반환"""
         return {
             "total_reward": self._total_rewards,
@@ -686,13 +662,11 @@ class RewardManager:
         self._dimension_totals.clear()
         self._dimension_counts.clear()
 
-
 # ============================================================================
 # 전역 RewardManager
 # ============================================================================
 
-_global_reward_manager: Optional[RewardManager] = None
-
+_global_reward_manager: RewardManager | None = None
 
 def get_reward_manager() -> RewardManager:
     """전역 RewardManager 가져오기"""
@@ -702,7 +676,6 @@ def get_reward_manager() -> RewardManager:
         _global_reward_manager = RewardManager()
     
     return _global_reward_manager
-
 
 def set_reward_manager(manager: RewardManager) -> None:
     """전역 RewardManager 설정"""

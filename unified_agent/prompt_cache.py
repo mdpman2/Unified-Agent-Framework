@@ -55,20 +55,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generic,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    TypeVar,
-)
+from typing import Any, Callable, Generic, TypeVar
 
 from .utils import StructuredLogger
-
 
 __all__ = [
     # 설정
@@ -87,7 +76,6 @@ __all__ = [
     "estimate_tokens",
 ]
 
-
 # ============================================================================
 # 설정 및 모델
 # ============================================================================
@@ -99,8 +87,7 @@ class CacheEvictionPolicy(str, Enum):
     TTL = "ttl"           # Time-To-Live only
     FIFO = "fifo"         # First In First Out
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class CacheConfig:
     """
     프롬프트 캐시 설정
@@ -121,11 +108,10 @@ class CacheConfig:
     eviction_policy: CacheEvictionPolicy = CacheEvictionPolicy.LRU
     enable_semantic_match: bool = False
     semantic_threshold: float = 0.95
-    disk_cache_path: Optional[str] = None
+    disk_cache_path: str | None = None
     enable_compression: bool = True
 
-
-@dataclass
+@dataclass(slots=True)
 class CacheEntry:
     """
     캐시 엔트리
@@ -149,7 +135,7 @@ class CacheEntry:
     expires_at: datetime
     hit_count: int = 0
     tokens_saved: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     @property
     def is_expired(self) -> bool:
@@ -161,7 +147,7 @@ class CacheEntry:
         """캐시 경과 시간 (초)"""
         return (datetime.now(timezone.utc) - self.created_at).total_seconds()
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "key": self.key,
             "prompt_preview": self.prompt[:100] + "..." if len(self.prompt) > 100 else self.prompt,
@@ -172,8 +158,7 @@ class CacheEntry:
             "tokens_saved": self.tokens_saved,
         }
 
-
-@dataclass
+@dataclass(slots=True)
 class CacheStats:
     """캐시 통계"""
     total_requests: int = 0
@@ -191,7 +176,7 @@ class CacheStats:
             return 0.0
         return self.cache_hits / self.total_requests
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "total_requests": self.total_requests,
             "cache_hits": self.cache_hits,
@@ -203,7 +188,6 @@ class CacheStats:
             "current_size_mb": f"{self.current_size_mb:.2f}MB",
         }
 
-
 # ============================================================================
 # 유틸리티 함수
 # ============================================================================
@@ -211,7 +195,7 @@ class CacheStats:
 def compute_prompt_hash(
     prompt: str,
     model: str,
-    system_prompt: Optional[str] = None,
+    system_prompt: str | None = None,
     temperature: float = 0.0,
 ) -> str:
     """
@@ -237,7 +221,6 @@ def compute_prompt_hash(
     
     return hashlib.sha256(content.encode('utf-8')).hexdigest()[:16]
 
-
 def estimate_tokens(text: str) -> int:
     """
     토큰 수 추정 (간단한 휴리스틱)
@@ -254,7 +237,6 @@ def estimate_tokens(text: str) -> int:
     # 평균적으로 3자 = 1토큰으로 계산
     return max(1, len(text) // 3)
 
-
 # ============================================================================
 # 캐시 백엔드 (추상 클래스)
 # ============================================================================
@@ -263,7 +245,7 @@ class CacheBackend(ABC):
     """캐시 백엔드 추상 클래스"""
     
     @abstractmethod
-    async def get(self, key: str) -> Optional[CacheEntry]:
+    async def get(self, key: str) -> CacheEntry | None:
         """캐시 조회"""
         pass
     
@@ -288,10 +270,9 @@ class CacheBackend(ABC):
         pass
     
     @abstractmethod
-    async def keys(self) -> List[str]:
+    async def keys(self) -> list[str]:
         """모든 키 조회"""
         pass
-
 
 # ============================================================================
 # 메모리 캐시 백엔드 (LRU)
@@ -310,7 +291,7 @@ class MemoryCacheBackend(CacheBackend):
         self._lock = asyncio.Lock()
         self._logger = StructuredLogger("memory_cache")
     
-    async def get(self, key: str) -> Optional[CacheEntry]:
+    async def get(self, key: str) -> CacheEntry | None:
         async with self._lock:
             if key not in self._cache:
                 return None
@@ -354,7 +335,7 @@ class MemoryCacheBackend(CacheBackend):
     async def size(self) -> int:
         return len(self._cache)
     
-    async def keys(self) -> List[str]:
+    async def keys(self) -> list[str]:
         return list(self._cache.keys())
     
     async def cleanup_expired(self) -> int:
@@ -367,7 +348,6 @@ class MemoryCacheBackend(CacheBackend):
             for key in expired_keys:
                 del self._cache[key]
             return len(expired_keys)
-
 
 # ============================================================================
 # 디스크 캐시 백엔드
@@ -390,7 +370,7 @@ class DiskCacheBackend(CacheBackend):
     def _get_file_path(self, key: str) -> Path:
         return self._cache_dir / f"{key}.cache"
     
-    async def get(self, key: str) -> Optional[CacheEntry]:
+    async def get(self, key: str) -> CacheEntry | None:
         file_path = self._get_file_path(key)
         
         if not file_path.exists():
@@ -440,9 +420,8 @@ class DiskCacheBackend(CacheBackend):
     async def size(self) -> int:
         return len(list(self._cache_dir.glob("*.cache")))
     
-    async def keys(self) -> List[str]:
+    async def keys(self) -> list[str]:
         return [f.stem for f in self._cache_dir.glob("*.cache")]
-
 
 # ============================================================================
 # 2계층 캐시 백엔드
@@ -465,7 +444,7 @@ class TwoLevelCacheBackend(CacheBackend):
         self._l2 = DiskCacheBackend(config)
         self._logger = StructuredLogger("two_level_cache")
     
-    async def get(self, key: str) -> Optional[CacheEntry]:
+    async def get(self, key: str) -> CacheEntry | None:
         # L1에서 먼저 조회
         entry = await self._l1.get(key)
         if entry:
@@ -497,9 +476,8 @@ class TwoLevelCacheBackend(CacheBackend):
     async def size(self) -> int:
         return await self._l2.size()  # L2가 전체 크기
     
-    async def keys(self) -> List[str]:
+    async def keys(self) -> list[str]:
         return await self._l2.keys()
-
 
 # ============================================================================
 # 메인 프롬프트 캐시
@@ -515,7 +493,6 @@ MODEL_PRICING = {
     "o3": {"input": 0.015, "output": 0.060, "cached": 0.0015},
     "default": {"input": 0.003, "output": 0.01, "cached": 0.0003},
 }
-
 
 class PromptCache:
     """
@@ -547,7 +524,7 @@ class PromptCache:
         ...     await cache.set(prompt, response, model="gpt-5.2")
     """
     
-    def __init__(self, config: Optional[CacheConfig] = None):
+    def __init__(self, config: CacheConfig | None = None):
         self.config = config or CacheConfig()
         self._stats = CacheStats()
         self._logger = StructuredLogger("prompt_cache")
@@ -559,11 +536,11 @@ class PromptCache:
             self._backend = MemoryCacheBackend(self.config)
         
         # 시맨틱 매칭용 임베딩 캐시 (선택적)
-        self._embedding_cache: Dict[str, List[float]] = {}
-        self._embedding_func: Optional[Callable[[str], List[float]]] = None
+        self._embedding_cache: dict[str, list[float]] = {}
+        self._embedding_func: Callable[[str], list[float]] | None = None
         
         # 백그라운드 정리 태스크
-        self._cleanup_task: Optional[asyncio.Task] = None
+        self._cleanup_task: asyncio.Task | None = None
         self._running = False
     
     async def initialize(self):
@@ -596,7 +573,7 @@ class PromptCache:
             except Exception as e:
                 self._logger.error("Cleanup error", error=str(e))
     
-    def set_embedding_function(self, func: Callable[[str], List[float]]):
+    def set_embedding_function(self, func: Callable[[str], list[float]]):
         """시맨틱 매칭용 임베딩 함수 설정"""
         self._embedding_func = func
     
@@ -604,9 +581,9 @@ class PromptCache:
         self,
         prompt: str,
         model: str,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
         temperature: float = 0.0,
-    ) -> Optional[CacheEntry]:
+    ) -> CacheEntry | None:
         """
         캐시 조회
         
@@ -656,10 +633,10 @@ class PromptCache:
         prompt: str,
         response: str,
         model: str,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
         temperature: float = 0.0,
-        ttl_seconds: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        ttl_seconds: int | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> CacheEntry:
         """
         캐시 저장
@@ -700,7 +677,7 @@ class PromptCache:
         self,
         prompt: str,
         model: str,
-    ) -> Optional[CacheEntry]:
+    ) -> CacheEntry | None:
         """시맨틱 유사도 검색 (근접 매칭)"""
         if not self._embedding_func:
             return None
@@ -742,7 +719,7 @@ class PromptCache:
             return None
     
     @staticmethod
-    def _cosine_similarity(a: List[float], b: List[float]) -> float:
+    def _cosine_similarity(a: list[float], b: list[float]) -> float:
         """코사인 유사도 계산"""
         dot_product = sum(x * y for x, y in zip(a, b))
         norm_a = sum(x * x for x in a) ** 0.5
@@ -755,9 +732,9 @@ class PromptCache:
     
     async def invalidate(
         self,
-        prompt: Optional[str] = None,
-        model: Optional[str] = None,
-        key: Optional[str] = None,
+        prompt: str | None = None,
+        model: str | None = None,
+        key: str | None = None,
     ) -> bool:
         """
         캐시 무효화
@@ -788,7 +765,7 @@ class PromptCache:
         """캐시 통계 조회"""
         return self._stats
     
-    async def get_all_entries(self) -> List[CacheEntry]:
+    async def get_all_entries(self) -> list[CacheEntry]:
         """모든 캐시 엔트리 조회"""
         entries = []
         for key in await self._backend.keys():
@@ -797,7 +774,6 @@ class PromptCache:
                 entries.append(entry)
         return entries
 
-
 # ============================================================================
 # 데코레이터
 # ============================================================================
@@ -805,7 +781,7 @@ class PromptCache:
 def cached_prompt(
     cache: PromptCache,
     model: str,
-    ttl_seconds: Optional[int] = None,
+    ttl_seconds: int | None = None,
 ):
     """
     프롬프트 캐싱 데코레이터

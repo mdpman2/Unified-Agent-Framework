@@ -26,7 +26,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from semantic_kernel import Kernel
 
@@ -35,7 +35,6 @@ if TYPE_CHECKING:
     from .workflow import Graph
     from .tools import MCPTool
 
-
 __all__ = [
     "IFramework",
     "IOrchestrator",
@@ -43,7 +42,6 @@ __all__ = [
     "ICacheProvider",
     "IThinkingProvider",
 ]
-
 
 # ============================================================================
 # Framework 인터페이스
@@ -71,7 +69,7 @@ class IFramework(ABC):
     
     @property
     @abstractmethod
-    def event_bus(self) -> Optional[Any]:
+    def event_bus(self) -> Any | None:
         """이벤트 버스"""
         pass
     
@@ -96,7 +94,6 @@ class IFramework(ABC):
         """워크플로우 실행"""
         pass
 
-
 # ============================================================================
 # Orchestrator 인터페이스
 # ============================================================================
@@ -115,10 +112,9 @@ class IOrchestrator(ABC):
         pass
     
     @abstractmethod
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """상태 조회"""
         pass
-
 
 # ============================================================================
 # Memory Provider 인터페이스
@@ -138,15 +134,14 @@ class IMemoryProvider(ABC):
         pass
     
     @abstractmethod
-    async def retrieve(self, key: str, **kwargs) -> Optional[Any]:
+    async def retrieve(self, key: str, **kwargs) -> Any | None:
         """데이터 조회"""
         pass
     
     @abstractmethod
-    async def search(self, query: str, top_k: int = 5, **kwargs) -> List[Any]:
+    async def search(self, query: str, top_k: int = 5, **kwargs) -> list[Any]:
         """데이터 검색"""
         pass
-
 
 # ============================================================================
 # Cache Provider 인터페이스
@@ -161,20 +156,19 @@ class ICacheProvider(ABC):
     """
     
     @abstractmethod
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """캐시 조회"""
         pass
     
     @abstractmethod
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> bool:
         """캐시 저장"""
         pass
     
     @abstractmethod
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """캐시 통계"""
         pass
-
 
 # ============================================================================
 # Thinking Provider 인터페이스
@@ -199,6 +193,6 @@ class IThinkingProvider(ABC):
         pass
     
     @abstractmethod
-    def end_thinking(self) -> Dict[str, Any]:
+    def end_thinking(self) -> dict[str, Any]:
         """사고 과정 종료 및 결과 반환"""
         pass

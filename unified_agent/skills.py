@@ -6,13 +6,15 @@ Unified Agent Framework - Skills 시스템 모듈
 Anthropic Skills 패턴 구현 - 모듈화된 지식/워크플로우/도구 패키지
 """
 
+from __future__ import annotations
+
 import re
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any
 
 try:
     import yaml
@@ -25,7 +27,6 @@ __all__ = [
     "Skill",
     "SkillManager",
 ]
-
 
 @dataclass(slots=True)
 class SkillResource:
@@ -40,11 +41,10 @@ class SkillResource:
     resource_type: str  # 'script', 'reference', 'asset'
     name: str
     path: str
-    content: Optional[str] = None
-    description: Optional[str] = None
+    content: str | None = None
+    description: str | None = None
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Skill:
     """
     Anthropic Skills 패턴 구현
@@ -67,9 +67,9 @@ class Skill:
     name: str
     description: str
     instructions: str = ""
-    triggers: List[str] = field(default_factory=list)
-    resources: List[SkillResource] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    triggers: list[str] = field(default_factory=list)
+    resources: list[SkillResource] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     enabled: bool = True
     priority: int = 0  # 높을수록 우선순위 높음
 
@@ -157,7 +157,7 @@ class Skill:
         )
 
     @staticmethod
-    def _parse_simple_yaml(text: str) -> Dict[str, Any]:
+    def _parse_simple_yaml(text: str) -> dict[str, Any]:
         """간단한 YAML 파싱 (yaml 라이브러리 없을 때)"""
         result = {}
         for line in text.strip().split('\n'):
@@ -173,7 +173,7 @@ class Skill:
         return result
 
     @staticmethod
-    def _extract_triggers(description: str) -> List[str]:
+    def _extract_triggers(description: str) -> list[str]:
         """설명에서 트리거 키워드 추출"""
         keywords = []
         parens = re.findall(r'\(([^)]+)\)', description)
@@ -200,7 +200,7 @@ class Skill:
                             description=f"{res_type.title()}: {res_file.name}"
                         ))
 
-    def get_resource(self, name: str) -> Optional[SkillResource]:
+    def get_resource(self, name: str) -> SkillResource | None:
         """이름으로 리소스 찾기"""
         for resource in self.resources:
             if resource.name == name:
@@ -257,7 +257,7 @@ class Skill:
         else:
             return f"- **{self.name}**: {self.description}\n"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """딕셔너리로 변환"""
         return {
             "name": self.name,
@@ -273,7 +273,6 @@ class Skill:
             "priority": self.priority
         }
 
-
 class SkillManager:
     """
     스킬 관리자 - 스킬 등록, 검색, 활성화 관리
@@ -285,9 +284,9 @@ class SkillManager:
     - 스킬 우선순위 관리
     """
 
-    def __init__(self, skill_dirs: Optional[List[str]] = None):
-        self.skills: Dict[str, Skill] = {}
-        self.skill_history: List[Dict[str, Any]] = []
+    def __init__(self, skill_dirs: list[str] | None = None):
+        self.skills: dict[str, Skill] = {}
+        self.skill_history: list[dict[str, Any]] = []
 
         if skill_dirs:
             for skill_dir in skill_dirs:
@@ -310,11 +309,11 @@ class SkillManager:
             return True
         return False
 
-    def get_skill(self, name: str) -> Optional[Skill]:
+    def get_skill(self, name: str) -> Skill | None:
         """이름으로 스킬 가져오기"""
         return self.skills.get(name)
 
-    def list_skills(self, enabled_only: bool = True) -> List[Skill]:
+    def list_skills(self, enabled_only: bool = True) -> list[Skill]:
         """등록된 스킬 목록"""
         skills = list(self.skills.values())
         if enabled_only:
@@ -348,7 +347,7 @@ class SkillManager:
         query: str,
         threshold: float = 0.2,
         max_skills: int = 3
-    ) -> List[Skill]:
+    ) -> list[Skill]:
         """쿼리에 매칭되는 스킬 찾기"""
         matched = []
 
@@ -375,7 +374,7 @@ class SkillManager:
 
     def build_system_prompt(
         self,
-        skills: List[Skill],
+        skills: list[Skill],
         base_prompt: str = "",
         include_full: bool = True
     ) -> str:
@@ -398,7 +397,7 @@ class SkillManager:
 
         return "\n".join(prompt_parts)
 
-    def get_usage_stats(self) -> Dict[str, Any]:
+    def get_usage_stats(self) -> dict[str, Any]:
         """스킬 사용 통계"""
         stats = defaultdict(int)
         for record in self.skill_history:

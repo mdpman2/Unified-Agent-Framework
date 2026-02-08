@@ -109,11 +109,13 @@ Unified Agent Framework - 도구 모듈 (Tools Module)
     - OpenAI Function Calling: https://platform.openai.com/docs/guides/function-calling
 """
 
+from __future__ import annotations
+
 import time
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any, Tuple, Callable
+from typing import Any, Callable, Protocol
 
 from .models import ApprovalStatus
 
@@ -123,7 +125,6 @@ __all__ = [
     "MockMCPClient",
     "MCPTool",
 ]
-
 
 # ============================================================================
 # AIFunction - Microsoft Agent Framework 패턴
@@ -140,7 +141,7 @@ class AIFunction(ABC):
     - invoke_with_metrics(): 메트릭과 함께 실행
     """
 
-    def __init__(self, name: str, description: str, parameters: Optional[Dict[str, Any]] = None):
+    def __init__(self, name: str, description: str, parameters: dict[str, Any] | None = None):
         self.name = name
         self.description = description
         self.parameters = parameters or {}
@@ -152,7 +153,7 @@ class AIFunction(ABC):
         """함수 실행"""
         pass
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """OpenAI Function Calling 스키마"""
         return {
             "name": self.name,
@@ -160,7 +161,7 @@ class AIFunction(ABC):
             "parameters": self.parameters
         }
 
-    async def invoke_with_metrics(self, **kwargs) -> Tuple[Any, float]:
+    async def invoke_with_metrics(self, **kwargs) -> tuple[Any, float]:
         """메트릭과 함께 실행"""
         start_time = time.time()
         result = await self.execute(**kwargs)
@@ -170,7 +171,6 @@ class AIFunction(ABC):
         self.total_duration_ms += duration_ms
 
         return result, duration_ms
-
 
 class ApprovalRequiredAIFunction(AIFunction):
     """
@@ -188,8 +188,8 @@ class ApprovalRequiredAIFunction(AIFunction):
     """
 
     def __init__(self, base_function: AIFunction,
-                 approval_callback: Optional[Callable] = None,
-                 auto_approve_threshold: Optional[float] = None):
+                 approval_callback: Callable | None = None,
+                 auto_approve_threshold: float | None = None):
         super().__init__(
             name=f"{base_function.name}_approval_required",
             description=f"{base_function.description} (Requires Approval)",
@@ -199,7 +199,7 @@ class ApprovalRequiredAIFunction(AIFunction):
         self.approval_callback = approval_callback
         self.auto_approve_threshold = auto_approve_threshold
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """승인 요청 생성"""
         approval_request = {
             "function_name": self.base_function.name,
@@ -236,7 +236,6 @@ class ApprovalRequiredAIFunction(AIFunction):
             return True
         return False
 
-
 # ============================================================================
 # MCP (Model Context Protocol) 통합
 # ============================================================================
@@ -244,7 +243,7 @@ class ApprovalRequiredAIFunction(AIFunction):
 class MockMCPClient:
     """MCP 클라이언트 모의 구현 (데모용)"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
         self.tools = {
             "calculator": {
@@ -259,16 +258,15 @@ class MockMCPClient:
             }
         }
 
-    async def list_tools(self) -> List[Dict[str, Any]]:
+    async def list_tools(self) -> list[dict[str, Any]]:
         return list(self.tools.values())
 
-    async def call_tool(self, name: str, arguments: Dict[str, Any]) -> Any:
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
         if name == "calculator":
             return f"Calculated: {arguments.get('expression')} = 42 (Mock)"
         elif name == "web_search":
             return f"Search results for '{arguments.get('query')}': [Mock Result 1, Mock Result 2]"
         return f"Tool {name} executed with {arguments}"
-
 
 class MCPTool:
     """
@@ -276,12 +274,12 @@ class MCPTool:
     """
     __slots__ = ('name', 'server_config', 'connected', 'client', 'available_tools')
 
-    def __init__(self, name: str, server_config: Dict[str, Any]):
+    def __init__(self, name: str, server_config: dict[str, Any]):
         self.name = name
         self.server_config = server_config
         self.connected = False
-        self.client: Optional[MockMCPClient] = None
-        self.available_tools: List[Dict[str, Any]] = []
+        self.client: MockMCPClient | None = None
+        self.available_tools: list[dict[str, Any]] = []
 
     async def connect(self):
         """MCP 서버 연결"""
@@ -302,7 +300,7 @@ class MCPTool:
             self.connected = False
             self.client = None
 
-    async def get_available_tools(self) -> List[Dict[str, Any]]:
+    async def get_available_tools(self) -> list[dict[str, Any]]:
         """사용 가능한 도구 목록"""
         if not self.connected:
             await self.connect()

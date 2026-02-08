@@ -64,17 +64,24 @@ Unified Agent Framework - Structured Output 모듈 (Structured Output Module)
     - JSON Schema: https://json-schema.org/
 """
 
+from __future__ import annotations
+
 import json
 import asyncio
 import logging
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from functools import wraps
 from typing import (
-    Any, Callable, Dict, Generic, List, Optional, 
-    Tuple, Type, TypeVar, Union, get_type_hints
+    Any,
+    Callable,
+    Generic,
+    Type,
+    TypeVar,
+    get_type_hints,
 )
 
 try:
@@ -116,10 +123,8 @@ __all__ = [
     "infer_schema_from_example",
 ]
 
-
 # Type variable for generic model support
 T = TypeVar("T")
-
 
 # ============================================================================
 # Enums
@@ -131,13 +136,11 @@ class SchemaFormat(str, Enum):
     PYDANTIC = "pydantic"            # Pydantic 모델
     TYPESCRIPT = "typescript"         # TypeScript 인터페이스 (변환용)
 
-
 class OutputMode(str, Enum):
     """출력 모드"""
     STRICT = "strict"               # 엄격한 스키마 준수 (additionalProperties: false)
     FLEXIBLE = "flexible"           # 유연한 스키마 (추가 필드 허용)
     PARTIAL = "partial"             # 부분 출력 허용 (스트리밍용)
-
 
 class ValidationLevel(str, Enum):
     """검증 수준"""
@@ -146,12 +149,11 @@ class ValidationLevel(str, Enum):
     SEMANTIC = "semantic"           # 의미적 검증 포함
     FULL = "full"                   # 전체 검증 (타입 + 범위 + 의미)
 
-
 # ============================================================================
 # Data Classes
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class OutputSchema:
     """
     JSON Schema 정의 클래스
@@ -183,10 +185,10 @@ class OutputSchema:
         ... )
     """
     name: str
-    schema: Dict[str, Any]
+    schema: dict[str, Any]
     description: str = ""
     strict: bool = True
-    examples: List[Dict[str, Any]] = field(default_factory=list)
+    examples: list[dict[str, Any]] = field(default_factory=list)
     
     def __post_init__(self):
         """스키마 후처리"""
@@ -194,7 +196,7 @@ class OutputSchema:
         if self.strict and "additionalProperties" not in self.schema:
             self.schema["additionalProperties"] = False
     
-    def to_openai_format(self) -> Dict[str, Any]:
+    def to_openai_format(self) -> dict[str, Any]:
         """
         OpenAI API 포맷으로 변환
         
@@ -211,7 +213,7 @@ class OutputSchema:
             }
         }
     
-    def validate(self, data: Dict[str, Any]) -> bool:
+    def validate(self, data: dict[str, Any]) -> bool:
         """
         데이터가 스키마를 준수하는지 검증
         
@@ -244,10 +246,11 @@ class OutputSchema:
                         return False  # 추가 프로퍼티 불허
             
             return True
-        except Exception:
+        except (TypeError, KeyError, ValueError) as e:
+            logger.debug(f"[스키마 검증 실패] {e}")
             return False
     
-    def _validate_property(self, value: Any, prop_schema: Dict[str, Any]) -> bool:
+    def _validate_property(self, value: Any, prop_schema: dict[str, Any]) -> bool:
         """프로퍼티 검증"""
         prop_type = prop_schema.get("type")
         
@@ -299,7 +302,7 @@ class OutputSchema:
         return True
     
     @classmethod
-    def from_pydantic(cls, model: Type, name: Optional[str] = None) -> "OutputSchema":
+    def from_pydantic(cls, model: Type, name: str | None = None) -> "OutputSchema":
         """
         Pydantic 모델에서 OutputSchema 생성
         
@@ -321,8 +324,7 @@ class OutputSchema:
             strict=True
         )
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class StructuredOutputConfig:
     """
     구조화된 출력 설정
@@ -344,10 +346,9 @@ class StructuredOutputConfig:
     
     # 모델 설정
     model: str = "gpt-5.2"
-    temperature: Optional[float] = None  # Structured Outputs에서는 보통 낮은 값 권장
+    temperature: float | None = None  # Structured Outputs에서는 보통 낮은 값 권장
 
-
-@dataclass
+@dataclass(slots=True)
 class StructuredOutputResult(Generic[T]):
     """
     구조화된 출력 결과
@@ -361,14 +362,13 @@ class StructuredOutputResult(Generic[T]):
         processing_time_ms: 처리 시간
     """
     success: bool
-    data: Optional[T] = None
+    data: T | None = None
     raw_output: str = ""
-    validation_errors: List[str] = field(default_factory=list)
+    validation_errors: list[str] = field(default_factory=list)
     retries: int = 0
     processing_time_ms: float = 0.0
     model_used: str = ""
     tokens_used: int = 0
-
 
 # ============================================================================
 # Exceptions
@@ -378,20 +378,17 @@ class StructuredOutputError(Exception):
     """구조화된 출력 관련 기본 예외"""
     pass
 
-
 class SchemaValidationError(StructuredOutputError):
     """스키마 검증 오류"""
-    def __init__(self, message: str, errors: List[str] = None):
+    def __init__(self, message: str, errors: list[str] = None):
         super().__init__(message)
         self.errors = errors or []
-
 
 class ParseError(StructuredOutputError):
     """JSON 파싱 오류"""
     def __init__(self, message: str, raw_output: str = ""):
         super().__init__(message)
         self.raw_output = raw_output
-
 
 # ============================================================================
 # Parser
@@ -411,14 +408,14 @@ class StructuredOutputParser:
         >>> result = parser.parse('{"name": "test", "value": 42}', schema)
     """
     
-    def __init__(self, config: Optional[StructuredOutputConfig] = None):
+    def __init__(self, config: StructuredOutputConfig | None = None):
         self.config = config or StructuredOutputConfig()
         self.logger = logging.getLogger(__name__)
     
     def parse(
         self,
         output: str,
-        schema: Optional[OutputSchema] = None
+        schema: OutputSchema | None = None
     ) -> StructuredOutputResult:
         """
         출력 파싱
@@ -430,7 +427,6 @@ class StructuredOutputParser:
         Returns:
             StructuredOutputResult: 파싱 결과
         """
-        import time
         start_time = time.perf_counter()
         
         result = StructuredOutputResult(success=False, raw_output=output)
@@ -470,7 +466,7 @@ class StructuredOutputParser:
         result.processing_time_ms = (time.perf_counter() - start_time) * 1000
         return result
     
-    def _extract_json(self, text: str) -> Optional[str]:
+    def _extract_json(self, text: str) -> str | None:
         """
         텍스트에서 JSON 추출
         
@@ -524,7 +520,7 @@ class StructuredOutputParser:
         
         return None
     
-    def _parse_partial_json(self, text: str) -> Optional[Dict[str, Any]]:
+    def _parse_partial_json(self, text: str) -> dict[str, Any] | None:
         """
         불완전한 JSON 파싱 시도
         
@@ -551,7 +547,6 @@ class StructuredOutputParser:
         except json.JSONDecodeError:
             return None
 
-
 # ============================================================================
 # Validator
 # ============================================================================
@@ -572,9 +567,9 @@ class StructuredOutputValidator:
     
     def validate(
         self,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         level: ValidationLevel = ValidationLevel.FULL
-    ) -> Tuple[bool, List[str]]:
+    ) -> tuple[bool, list[str]]:
         """
         데이터 검증
         
@@ -583,7 +578,7 @@ class StructuredOutputValidator:
             level: 검증 수준
         
         Returns:
-            Tuple[bool, List[str]]: (유효 여부, 오류 목록)
+            tuple[bool, list[str]]: (유효 여부, 오류 목록)
         """
         errors = []
         
@@ -606,9 +601,9 @@ class StructuredOutputValidator:
     def _validate_types(
         self,
         data: Any,
-        schema: Dict[str, Any],
+        schema: dict[str, Any],
         path: str = ""
-    ) -> List[str]:
+    ) -> list[str]:
         """타입 검증"""
         errors = []
         
@@ -647,7 +642,6 @@ class StructuredOutputValidator:
         
         return errors
 
-
 # ============================================================================
 # Client
 # ============================================================================
@@ -680,9 +674,9 @@ class StructuredOutputClient:
     
     def __init__(
         self,
-        config: Optional[StructuredOutputConfig] = None,
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None
+        config: StructuredOutputConfig | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None
     ):
         self.config = config or StructuredOutputConfig()
         self.parser = StructuredOutputParser(self.config)
@@ -702,9 +696,9 @@ class StructuredOutputClient:
     async def generate(
         self,
         prompt: str,
-        schema: Optional[OutputSchema] = None,
-        response_model: Optional[Type[T]] = None,
-        system_prompt: Optional[str] = None,
+        schema: OutputSchema | None = None,
+        response_model: Type[T] | None = None,
+        system_prompt: str | None = None,
         **kwargs
     ) -> StructuredOutputResult[T]:
         """
@@ -720,7 +714,6 @@ class StructuredOutputClient:
         Returns:
             StructuredOutputResult: 생성 결과
         """
-        import time
         start_time = time.perf_counter()
         
         if not self._client:
@@ -790,7 +783,7 @@ class StructuredOutputClient:
         self,
         prompt: str,
         schema: OutputSchema,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
         **kwargs
     ):
         """
@@ -824,17 +817,16 @@ class StructuredOutputClient:
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
-
 # ============================================================================
 # Decorator
 # ============================================================================
 
 def structured_output(
-    schema: Optional[Dict[str, Any]] = None,
-    response_model: Optional[Type] = None,
+    schema: dict[str, Any] | None = None,
+    response_model: Type | None = None,
     name: str = "response",
     strict: bool = True,
-    config: Optional[StructuredOutputConfig] = None
+    config: StructuredOutputConfig | None = None
 ):
     """
     구조화된 출력 데코레이터
@@ -946,7 +938,6 @@ def structured_output(
     
     return decorator
 
-
 # ============================================================================
 # Utilities
 # ============================================================================
@@ -963,8 +954,7 @@ def pydantic_to_schema(model: Type) -> OutputSchema:
     """
     return OutputSchema.from_pydantic(model)
 
-
-def schema_to_pydantic(schema: OutputSchema) -> Optional[Type]:
+def schema_to_pydantic(schema: OutputSchema) -> Type | None:
     """
     OutputSchema를 Pydantic 모델로 변환 (실험적)
     
@@ -990,7 +980,6 @@ def schema_to_pydantic(schema: OutputSchema) -> Optional[Type]:
     
     return create_model(schema.name, **fields)
 
-
 def _json_type_to_python(json_type: str) -> Type:
     """JSON 타입을 Python 타입으로 변환"""
     type_mapping = {
@@ -1004,8 +993,7 @@ def _json_type_to_python(json_type: str) -> Type:
     }
     return type_mapping.get(json_type, Any)
 
-
-def infer_schema_from_example(example: Dict[str, Any], name: str = "inferred") -> OutputSchema:
+def infer_schema_from_example(example: dict[str, Any], name: str = "inferred") -> OutputSchema:
     """
     예시 데이터에서 스키마 추론
     
@@ -1016,7 +1004,7 @@ def infer_schema_from_example(example: Dict[str, Any], name: str = "inferred") -
     Returns:
         OutputSchema: 추론된 스키마
     """
-    def infer_type(value: Any) -> Dict[str, Any]:
+    def infer_type(value: Any) -> dict[str, Any]:
         if isinstance(value, str):
             return {"type": "string"}
         elif isinstance(value, bool):

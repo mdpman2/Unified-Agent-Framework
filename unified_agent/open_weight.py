@@ -33,11 +33,13 @@ Unified Agent Framework - 오픈 웨이트 모델 모듈 (Open Weight Module)
     ... )
 """
 
+from __future__ import annotations
+
 import logging
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 __all__ = [
     "OSSLicense",
@@ -49,14 +51,12 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-
 class OSSLicense(Enum):
     """오픈 소스 라이선스"""
     APACHE_2_0 = "Apache-2.0"
     MIT = "MIT"
     LLAMA_LICENSE = "Llama-License"
     MISTRAL_LICENSE = "Mistral-Research"
-
 
 @dataclass(frozen=True, slots=True)
 class OSSModelConfig:
@@ -72,18 +72,16 @@ class OSSModelConfig:
     max_tokens: int = 4096
     temperature: float = 0.7
     top_p: float = 0.9
-    endpoint: Optional[str] = None
+    endpoint: str | None = None
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class OSSModelInfo:
     """오픈 웨이트 모델 정보"""
     name: str = ""
     parameters: str = ""  # e.g., "120B", "20B"
     license: OSSLicense = OSSLicense.APACHE_2_0
     context_window: int = 0
-    capabilities: List[str] = field(default_factory=list)
-
+    capabilities: list[str] = field(default_factory=list)
 
 class OpenWeightRegistry:
     """
@@ -96,7 +94,7 @@ class OpenWeightRegistry:
     """
 
     # 기본 등록 모델 (2026년 2월 기준)
-    _MODELS: Dict[str, OSSModelInfo] = {
+    _MODELS: dict[str, OSSModelInfo] = {
         "gpt-oss-120b": OSSModelInfo(
             name="gpt-oss-120b", parameters="120B",
             license=OSSLicense.APACHE_2_0, context_window=128_000,
@@ -120,12 +118,12 @@ class OpenWeightRegistry:
     }
 
     @classmethod
-    def list_models(cls) -> List[OSSModelInfo]:
+    def list_models(cls) -> list[OSSModelInfo]:
         """등록된 모든 오픈 웨이트 모델 목록"""
         return list(cls._MODELS.values())
 
     @classmethod
-    def get_model(cls, name: str) -> Optional[OSSModelInfo]:
+    def get_model(cls, name: str) -> OSSModelInfo | None:
         """모델 이름으로 정보 조회"""
         return cls._MODELS.get(name)
 
@@ -134,7 +132,6 @@ class OpenWeightRegistry:
         """커스텀 모델 등록"""
         cls._MODELS[model.name] = model
         logger.info(f"[OpenWeightRegistry] 모델 등록: {model.name}")
-
 
 class OpenWeightAdapter:
     """
@@ -153,7 +150,7 @@ class OpenWeightAdapter:
         ... )
     """
 
-    def __init__(self, default_endpoint: Optional[str] = None):
+    def __init__(self, default_endpoint: str | None = None):
         self._default_endpoint = default_endpoint
         self._registry = OpenWeightRegistry()
         logger.info("[OpenWeightAdapter] 초기화")
@@ -165,8 +162,8 @@ class OpenWeightAdapter:
         self,
         model: str,
         prompt: str,
-        config: Optional[OSSModelConfig] = None
-    ) -> Dict[str, Any]:
+        config: OSSModelConfig | None = None
+    ) -> dict[str, Any]:
         """
         오픈 웨이트 모델로 텍스트 생성
 

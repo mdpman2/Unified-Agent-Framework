@@ -51,6 +51,8 @@ Unified Agent Framework - 유틸리티 모듈 (Utility Module)
     - Azure Content Safety: https://learn.microsoft.com/azure/ai-services/content-safety/
 """
 
+from __future__ import annotations
+
 import re
 import asyncio
 import json
@@ -59,7 +61,7 @@ import time
 from collections import deque
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -76,7 +78,6 @@ __all__ = [
     "setup_telemetry",
     "RAIValidator",
 ]
-
 
 class StructuredLogger:
     """
@@ -155,7 +156,6 @@ class StructuredLogger:
         }
         self.logger.log(level, f"[{level}] {json.dumps(log_data, ensure_ascii=False)}")
 
-
 async def retry_with_backoff(
     func: Callable,
     max_retries: int = 3,
@@ -228,7 +228,7 @@ async def retry_with_backoff(
         - CircuitBreaker: 연속 실패 시 빠른 실패 처리
         - Azure SDK는 기본적으로 재시도 로직이 포함되어 있습니다.
     """
-    last_exception: Optional[Exception] = None
+    last_exception: Exception | None = None
     for attempt in range(max_retries + 1):
         try:
             return await func(**kwargs)
@@ -240,7 +240,6 @@ async def retry_with_backoff(
             logging.warning(f"⚠️ 재시도 {attempt + 1}/{max_retries} ({delay:.2f}s 후): {e}")
             await asyncio.sleep(delay)
     raise last_exception  # type: ignore
-
 
 # ============================================================================
 # 회로 차단기 패턴
@@ -274,7 +273,6 @@ class CircuitBreakerState(str, Enum):
     CLOSED = "CLOSED"      # 정상 상태 - 모든 요청 허용
     OPEN = "OPEN"          # 차단 상태 - 모든 요청 거부 (빠른 실패)
     HALF_OPEN = "HALF_OPEN"  # 반개방 상태 - 테스트 요청만 허용
-
 
 class CircuitBreaker:
     """
@@ -387,7 +385,7 @@ class CircuitBreaker:
         self.adaptive_timeout = adaptive_timeout
         self.failure_count = 0
         self.success_count = 0
-        self.last_failure_time: Optional[float] = None
+        self.last_failure_time: float | None = None
         self.state = CircuitBreakerState.CLOSED
 
         # 메트릭
@@ -411,7 +409,7 @@ class CircuitBreaker:
         avg = sum(recent_times) / len(recent_times)
         return min(max(avg * 5, 30.0), 300.0)
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """회로 차단기 메트릭 반환"""
         return {
             "state": self.state.value,
@@ -486,7 +484,6 @@ class CircuitBreaker:
         self.state = CircuitBreakerState.CLOSED
         logging.info("🔄 회로 차단기: 수동 리셋됨")
 
-
 # ============================================================================
 # OpenTelemetry 설정
 # ============================================================================
@@ -506,7 +503,6 @@ def setup_telemetry(service_name: str = "UnifiedAgentFramework",
         logging.info(f"✅ OpenTelemetry 설정: {service_name}")
     except Exception as e:
         logging.warning(f"⚠️ OpenTelemetry 설정 실패: {e}")
-
 
 # ============================================================================
 # RAI (Responsible AI) 검증기

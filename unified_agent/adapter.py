@@ -34,22 +34,11 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import (
-    Any,
-    Dict,
-    Generic,
-    List,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    TypeVar,
-)
+from typing import Any, Generic, Sequence, TypeVar
 
 from .tracer import Span, SpanKind, SpanStatus
 from .reward import is_reward_span, get_reward_value, find_reward_spans
 from .utils import StructuredLogger
-
 
 # ============================================================================
 # 타입 변수
@@ -58,24 +47,23 @@ from .utils import StructuredLogger
 T_from = TypeVar("T_from")
 T_to = TypeVar("T_to")
 
-
 # ============================================================================
 # Triplet 모델
 # ============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class Triplet:
     """
     (Prompt, Response, Reward) 트리플렛
     
     강화학습 및 SFT에서 사용하는 기본 학습 단위.
     """
-    prompt: Dict[str, Any]       # 프롬프트 정보
-    response: Dict[str, Any]     # 응답 정보
-    reward: Optional[float]      # 리워드 (없을 수 있음)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    prompt: dict[str, Any]       # 프롬프트 정보
+    response: dict[str, Any]     # 응답 정보
+    reward: float | None      # 리워드 (없을 수 있음)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "prompt": self.prompt,
             "response": self.response,
@@ -84,7 +72,7 @@ class Triplet:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Triplet":
+    def from_dict(cls, data: dict[str, Any]) -> "Triplet":
         return cls(
             prompt=data.get("prompt", {}),
             response=data.get("response", {}),
@@ -92,32 +80,30 @@ class Triplet:
             metadata=data.get("metadata", {}),
         )
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Transition:
     """
     상태 전이 (RL용)
     
     State → Action → Reward → Next State
     """
-    state: Dict[str, Any]
-    action: Dict[str, Any]
+    state: dict[str, Any]
+    action: dict[str, Any]
     reward: float
-    next_state: Optional[Dict[str, Any]] = None
+    next_state: dict[str, Any] | None = None
     done: bool = False
-    info: Dict[str, Any] = field(default_factory=dict)
+    info: dict[str, Any] = field(default_factory=dict)
 
-
-@dataclass
+@dataclass(slots=True)
 class Trajectory:
     """
     전체 궤적 (트랜지션 시퀀스)
     """
     rollout_id: str
-    attempt_id: Optional[str] = None
-    transitions: List[Triplet] = field(default_factory=list)
+    attempt_id: str | None = None
+    transitions: list[Triplet] = field(default_factory=list)
     total_reward: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     def add_triplet(self, triplet: Triplet) -> None:
         """트리플렛 추가"""
@@ -125,7 +111,7 @@ class Trajectory:
         if triplet.reward is not None:
             self.total_reward += triplet.reward
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "rollout_id": self.rollout_id,
             "attempt_id": self.attempt_id,
@@ -133,7 +119,6 @@ class Trajectory:
             "total_reward": self.total_reward,
             "metadata": self.metadata,
         }
-
 
 # ============================================================================
 # Reward 매칭 정책
@@ -145,7 +130,6 @@ class RewardMatchPolicy(str, Enum):
     LAST_OCCURRENCE = "last"        # 마지막 리워드
     CLOSEST_BEFORE = "closest"      # 가장 가까운 이전 리워드
     FINAL_ONLY = "final"           # 마지막 LLM에만 리워드
-
 
 # ============================================================================
 # Adapter 베이스
@@ -159,7 +143,6 @@ class Adapter(ABC, Generic[T_from, T_to]):
         """소스 데이터를 타겟 형식으로 변환"""
         pass
 
-
 class TraceAdapter(Adapter[Sequence[Span], T_to], Generic[T_to]):
     """
     트레이스 어댑터 베이스
@@ -169,21 +152,20 @@ class TraceAdapter(Adapter[Sequence[Span], T_to], Generic[T_to]):
     """
     pass
 
-
 # ============================================================================
 # OpenAI Messages Adapter
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class OpenAIMessage:
     """OpenAI 메시지 형식"""
     role: str
     content: str
-    name: Optional[str] = None
-    function_call: Optional[Dict[str, Any]] = None
-    tool_calls: Optional[List[Dict[str, Any]]] = None
+    name: str | None = None
+    function_call: dict[str, Any] | None = None
+    tool_calls: list[dict[str, Any]] | None = None
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         result = {"role": self.role, "content": self.content}
         if self.name:
             result["name"] = self.name
@@ -193,8 +175,7 @@ class OpenAIMessage:
             result["tool_calls"] = self.tool_calls
         return result
 
-
-class OpenAIMessagesAdapter(TraceAdapter[List[OpenAIMessage]]):
+class OpenAIMessagesAdapter(TraceAdapter[list[OpenAIMessage]]):
     """
     Span → OpenAI 메시지 형식 변환
     """
@@ -213,9 +194,9 @@ class OpenAIMessagesAdapter(TraceAdapter[List[OpenAIMessage]]):
         self._include_system = include_system
         self._logger = StructuredLogger("adapter.openai_messages")
     
-    def adapt(self, source: Sequence[Span]) -> List[OpenAIMessage]:
+    def adapt(self, source: Sequence[Span]) -> list[OpenAIMessage]:
         """Span → OpenAI Messages"""
-        messages: List[OpenAIMessage] = []
+        messages: list[OpenAIMessage] = []
         
         for span in source:
             if not self._llm_pattern.search(span.name):
@@ -253,7 +234,6 @@ class OpenAIMessagesAdapter(TraceAdapter[List[OpenAIMessage]]):
         
         return messages
 
-
 # ============================================================================
 # Trace Tree (스팬 계층 구조)
 # ============================================================================
@@ -271,9 +251,9 @@ class TraceTree:
             spans: 스팬 시퀀스
         """
         self._spans = list(spans)
-        self._by_id: Dict[str, Span] = {s.span_id: s for s in spans}
-        self._children: Dict[str, List[Span]] = {}
-        self._root_spans: List[Span] = []
+        self._by_id: dict[str, Span] = {s.span_id: s for s in spans}
+        self._children: dict[str, list[Span]] = {}
+        self._root_spans: list[Span] = []
         
         self._build_tree()
     
@@ -289,13 +269,13 @@ class TraceTree:
             else:
                 self._root_spans.append(span)
     
-    def get_children(self, span_id: str) -> List[Span]:
+    def get_children(self, span_id: str) -> list[Span]:
         """자식 스팬들 반환"""
         return self._children.get(span_id, [])
     
-    def get_descendants(self, span_id: str) -> List[Span]:
+    def get_descendants(self, span_id: str) -> list[Span]:
         """모든 후손 스팬들 반환"""
-        result: List[Span] = []
+        result: list[Span] = []
         children = self.get_children(span_id)
         
         for child in children:
@@ -304,9 +284,9 @@ class TraceTree:
         
         return result
     
-    def get_path_to_root(self, span_id: str) -> List[Span]:
+    def get_path_to_root(self, span_id: str) -> list[Span]:
         """루트까지의 경로"""
-        path: List[Span] = []
+        path: list[Span] = []
         current = self._by_id.get(span_id)
         
         while current:
@@ -317,25 +297,24 @@ class TraceTree:
         return list(reversed(path))
     
     @property
-    def roots(self) -> List[Span]:
+    def roots(self) -> list[Span]:
         """루트 스팬들"""
         return self._root_spans
     
-    def find_spans_by_kind(self, kind: SpanKind) -> List[Span]:
+    def find_spans_by_kind(self, kind: SpanKind) -> list[Span]:
         """종류로 스팬 찾기"""
         return [s for s in self._spans if s.kind == kind]
     
-    def find_spans_by_name(self, pattern: str) -> List[Span]:
+    def find_spans_by_name(self, pattern: str) -> list[Span]:
         """이름 패턴으로 스팬 찾기"""
         regex = re.compile(pattern, re.IGNORECASE)
         return [s for s in self._spans if regex.search(s.name)]
-
 
 # ============================================================================
 # Tracer Trace to Triplet Adapter
 # ============================================================================
 
-class TracerTraceToTriplet(TraceAdapter[List[Triplet]]):
+class TracerTraceToTriplet(TraceAdapter[list[Triplet]]):
     """
     트레이서 스팬 → 트리플렛 변환
     
@@ -351,10 +330,10 @@ class TracerTraceToTriplet(TraceAdapter[List[Triplet]]):
     def __init__(
         self,
         llm_call_pattern: str = r"openai\.chat\.completion|llm_call|llm:",
-        agent_pattern: Optional[str] = None,
+        agent_pattern: str | None = None,
         reward_match_policy: RewardMatchPolicy = RewardMatchPolicy.FIRST_OCCURRENCE,
         exclude_llm_in_reward: bool = True,
-        final_reward: Optional[float] = None,
+        final_reward: float | None = None,
     ):
         """
         Args:
@@ -371,7 +350,7 @@ class TracerTraceToTriplet(TraceAdapter[List[Triplet]]):
         self._final_reward = final_reward
         self._logger = StructuredLogger("adapter.triplet")
     
-    def adapt(self, source: Sequence[Span]) -> List[Triplet]:
+    def adapt(self, source: Sequence[Span]) -> list[Triplet]:
         """
         Span 시퀀스 → Triplet 리스트
         
@@ -397,7 +376,7 @@ class TracerTraceToTriplet(TraceAdapter[List[Triplet]]):
         matched_rewards = self._match_rewards(llm_spans, reward_spans)
         
         # 트리플렛 생성
-        triplets: List[Triplet] = []
+        triplets: list[Triplet] = []
         
         for i, llm_span in enumerate(llm_spans):
             triplet = self._span_to_triplet(
@@ -424,12 +403,12 @@ class TracerTraceToTriplet(TraceAdapter[List[Triplet]]):
         self,
         spans: Sequence[Span],
         tree: TraceTree,
-    ) -> List[Span]:
+    ) -> list[Span]:
         """LLM 호출 스팬 추출"""
-        llm_spans: List[Span] = []
+        llm_spans: list[Span] = []
         
         # 리워드 스팬 ID 집합 (제외용)
-        reward_span_ids: Set[str] = set()
+        reward_span_ids: set[str] = set()
         if self._exclude_llm_in_reward:
             for span in spans:
                 if is_reward_span(span):
@@ -459,16 +438,16 @@ class TracerTraceToTriplet(TraceAdapter[List[Triplet]]):
     
     def _match_rewards(
         self,
-        llm_spans: List[Span],
-        reward_spans: List[Span],
-    ) -> Dict[str, Optional[float]]:
+        llm_spans: list[Span],
+        reward_spans: list[Span],
+    ) -> dict[str, float | None]:
         """
         리워드-LLM 호출 매칭
         
         Returns:
             LLM span_id → reward 매핑
         """
-        matched: Dict[str, Optional[float]] = {}
+        matched: dict[str, float | None] = {}
         
         if not reward_spans:
             return matched
@@ -530,13 +509,13 @@ class TracerTraceToTriplet(TraceAdapter[List[Triplet]]):
     def _span_to_triplet(
         self,
         span: Span,
-        reward: Optional[float],
+        reward: float | None,
     ) -> Triplet:
         """스팬 → 트리플렛 변환"""
         attrs = span.attributes or {}
         
         # 프롬프트 추출
-        prompt: Dict[str, Any] = {}
+        prompt: dict[str, Any] = {}
         
         # 토큰 ID 우선
         prompt_ids = attrs.get("llm.prompt.token_ids")
@@ -562,7 +541,7 @@ class TracerTraceToTriplet(TraceAdapter[List[Triplet]]):
         prompt["length"] = attrs.get("llm.prompt.length", 0)
         
         # 응답 추출
-        response: Dict[str, Any] = {}
+        response: dict[str, Any] = {}
         
         response_ids = attrs.get("llm.response.token_ids")
         if response_ids:
@@ -601,7 +580,6 @@ class TracerTraceToTriplet(TraceAdapter[List[Triplet]]):
             metadata=metadata,
         )
 
-
 # ============================================================================
 # Trajectory Builder
 # ============================================================================
@@ -610,7 +588,7 @@ def build_trajectory(
     spans: Sequence[Span],
     adapter: TracerTraceToTriplet,
     rollout_id: str,
-    attempt_id: Optional[str] = None,
+    attempt_id: str | None = None,
 ) -> Trajectory:
     """
     스팬으로부터 Trajectory 구축
@@ -636,13 +614,12 @@ def build_trajectory(
     
     return trajectory
 
-
 # ============================================================================
 # Export Helper
 # ============================================================================
 
 def export_triplets_to_jsonl(
-    triplets: List[Triplet],
+    triplets: list[Triplet],
     filepath: str,
 ) -> int:
     """
@@ -666,9 +643,8 @@ def export_triplets_to_jsonl(
     
     return count
 
-
 def export_for_sft(
-    triplets: List[Triplet],
+    triplets: list[Triplet],
     filepath: str,
     format: str = "alpaca",
 ) -> int:

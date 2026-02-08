@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from __future__ import annotations
 """
 Unified Agent Framework - 데이터 모델 모듈 (Models Module)
 
@@ -38,8 +39,8 @@ Unified Agent Framework - 데이터 모델 모듈 (Models Module)
 from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any, Union
-from pydantic import BaseModel, Field
+from typing import Any
+from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = [
     # Enums
@@ -135,14 +136,13 @@ class RAICategory(str, Enum):
 
 class Message(BaseModel):
     """대화 메시지"""
+    model_config = ConfigDict(use_enum_values=True)
+
     role: AgentRole
     content: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    agent_name: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    
-    class Config:
-        use_enum_values = True
+    agent_name: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class AgentState(BaseModel):
@@ -151,84 +151,80 @@ class AgentState(BaseModel):
     
     워크플로우 실행 중 에이전트 간 전달되는 상태 객체
     """
+    model_config = ConfigDict(use_enum_values=True)
+
     session_id: str
-    messages: List[Message] = Field(default_factory=list)
+    messages: list[Message] = Field(default_factory=list)
     current_node: str = ""
-    visited_nodes: List[str] = Field(default_factory=list)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    visited_nodes: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     execution_status: ExecutionStatus = ExecutionStatus.PENDING
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
-    def add_message(self, role: Union[AgentRole, str], content: str, agent_name: Optional[str] = None):
+    def add_message(self, role: AgentRole | str, content: str, agent_name: str | None = None) -> None:
         """메시지 추가"""
         if isinstance(role, str):
             role = AgentRole(role)
         self.messages.append(Message(role=role, content=content, agent_name=agent_name))
         self.updated_at = datetime.now(timezone.utc)
     
-    def get_conversation_history(self, max_messages: int = 10) -> List[Dict[str, Any]]:
+    def get_conversation_history(self, max_messages: int = 10) -> list[dict[str, Any]]:
         """대화 기록 조회"""
         return [
             {"role": m.role, "content": m.content}
             for m in self.messages[-max_messages:]
         ]
-    
-    class Config:
-        use_enum_values = True
 
 
 class NodeResult(BaseModel):
     """노드 실행 결과"""
+    model_config = ConfigDict(use_enum_values=True)
+
     node_name: str
     status: ExecutionStatus
-    output: Optional[str] = None
-    next_node: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    output: str | None = None
+    next_node: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
     duration_ms: float = 0.0
     tokens_used: int = 0
-    error: Optional[str] = None
-    
-    class Config:
-        use_enum_values = True
+    error: str | None = None
 
 
 class StreamingMessage(BaseModel):
     """스트리밍 메시지"""
+    model_config = ConfigDict(use_enum_values=True)
+
     type: WebSocketMessageType
     content: str = ""
-    agent_name: Optional[str] = None
-    session_id: Optional[str] = None
+    agent_name: str | None = None
+    session_id: str | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     is_final: bool = False
-    
-    class Config:
-        use_enum_values = True
 
 
 class TeamAgent(BaseModel):
     """팀 에이전트 설정"""
+    model_config = ConfigDict(use_enum_values=True)
+
     name: str
     description: str
     role: AgentRole = AgentRole.ASSISTANT
-    system_prompt: Optional[str] = None
-    model: Optional[str] = None
-    tools: List[str] = Field(default_factory=list)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    
-    class Config:
-        use_enum_values = True
+    system_prompt: str | None = None
+    model: str | None = None
+    tools: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class TeamConfiguration(BaseModel):
     """팀 구성"""
     name: str
-    description: Optional[str] = None
-    agents: List[TeamAgent] = Field(default_factory=list)
+    description: str | None = None
+    agents: list[TeamAgent] = Field(default_factory=list)
     orchestration_mode: str = "supervisor"  # supervisor, round_robin, parallel
     max_rounds: int = 10
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class PlanStep(BaseModel):
@@ -237,33 +233,32 @@ class PlanStep(BaseModel):
     description: str
     agent_name: str
     status: PlanStepStatus = PlanStepStatus.NOT_STARTED
-    depends_on: List[int] = Field(default_factory=list)
-    output: Optional[str] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    error: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    depends_on: list[int] = Field(default_factory=list)
+    output: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    error: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
     
-    def start(self):
+    def start(self) -> None:
         """단계 시작"""
         self.status = PlanStepStatus.IN_PROGRESS
         self.started_at = datetime.now(timezone.utc)
     
-    def complete(self, output: Optional[str] = None):
+    def complete(self, output: str | None = None) -> None:
         """단계 완료"""
         self.status = PlanStepStatus.COMPLETED
         self.completed_at = datetime.now(timezone.utc)
         if output:
             self.output = output
     
-    def fail(self, error: str):
+    def fail(self, error: str) -> None:
         """단계 실패"""
         self.status = PlanStepStatus.FAILED
         self.completed_at = datetime.now(timezone.utc)
         self.error = error
     
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class MPlan(BaseModel):
@@ -273,10 +268,10 @@ class MPlan(BaseModel):
     에이전트 실행 계획을 단계별로 관리
     """
     name: str
-    description: Optional[str] = None
-    steps: List[PlanStep] = Field(default_factory=list)
+    description: str | None = None
+    steps: list[PlanStep] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     
     def get_progress(self) -> float:
         """진행률 계산 (0.0 ~ 1.0)"""
@@ -285,14 +280,14 @@ class MPlan(BaseModel):
         completed = sum(1 for s in self.steps if s.status == PlanStepStatus.COMPLETED)
         return completed / len(self.steps)
     
-    def get_current_step(self) -> Optional[PlanStep]:
+    def get_current_step(self) -> PlanStep | None:
         """현재 진행 중인 단계"""
         for step in self.steps:
             if step.status == PlanStepStatus.IN_PROGRESS:
                 return step
         return None
     
-    def get_next_step(self) -> Optional[PlanStep]:
+    def get_next_step(self) -> PlanStep | None:
         """다음 실행 가능한 단계"""
         for step in self.steps:
             if step.status == PlanStepStatus.NOT_STARTED:
@@ -316,12 +311,11 @@ class MPlan(BaseModel):
 
 class RAIValidationResult(BaseModel):
     """RAI (Responsible AI) 검증 결과"""
+    model_config = ConfigDict(use_enum_values=True)
+
     is_safe: bool
-    categories: Dict[RAICategory, bool] = Field(default_factory=dict)
-    scores: Dict[RAICategory, float] = Field(default_factory=dict)
-    blocked_content: Optional[str] = None
-    details: Optional[str] = None
+    categories: dict[RAICategory, bool] = Field(default_factory=dict)
+    scores: dict[RAICategory, float] = Field(default_factory=dict)
+    blocked_content: str | None = None
+    details: str | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
-    class Config:
-        use_enum_values = True

@@ -36,6 +36,8 @@ Unified Agent Framework - 세션 트리 시스템 (Session Tree Module)
     - Session Branching: Pi sessions are trees
 """
 
+from __future__ import annotations
+
 import os
 import json
 import uuid
@@ -44,7 +46,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Callable, Tuple, Set
+from typing import Any, Callable
 from enum import Enum
 
 from .utils import StructuredLogger
@@ -64,7 +66,6 @@ __all__ = [
     "SessionSnapshot",
 ]
 
-
 # ============================================================================
 # Enums & Constants
 # ============================================================================
@@ -79,12 +80,11 @@ class NodeType(Enum):
     BRANCH_POINT = "branch"    # 브랜치 분기점
     SUMMARY = "summary"        # 브랜치 요약
 
-
 # ============================================================================
 # Configuration
 # ============================================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class SessionTreeConfig:
     """
     세션 트리 설정
@@ -102,12 +102,11 @@ class SessionTreeConfig:
     persist_to_disk: bool = True
     session_dir: str = field(default_factory=lambda: os.path.expanduser("~/.agent_sessions"))
 
-
 # ============================================================================
 # Data Models
 # ============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class SessionNode:
     """
     세션 트리의 노드
@@ -117,13 +116,13 @@ class SessionNode:
     id: str
     type: NodeType
     content: str
-    parent_id: Optional[str] = None
-    children_ids: List[str] = field(default_factory=list)
+    parent_id: str | None = None
+    children_ids: list[str] = field(default_factory=list)
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    branch_name: Optional[str] = None  # 이 노드가 속한 브랜치
+    metadata: dict[str, Any] = field(default_factory=dict)
+    branch_name: str | None = None  # 이 노드가 속한 브랜치
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "type": self.type.value,
@@ -136,7 +135,7 @@ class SessionNode:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SessionNode":
+    def from_dict(cls, data: dict[str, Any]) -> "SessionNode":
         return cls(
             id=data["id"],
             type=NodeType(data["type"]),
@@ -148,19 +147,18 @@ class SessionNode:
             branch_name=data.get("branch_name")
         )
 
-
-@dataclass
+@dataclass(slots=True)
 class BranchInfo:
     """브랜치 정보"""
     name: str
     branch_point_id: str  # 분기 시작점
     head_id: str          # 현재 헤드
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    description: Optional[str] = None
+    description: str | None = None
     is_active: bool = True
-    summary: Optional[str] = None  # 병합 시 요약
+    summary: str | None = None  # 병합 시 요약
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "branch_point_id": self.branch_point_id,
@@ -172,7 +170,7 @@ class BranchInfo:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BranchInfo":
+    def from_dict(cls, data: dict[str, Any]) -> "BranchInfo":
         return cls(
             name=data["name"],
             branch_point_id=data["branch_point_id"],
@@ -183,20 +181,19 @@ class BranchInfo:
             summary=data.get("summary")
         )
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class SessionSnapshot:
     """세션 스냅샷 (특정 시점의 전체 상태)"""
     id: str
     session_id: str
     node_id: str  # 스냅샷 시점의 노드
     branch_name: str
-    nodes: Dict[str, Dict]  # 노드 ID -> 노드 데이터
-    branches: Dict[str, Dict]  # 브랜치 이름 -> 브랜치 데이터
+    nodes: dict[str, dict]  # 노드 ID -> 노드 데이터
+    branches: dict[str, dict]  # 브랜치 이름 -> 브랜치 데이터
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "session_id": self.session_id,
@@ -207,7 +204,6 @@ class SessionSnapshot:
             "created_at": self.created_at.isoformat(),
             "metadata": self.metadata
         }
-
 
 # ============================================================================
 # Session Tree
@@ -245,16 +241,16 @@ class SessionTree:
     def __init__(
         self,
         session_id: str,
-        config: Optional[SessionTreeConfig] = None
+        config: SessionTreeConfig | None = None
     ):
         self.session_id = session_id
         self.config = config or SessionTreeConfig()
         
         # 노드 저장소
-        self._nodes: Dict[str, SessionNode] = {}
+        self._nodes: dict[str, SessionNode] = {}
         
         # 브랜치 관리
-        self._branches: Dict[str, BranchInfo] = {}
+        self._branches: dict[str, BranchInfo] = {}
         self._current_branch = self.MAIN_BRANCH
         
         # 루트 노드 생성
@@ -264,7 +260,7 @@ class SessionTree:
         self._head_id = self._root_id
         
         # 스냅샷
-        self._snapshots: List[SessionSnapshot] = []
+        self._snapshots: list[SessionSnapshot] = []
         self._nodes_since_snapshot = 0
         
         self._logger = StructuredLogger("session_tree")
@@ -313,7 +309,7 @@ class SessionTree:
         self,
         role: str,
         content: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None
     ) -> SessionNode:
         """
         메시지 추가
@@ -358,7 +354,7 @@ class SessionTree:
     def create_branch(
         self,
         name: str,
-        description: Optional[str] = None
+        description: str | None = None
     ) -> BranchInfo:
         """
         새 브랜치 생성 및 전환
@@ -427,11 +423,11 @@ class SessionTree:
         
         return branch
     
-    def list_branches(self) -> List[BranchInfo]:
+    def list_branches(self) -> list[BranchInfo]:
         """모든 브랜치 목록"""
         return list(self._branches.values())
     
-    def get_branch(self, name: str) -> Optional[BranchInfo]:
+    def get_branch(self, name: str) -> BranchInfo | None:
         """브랜치 정보 조회"""
         return self._branches.get(name)
     
@@ -473,7 +469,7 @@ class SessionTree:
             current = self._nodes[current].parent_id
         return False
     
-    def get_path_to_root(self, node_id: Optional[str] = None) -> List[SessionNode]:
+    def get_path_to_root(self, node_id: str | None = None) -> list[SessionNode]:
         """
         노드에서 루트까지의 경로
         
@@ -493,7 +489,7 @@ class SessionTree:
         path.reverse()
         return path
     
-    def get_conversation_history(self, branch: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_conversation_history(self, branch: str | None = None) -> list[dict[str, Any]]:
         """
         대화 기록 조회 (OpenAI 메시지 형식)
         
@@ -531,8 +527,8 @@ class SessionTree:
     async def merge_branch(
         self,
         branch_name: str,
-        summarizer: Optional[Callable[[List[Dict]], str]] = None
-    ) -> Optional[str]:
+        summarizer: Callable[[list[dict]], str] | None = None
+    ) -> str | None:
         """
         브랜치를 메인에 병합
         
@@ -590,7 +586,7 @@ class SessionTree:
         
         return summary
     
-    def get_branch_summary(self, branch_name: str) -> Optional[str]:
+    def get_branch_summary(self, branch_name: str) -> str | None:
         """브랜치 요약 조회"""
         branch = self._branches.get(branch_name)
         return branch.summary if branch else None
@@ -637,7 +633,7 @@ class SessionTree:
         
         return True
     
-    def list_snapshots(self) -> List[Dict[str, Any]]:
+    def list_snapshots(self) -> list[dict[str, Any]]:
         """스냅샷 목록"""
         return [
             {
@@ -649,7 +645,7 @@ class SessionTree:
             for s in self._snapshots
         ]
     
-    def get_tree_stats(self) -> Dict[str, Any]:
+    def get_tree_stats(self) -> dict[str, Any]:
         """트리 통계"""
         return {
             "session_id": self.session_id,
@@ -661,7 +657,7 @@ class SessionTree:
             "snapshots": len(self._snapshots)
         }
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """트리 전체를 딕셔너리로 직렬화"""
         return {
             "session_id": self.session_id,
@@ -678,7 +674,7 @@ class SessionTree:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SessionTree":
+    def from_dict(cls, data: dict[str, Any]) -> "SessionTree":
         """딕셔너리에서 트리 복원"""
         config = SessionTreeConfig(
             max_depth=data["config"]["max_depth"],
@@ -696,7 +692,6 @@ class SessionTree:
         tree._branches = {k: BranchInfo.from_dict(v) for k, v in data["branches"].items()}
         
         return tree
-
 
 # ============================================================================
 # Session Tree Manager
@@ -724,9 +719,9 @@ class SessionTreeManager:
         >>> sessions = manager.list_sessions()
     """
     
-    def __init__(self, session_dir: Optional[str] = None):
+    def __init__(self, session_dir: str | None = None):
         self.session_dir = Path(session_dir or os.path.expanduser("~/.agent_sessions"))
-        self._trees: Dict[str, SessionTree] = {}
+        self._trees: dict[str, SessionTree] = {}
         self._logger = StructuredLogger("session_tree_manager")
         
         self.session_dir.mkdir(parents=True, exist_ok=True)
@@ -738,7 +733,7 @@ class SessionTreeManager:
     def get_or_create(
         self,
         session_id: str,
-        config: Optional[SessionTreeConfig] = None
+        config: SessionTreeConfig | None = None
     ) -> SessionTree:
         """
         세션 조회 또는 생성
@@ -782,7 +777,7 @@ class SessionTreeManager:
             self._logger.error(f"Failed to save session {tree.session_id}: {e}")
             return False
     
-    def save_all(self):
+    def save_all(self) -> None:
         """모든 세션 저장"""
         for tree in self._trees.values():
             self.save(tree)
@@ -802,7 +797,7 @@ class SessionTreeManager:
         
         return False
     
-    def list_sessions(self) -> List[Dict[str, Any]]:
+    def list_sessions(self) -> list[dict[str, Any]]:
         """모든 세션 목록"""
         sessions = []
         
@@ -818,10 +813,11 @@ class SessionTreeManager:
                     "current_branch": data.get("current_branch"),
                     "modified": datetime.fromtimestamp(session_file.stat().st_mtime).isoformat()
                 })
-            except Exception:
+            except Exception as e:
+                logger.warning(f"[세션 로드 실패] {session_id}: {e}")
                 sessions.append({
                     "session_id": session_id,
-                    "error": "Failed to load"
+                    "error": f"Failed to load: {e}"
                 })
         
         return sessions
@@ -829,7 +825,7 @@ class SessionTreeManager:
     def export_conversation(
         self,
         session_id: str,
-        branch: Optional[str] = None,
+        branch: str | None = None,
         format: str = "markdown"
     ) -> str:
         """

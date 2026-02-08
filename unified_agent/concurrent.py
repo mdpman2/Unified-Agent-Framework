@@ -59,19 +59,12 @@ from typing import (
     Any,
     Callable,
     Coroutine,
-    Dict,
     Generic,
-    List,
-    Optional,
-    Set,
-    Tuple,
     TypeVar,
-    Union,
 )
 
 from .utils import StructuredLogger
 from .models import NodeResult
-
 
 __all__ = [
     # 설정
@@ -93,7 +86,6 @@ __all__ = [
     "ScatterGatherPattern",
 ]
 
-
 # ============================================================================
 # 설정 및 전략
 # ============================================================================
@@ -107,8 +99,7 @@ class AggregationStrategy(str, Enum):
     WEIGHTED = "weighted"     # 가중치 기반
     CUSTOM = "custom"         # 커스텀 집계기
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class FanOutConfig:
     """
     Fan-out 설정
@@ -128,21 +119,20 @@ class FanOutConfig:
     strategy: AggregationStrategy = AggregationStrategy.ALL
     min_success_count: int = 1
 
-
-@dataclass
+@dataclass(slots=True)
 class ParallelResult:
     """병렬 실행 개별 결과"""
     agent_id: str
     agent_name: str
     success: bool
     result: Any = None
-    error: Optional[str] = None
+    error: str | None = None
     duration_ms: float = 0.0
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "agent_id": self.agent_id,
             "agent_name": self.agent_name,
@@ -152,28 +142,27 @@ class ParallelResult:
             "duration_ms": self.duration_ms,
         }
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class AggregatedResult:
     """집계된 최종 결과"""
     success: bool
     strategy: AggregationStrategy
-    results: List[ParallelResult]
+    results: list[ParallelResult]
     aggregated_value: Any = None
     total_duration_ms: float = 0.0
     success_count: int = 0
     failure_count: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     @property
-    def successful_results(self) -> List[ParallelResult]:
+    def successful_results(self) -> list[ParallelResult]:
         return [r for r in self.results if r.success]
     
     @property
-    def failed_results(self) -> List[ParallelResult]:
+    def failed_results(self) -> list[ParallelResult]:
         return [r for r in self.results if not r.success]
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "success": self.success,
             "strategy": self.strategy.value,
@@ -184,53 +173,48 @@ class AggregatedResult:
             "results": [r.to_dict() for r in self.results],
         }
 
-
 # ============================================================================
 # 결과 집계기
 # ============================================================================
 
 T = TypeVar("T")
 
-
 class ResultAggregator(ABC, Generic[T]):
     """결과 집계기 추상 클래스"""
     
     @abstractmethod
-    def aggregate(self, results: List[ParallelResult]) -> T:
+    def aggregate(self, results: list[ParallelResult]) -> T:
         """결과 집계"""
         pass
-
 
 class FirstCompleteAggregator(ResultAggregator[Any]):
     """첫 번째 완료 결과 반환"""
     
-    def aggregate(self, results: List[ParallelResult]) -> Any:
+    def aggregate(self, results: list[ParallelResult]) -> Any:
         for result in results:
             if result.success:
                 return result.result
         return None
 
-
-class AllCompleteAggregator(ResultAggregator[List[Any]]):
+class AllCompleteAggregator(ResultAggregator[list[Any]]):
     """모든 결과 리스트 반환"""
     
     def __init__(self, include_failures: bool = True):
         self.include_failures = include_failures
     
-    def aggregate(self, results: List[ParallelResult]) -> List[Any]:
+    def aggregate(self, results: list[ParallelResult]) -> list[Any]:
         if self.include_failures:
             return [r.result for r in results]
         return [r.result for r in results if r.success]
 
-
 class MajorityVoteAggregator(ResultAggregator[Any]):
     """다수결 집계"""
     
-    def __init__(self, key_func: Optional[Callable[[Any], Any]] = None):
+    def __init__(self, key_func: Callable[[Any], Any] | None = None):
         self.key_func = key_func or (lambda x: x)
     
-    def aggregate(self, results: List[ParallelResult]) -> Any:
-        votes: Dict[Any, int] = {}
+    def aggregate(self, results: list[ParallelResult]) -> Any:
+        votes: dict[Any, int] = {}
         
         for result in results:
             if not result.success:
@@ -244,15 +228,14 @@ class MajorityVoteAggregator(ResultAggregator[Any]):
         
         return max(votes.keys(), key=lambda k: votes[k])
 
-
 class WeightedAggregator(ResultAggregator[Any]):
     """가중치 기반 집계"""
     
-    def __init__(self, weights: Dict[str, float]):
+    def __init__(self, weights: dict[str, float]):
         self.weights = weights
     
-    def aggregate(self, results: List[ParallelResult]) -> Any:
-        weighted_results: List[Tuple[Any, float]] = []
+    def aggregate(self, results: list[ParallelResult]) -> Any:
+        weighted_results: list[tuple[Any, float]] = []
         
         for result in results:
             if not result.success:
@@ -266,7 +249,6 @@ class WeightedAggregator(ResultAggregator[Any]):
         
         # 가장 높은 가중치 결과 반환
         return max(weighted_results, key=lambda x: x[1])[0]
-
 
 # ============================================================================
 # Concurrent Orchestrator
@@ -295,18 +277,18 @@ class ConcurrentOrchestrator:
         ... )
     """
     
-    def __init__(self, config: Optional[FanOutConfig] = None):
+    def __init__(self, config: FanOutConfig | None = None):
         self.config = config or FanOutConfig()
         self._logger = StructuredLogger("concurrent_orchestrator")
-        self._active_tasks: Dict[str, asyncio.Task] = {}
+        self._active_tasks: dict[str, asyncio.Task] = {}
     
     async def fan_out(
         self,
-        agents: List[Any],
-        input_data: Dict[str, Any],
-        config: Optional[FanOutConfig] = None,
-        agent_configs: Optional[Dict[str, Dict[str, Any]]] = None,
-    ) -> List[ParallelResult]:
+        agents: list[Any],
+        input_data: dict[str, Any],
+        config: FanOutConfig | None = None,
+        agent_configs: dict[str, dict[str, Any]] | None = None,
+    ) -> list[ParallelResult]:
         """
         Fan-out: 여러 에이전트 병렬 실행
         
@@ -467,10 +449,10 @@ class ConcurrentOrchestrator:
     
     async def fan_in(
         self,
-        results: List[ParallelResult],
-        strategy: Optional[AggregationStrategy] = None,
-        aggregator: Optional[ResultAggregator] = None,
-        custom_func: Optional[Callable[[List[ParallelResult]], Any]] = None,
+        results: list[ParallelResult],
+        strategy: AggregationStrategy | None = None,
+        aggregator: ResultAggregator | None = None,
+        custom_func: Callable[[list[ParallelResult]], Any] | None = None,
     ) -> AggregatedResult:
         """
         Fan-in: 결과 수집 및 집계
@@ -530,10 +512,10 @@ class ConcurrentOrchestrator:
     
     async def fan_out_fan_in(
         self,
-        agents: List[Any],
-        input_data: Dict[str, Any],
-        config: Optional[FanOutConfig] = None,
-        aggregator: Optional[ResultAggregator] = None,
+        agents: list[Any],
+        input_data: dict[str, Any],
+        config: FanOutConfig | None = None,
+        aggregator: ResultAggregator | None = None,
     ) -> AggregatedResult:
         """
         Fan-out/Fan-in 한 번에 실행
@@ -550,7 +532,6 @@ class ConcurrentOrchestrator:
         config = config or self.config
         results = await self.fan_out(agents, input_data, config)
         return await self.fan_in(results, config.strategy, aggregator)
-
 
 # ============================================================================
 # 고급 패턴
@@ -574,17 +555,17 @@ class MapReducePattern:
     
     def __init__(
         self,
-        orchestrator: Optional[ConcurrentOrchestrator] = None,
-        config: Optional[FanOutConfig] = None,
+        orchestrator: ConcurrentOrchestrator | None = None,
+        config: FanOutConfig | None = None,
     ):
         self.orchestrator = orchestrator or ConcurrentOrchestrator(config)
         self._logger = StructuredLogger("map_reduce")
     
     async def execute(
         self,
-        items: List[Any],
+        items: list[Any],
         map_func: Callable[[Any], Coroutine[Any, Any, Any]],
-        reduce_func: Callable[[List[Any]], Any],
+        reduce_func: Callable[[list[Any]], Any],
         chunk_size: int = 10,
     ) -> Any:
         """
@@ -610,7 +591,7 @@ class MapReducePattern:
         )
         
         # Map 단계: 각 청크 병렬 처리
-        async def process_chunk(chunk_data: Dict[str, Any]) -> List[Any]:
+        async def process_chunk(chunk_data: dict[str, Any]) -> list[Any]:
             chunk = chunk_data["chunk"]
             results = []
             for item in chunk:
@@ -644,7 +625,6 @@ class MapReducePattern:
         
         return final_result
 
-
 class ScatterGatherPattern:
     """
     Scatter-Gather 패턴
@@ -662,15 +642,15 @@ class ScatterGatherPattern:
     
     def __init__(
         self,
-        orchestrator: Optional[ConcurrentOrchestrator] = None,
+        orchestrator: ConcurrentOrchestrator | None = None,
     ):
         self.orchestrator = orchestrator or ConcurrentOrchestrator()
         self._logger = StructuredLogger("scatter_gather")
     
     async def execute(
         self,
-        request: Dict[str, Any],
-        services: List[Callable],
+        request: dict[str, Any],
+        services: list[Callable],
         timeout: float = 30.0,
         min_responses: int = 1,
     ) -> AggregatedResult:
@@ -710,7 +690,6 @@ class ScatterGatherPattern:
             strategy=AggregationStrategy.ALL_SUCCESS
         )
 
-
 # ============================================================================
 # 조건부 분기 Fan-out
 # ============================================================================
@@ -734,28 +713,28 @@ class ConditionalFanOut:
         >>> results = await fan_out.execute(input_data)
     """
     
-    def __init__(self, orchestrator: Optional[ConcurrentOrchestrator] = None):
+    def __init__(self, orchestrator: ConcurrentOrchestrator | None = None):
         self.orchestrator = orchestrator or ConcurrentOrchestrator()
-        self._branches: List[Tuple[Callable, List[Any]]] = []
-        self._default_agents: List[Any] = []
+        self._branches: list[tuple[Callable, list[Any]]] = []
+        self._default_agents: list[Any] = []
         self._logger = StructuredLogger("conditional_fan_out")
     
     def add_branch(
         self,
-        condition: Callable[[Dict[str, Any]], bool],
-        agents: List[Any],
+        condition: Callable[[dict[str, Any]], bool],
+        agents: list[Any],
     ):
         """조건부 브랜치 추가"""
         self._branches.append((condition, agents))
     
-    def set_default(self, agents: List[Any]):
+    def set_default(self, agents: list[Any]):
         """기본 에이전트 설정"""
         self._default_agents = agents
     
     async def execute(
         self,
-        input_data: Dict[str, Any],
-        config: Optional[FanOutConfig] = None,
+        input_data: dict[str, Any],
+        config: FanOutConfig | None = None,
     ) -> AggregatedResult:
         """
         조건부 Fan-out 실행

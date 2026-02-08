@@ -37,7 +37,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 from .utils import StructuredLogger
 from .interfaces import IFramework
@@ -55,14 +55,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .agents import Agent
 
-
 __all__ = [
     "Extensions",
     "ExtensionsConfig",
 ]
 
-
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ExtensionsConfig:
     """
     확장 모듈 설정
@@ -90,12 +88,11 @@ class ExtensionsConfig:
     enable_mcp: bool = True
     
     # 개별 설정
-    cache_config: Optional[CacheConfig] = None
-    durable_config: Optional[DurableConfig] = None
-    concurrent_config: Optional[FanOutConfig] = None
-    thinking_config: Optional[ThinkingConfig] = None
-    mcp_config: Optional[McpWorkbenchConfig] = None
-
+    cache_config: CacheConfig | None = None
+    durable_config: DurableConfig | None = None
+    concurrent_config: FanOutConfig | None = None
+    thinking_config: ThinkingConfig | None = None
+    mcp_config: McpWorkbenchConfig | None = None
 
 class Extensions:
     """
@@ -114,8 +111,8 @@ class Extensions:
     
     def __init__(
         self,
-        framework: Optional[IFramework] = None,
-        config: Optional[ExtensionsConfig] = None,
+        framework: IFramework | None = None,
+        config: ExtensionsConfig | None = None,
     ):
         """
         확장 모듈 초기화
@@ -129,13 +126,13 @@ class Extensions:
         self._logger = StructuredLogger("extensions")
         
         # 확장 모듈 인스턴스
-        self._cache: Optional[PromptCache] = None
-        self._durable: Optional[DurableOrchestrator] = None
-        self._concurrent: Optional[ConcurrentOrchestrator] = None
-        self._agent_tool_registry: Optional[AgentToolRegistry] = None
-        self._delegation_manager: Optional[DelegationManager] = None
-        self._thinking: Optional[ThinkingTracker] = None
-        self._mcp: Optional[McpWorkbench] = None
+        self._cache: PromptCache | None = None
+        self._durable: DurableOrchestrator | None = None
+        self._concurrent: ConcurrentOrchestrator | None = None
+        self._agent_tool_registry: AgentToolRegistry | None = None
+        self._delegation_manager: DelegationManager | None = None
+        self._thinking: ThinkingTracker | None = None
+        self._mcp: McpWorkbench | None = None
         
         # 초기화
         self._initialize()
@@ -179,37 +176,37 @@ class Extensions:
     # =========================================================================
     
     @property
-    def cache(self) -> Optional[PromptCache]:
+    def cache(self) -> PromptCache | None:
         """Prompt Cache 인스턴스"""
         return self._cache
     
     @property
-    def durable(self) -> Optional[DurableOrchestrator]:
+    def durable(self) -> DurableOrchestrator | None:
         """Durable Orchestrator 인스턴스"""
         return self._durable
     
     @property
-    def concurrent(self) -> Optional[ConcurrentOrchestrator]:
+    def concurrent(self) -> ConcurrentOrchestrator | None:
         """Concurrent Orchestrator (lazy initialization)"""
         return self._concurrent
     
     @property
-    def agent_tools(self) -> Optional[AgentToolRegistry]:
+    def agent_tools(self) -> AgentToolRegistry | None:
         """AgentTool Registry 인스턴스"""
         return self._agent_tool_registry
     
     @property
-    def delegation(self) -> Optional[DelegationManager]:
+    def delegation(self) -> DelegationManager | None:
         """Delegation Manager 인스턴스"""
         return self._delegation_manager
     
     @property
-    def thinking(self) -> Optional[ThinkingTracker]:
+    def thinking(self) -> ThinkingTracker | None:
         """Extended Thinking Tracker 인스턴스"""
         return self._thinking
     
     @property
-    def mcp(self) -> Optional[McpWorkbench]:
+    def mcp(self) -> McpWorkbench | None:
         """MCP Workbench 인스턴스"""
         return self._mcp
     
@@ -220,7 +217,7 @@ class Extensions:
     async def cached_llm_call(
         self,
         model: str,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         call_fn: Callable,
         **kwargs
     ) -> tuple:
@@ -252,8 +249,8 @@ class Extensions:
     
     def create_concurrent_orchestrator(
         self,
-        agents: List['Agent'],
-        config: Optional[FanOutConfig] = None,
+        agents: list['Agent'],
+        config: FanOutConfig | None = None,
     ) -> ConcurrentOrchestrator:
         """
         병렬 실행 오케스트레이터 생성
@@ -272,9 +269,9 @@ class Extensions:
     async def fan_out(
         self,
         task: str,
-        agents: Optional[List['Agent']] = None,
+        agents: list['Agent'] | None = None,
         aggregation: AggregationStrategy = AggregationStrategy.ALL,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Fan-out 병렬 실행
         
@@ -301,8 +298,8 @@ class Extensions:
     def register_agent_as_tool(
         self,
         agent: 'Agent',
-        name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
     ) -> AgentTool:
         """
         에이전트를 도구로 등록
@@ -329,7 +326,7 @@ class Extensions:
     async def delegate_task(
         self,
         task: str,
-        required_capabilities: Optional[List[str]] = None,
+        required_capabilities: list[str] | None = None,
     ) -> Any:
         """
         작업 위임
@@ -383,7 +380,7 @@ class Extensions:
         
         self._mcp.register_server(config)
     
-    async def connect_mcp_servers(self) -> Dict[str, bool]:
+    async def connect_mcp_servers(self) -> dict[str, bool]:
         """
         모든 MCP 서버 연결
         
@@ -398,7 +395,7 @@ class Extensions:
     async def call_mcp_tool(
         self,
         tool_name: str,
-        server_name: Optional[str] = None,
+        server_name: str | None = None,
         **arguments
     ) -> Any:
         """
@@ -425,7 +422,7 @@ class Extensions:
     # 통계 및 상태
     # =========================================================================
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         전체 확장 모듈 통계
         
