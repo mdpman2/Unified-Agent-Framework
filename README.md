@@ -1527,14 +1527,8 @@ v4.0에서는 22개 시나리오 기반의 포괄적인 테스트 스위트를 �
 ### 테스트 실행
 
 ```bash
-# 전체 시나리오 테스트 (22개 시나리오, 100% 커버리지)
-python test_v35_scenarios.py
-
-# v3.5 신규 모듈 테스트 (Structured Output, Evaluation)
-python test_new_modules.py
-
-# 보안 모듈 심층 테스트 (Security Guardrails)
-python test_security_guardrails.py
+# 전체 시나리오 테스트 (22개 시나리오, 43개 모듈, 100% 커버리지)
+python test_v40_all_scenarios.py
 
 # 실행 데모
 python demo_unified_agent.py
@@ -3027,7 +3021,7 @@ pip install -r requirements.txt
 pip install -e ".[dev]"
 
 # 테스트 실행
-python test_v35_scenarios.py
+python test_v40_all_scenarios.py
 ```
 
 ### 기여 방법
@@ -3090,6 +3084,7 @@ Unified-agent-framework/
 │   ├── video_generation.py       # [v4.0 NEW!] Sora 2 비디오 생성
 │   ├── image_generation.py       # [v4.0 NEW!] GPT-image-1.5 이미지 생성
 │   ├── open_weight.py            # [v4.0 NEW!] OpenAI OSS 오픈 웨이트 모델
+│   ├── universal_bridge.py       # [v4.0 NEW!] Universal Agent Bridge
 │   ├── openai_agents_bridge.py   # [v4.0 NEW!] OpenAI Agents SDK 브릿지
 │   ├── google_adk_bridge.py      # [v4.0 NEW!] Google ADK 브릿지
 │   ├── crewai_bridge.py          # [v4.0 NEW!] CrewAI 브릿지
@@ -3099,13 +3094,12 @@ Unified-agent-framework/
 │   └── sk_agent_bridge.py        # [v4.0 NEW!] SK Agent Framework 브릿지
 │
 ├── 📂 skills/                     # SKILL.md 기반 스킬 디렉토리
+│   ├── api-developer/
 │   ├── python-expert/
 │   ├── data-analyst/
 │   └── korean-writer/
 │
-├── 🧪 test_v35_scenarios.py       # 통합 테스트 (22개 시나리오, 100%)
-├── 🧪 test_new_modules.py         # v4.0 모듈 테스트
-├── 🧪 test_security_guardrails.py # 보안 모듈 테스트
+├── 🧪 test_v40_all_scenarios.py    # 통합 테스트 (22개 시나리오, 43개 모듈, 100%)
 ├── 🎮 demo_unified_agent.py       # 데모 코드
 ├── 📖 Unified_agent_framework.py  # 레거시 래퍼 (하위 호환성)
 │

@@ -5,6 +5,170 @@ All notable changes to Unified Agent Framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-02-08
+
+### 🆕 Added
+
+#### Responses API 통합 (responses_api.py)
+- `ResponsesClient`: OpenAI Responses API 기반 Stateful 대화 클라이언트
+- `ConversationState`: 대화 상태 관리 (세션, 턴 히스토리)
+- `BackgroundMode`: 비동기 백그라운드 실행 지원
+- `ResponseConfig`, `ResponseObject`, `ResponseStatus`, `ToolType`
+
+#### Sora 2 비디오 생성 (video_generation.py)
+- `VideoGenerator`: Sora 2/2 Pro 비디오 생성 파이프라인
+- `Sora2Client`: Sora 2 API 직접 호출 클라이언트
+- `VideoConfig`, `VideoResult`, `VideoModel`, `VideoStatus`
+
+#### GPT Image 1.5 이미지 생성 (image_generation.py)
+- `ImageGenerator`: GPT-image-1.5 이미지 생성기
+- `GPTImage1_5Client`: 이미지 생성 API 클라이언트
+- `ImageConfig`, `ImageResult`, `ImageModel`
+
+#### 오픈 웨이트 모델 (open_weight.py)
+- `OpenWeightAdapter`: gpt-oss-120b/20b 등 오픈 소스 모델 어댑터
+- `OpenWeightRegistry`: 모델 레지스트리 (Llama 4, Phi-4, Mistral 등)
+- `OSSModelConfig`, `OSSModelInfo`, `OSSLicense`
+
+#### Universal Agent Bridge (universal_bridge.py)
+- `UniversalAgentBridge`: 7개 프레임워크 통합 실행 레이어
+- `BridgeProtocol`: 브릿지 프로토콜 인터페이스
+
+#### 7개 프레임워크 브릿지 모듈
+- `SemanticKernelAgentBridge` (sk_agent_bridge.py) — SK Orchestration 패턴
+- `OpenAIAgentsBridge` (openai_agents_bridge.py) — Handoff, Session, Human-in-the-Loop
+- `GoogleADKBridge` (google_adk_bridge.py) — Workflow Agent, A2A 프로토콜
+- `CrewAIBridge` (crewai_bridge.py) — Crews + Flows 아키텍처
+- `AG2Bridge` (ag2_bridge.py) — Universal Interop, AutoGen 진화
+- `MicrosoftAgentBridge` (ms_agent_bridge.py) — Graph Workflow, Declarative Agents
+- `A2ABridge` (a2a_bridge.py) — A2A Protocol v0.3.0 (AgentCard, JSON-RPC 2.0)
+
+#### framework.py v4.0 팩토리 메서드
+- `create_responses_client()`: Responses API 클라이언트 생성
+- `create_video_generator()`: 비디오 생성기 팩토리
+- `create_image_generator()`: 이미지 생성기 팩토리
+- `create_open_weight_adapter()`: 오픈 웨이트 어댑터 팩토리
+- `create_universal_bridge()`: Universal Bridge 팩토리
+- `get_bridge(protocol)`: 프로토콜별 브릿지 인스턴스 반환
+
+### 🔧 Changed
+- 43개 모듈, 380+ 공개 API로 확장 (v3.5: 31개 → v4.0: 43개)
+- 모든 v4.0 모듈 자체 완결형 (순환 참조 없음)
+- 모든 bridge `run(*, task=...)` 시그니처 통일
+- Config dataclass에 `frozen=True, slots=True` 적용
+- 비-dataclass 클래스에 `__repr__` 추가
+- 미사용 import 전면 제거
+
+### 📚 Documentation
+- README.md v4.0 전면 개편 (7가지 핵심 기술 혁신)
+- 22개 시나리오 테스트 문서화
+
+### ✅ Tests
+- `test_v40_all_scenarios.py`: 22개 시나리오, 43개 모듈, 100% 통과
+
+---
+
+## [3.5.0] - 2026-02-01
+
+### 🆕 Added
+
+#### 보안 가드레일 (security_guardrails.py)
+- `PromptShield`: 프롬프트 인젝션 방어
+- `JailbreakDetector`: 탈옥 시도 탐지
+- `PIIDetector`: 개인정보(PII) 탐지 및 마스킹
+
+#### 구조화된 출력 (structured_output.py)
+- `OutputSchema`: JSON Schema 기반 출력 스키마
+- `StructuredParser`: 구조화된 파싱
+- `OutputValidator`: 출력 유효성 검증
+
+#### PDCA 평가 (evaluation.py)
+- `PDCAEvaluator`: Plan-Do-Check-Act 평가 프레임워크
+- `LLMJudge`: LLM 기반 품질 판정
+- `GapAnalyzer`: 기대-실제 갭 분석
+- `QualityMetrics`: 품질 메트릭 통합
+
+### ✅ Tests
+- 22개 시나리오 (v3.5 모듈 포함) 전체 통과
+
+---
+
+## [3.4.0] - 2026-01-20
+
+### 🆕 Added
+
+#### Extensions Hub (extensions.py)
+- `Extensions`: 확장 모듈 통합 허브
+- `ExtensionsConfig`: 확장 설정
+
+#### 프롬프트 캐싱 (prompt_cache.py)
+- `PromptCache`: 프롬프트 캐시 (LRU + TTL)
+- `CacheConfig`: 캐시 설정
+
+#### 확장 사고 (extended_thinking.py)
+- `ThinkingTracker`: 사고 과정 추적
+- `ThinkingConfig`, `ThinkingStep`
+
+#### MCP 워크벤치 (mcp_workbench.py)
+- `McpWorkbench`: MCP 서버 관리 워크벤치
+- `McpServerConfig`: 서버 설정
+
+#### 병렬 오케스트레이션 (concurrent.py)
+- `ConcurrentOrchestrator`: Fan-Out/Fan-In 병렬 실행
+- `FanOutConfig`: 병렬 설정
+
+#### AgentTool 패턴 (agent_tool.py)
+- `AgentToolRegistry`: 에이전트-도구 레지스트리
+- `DelegationManager`: 위임 관리
+
+#### 내구성 에이전트 (durable_agent.py)
+- `DurableOrchestrator`: 장기 실행 워크플로우
+- `DurableConfig`: 내구성 설정
+- `@workflow` 데코레이터
+
+#### 인터페이스 (interfaces.py)
+- `IFramework`, `IOrchestrator`, `IMemoryProvider` 인터페이스 정의
+
+---
+
+## [3.3.0] - 2026-01-15
+
+### 🆕 Added
+
+#### Agent Lightning (tracer.py, hooks.py, reward.py)
+- `AgentTracer`: 분산 추적 (OpenTelemetry 호환)
+- `SpanKind`: INTERNAL, LLM, TOOL, RETRIEVER 등
+- `HookManager`, `HookEvent`: 라이프사이클 훅
+- `RewardManager`, `emit_reward()`: 보상 시스템
+
+#### 모델 어댑터 (adapter.py)
+- `ModelAdapter`: 비-OpenAI 모델 프로바이더 통합
+
+#### 에이전트 저장소 (agent_store.py)
+- `AgentStore`: 에이전트 설정 YAML 기반 영속화
+- `AgentSnapshot`: 에이전트 스냅샷
+
+---
+
+## [3.2.0] - 2026-01-10
+
+### 🆕 Added
+
+#### 영속 메모리 (persistent_memory.py)
+- `PersistentMemory`: 장기 기억 시스템
+- `MemoryConfig`, `MemoryLayer`
+
+#### 컴팩션 (compaction.py)
+- `CompactionManager`: 컨텍스트 윈도우 관리
+- `ContextCompactor`: 대화 요약 압축
+- `CompactionConfig`
+
+#### 세션 트리 (session_tree.py)
+- `SessionTree`: 세션 브랜칭 (Git 스타일)
+- `BranchInfo`: 브랜치 메타데이터
+
+---
+
 ## [3.1.0] - 2026-01-26
 
 ### 🆕 Added

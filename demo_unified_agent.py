@@ -111,8 +111,9 @@ async def demo_framework_creation():
 
         history = state.get_conversation_history(max_messages=5)
         for msg in history:
-            role = msg.role.value if hasattr(msg.role, 'value') else msg.role
-            print(f"     - [{role}] {msg.content[:50]}...")
+            role = msg["role"]
+            content = msg["content"]
+            print(f"     - [{role}] {content[:50]}...")
 
         print("\n" + "="*60)
         print("✅ 프레임워크 생성 테스트 완료!")
@@ -217,39 +218,36 @@ async def demo_mplan():
                     depends_on=[1]
                 ),
             ],
-            complexity="moderate",
-            requires_approval=True,
-            reasoning="3단계 순차적 실행 계획"
         )
 
         print(f"  ✅ 계획 생성: {plan.name}")
-        print(f"     - 복잡도: {plan.complexity}")
-        print(f"     - 승인 필요: {plan.requires_approval}")
-
-        # 계획 요약 출력
-        print("\n📋 계획 요약:")
-        print(plan.to_summary())
+        print(f"     - 단계 수: {len(plan.steps)}")
 
         # 진행률 확인
         print(f"\n📊 진행률: {plan.get_progress() * 100:.1f}%")
 
         # 다음 단계 확인
-        next_steps = plan.get_next_steps()
-        print(f"\n📋 다음 실행 가능한 단계:")
-        for step in next_steps:
-            print(f"   - Step {step.index}: {step.description} ({step.agent_name})")
+        current = plan.get_current_step()
+        if current:
+            print(f"\n📋 현재 단계:")
+            print(f"   - Step {current.index}: {current.description} ({current.agent_name})")
+        else:
+            print(f"\n📋 모든 단계 대기 중")
 
         # 단계 완료 시뮬레이션
         print("\n📋 단계 완료 시뮬레이션...")
-        plan.complete_step(0, "시장 데이터 수집 완료", 1500.0)
+        plan.steps[0].start()
+        plan.steps[0].complete("시장 데이터 수집 완료")
         print(f"  ✅ Step 0 완료")
         print(f"  📊 진행률: {plan.get_progress() * 100:.1f}%")
 
-        plan.complete_step(1, "분석 완료", 2000.0)
+        plan.steps[1].start()
+        plan.steps[1].complete("분석 완료")
         print(f"  ✅ Step 1 완료")
         print(f"  📊 진행률: {plan.get_progress() * 100:.1f}%")
 
-        plan.complete_step(2, "보고서 작성 완료", 1800.0)
+        plan.steps[2].start()
+        plan.steps[2].complete("보고서 작성 완료")
         print(f"  ✅ Step 2 완료")
         print(f"  📊 진행률: {plan.get_progress() * 100:.1f}%")
 
@@ -350,19 +348,229 @@ async def demo_skills():
         return False
 
 
+# ============================================================================
+# v4.0 신규 기능 데모
+# ============================================================================
+
+async def demo_responses_api():
+    """v4.0 Responses API 데모"""
+    print("\n" + "="*60)
+    print("📡 v4.0 Responses API 데모")
+    print("="*60)
+
+    try:
+        from unified_agent import (
+            ResponsesClient, ConversationState, BackgroundMode,
+            ResponseConfig, ResponseObject, ResponseStatus, ToolType
+        )
+
+        # ResponseConfig 생성
+        config = ResponseConfig(model="gpt-5.2", max_tokens=4096)
+        print(f"   ResponseConfig: model={config.model}, max_tokens={config.max_tokens}")
+
+        # ResponsesClient 생성
+        client = ResponsesClient()
+        print(f"   ResponsesClient: 생성 완료")
+
+        # ConversationState 생성
+        state = ConversationState()
+        print(f"   ConversationState: session={state.session_id}, turns={state.turn_count}")
+
+        # BackgroundMode 생성
+        bg = BackgroundMode()
+        print(f"   BackgroundMode: 생성 완료")
+
+        # ResponseObject / ResponseStatus 확인
+        statuses = [s.value for s in ResponseStatus]
+        print(f"   ResponseStatus: {statuses}")
+
+        # 실제 API 호출 (Mock)
+        response = await client.create("테스트 프롬프트")
+        print(f"   client.create(): output={response.output[:50]}...")
+
+        # 응답을 ConversationState에 추가
+        state.add_response(response)
+        print(f"   ConversationState: turns={state.turn_count} (응답 추가 후)")
+
+        print("\n   ✅ Responses API 데모 완료!")
+        return True
+
+    except Exception as e:
+        print(f"\n   ❌ 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+async def demo_multimodal_generation():
+    """v4.0 비디오/이미지 생성 데모"""
+    print("\n" + "="*60)
+    print("🎥 v4.0 비디오/이미지 생성 데모")
+    print("="*60)
+
+    try:
+        from unified_agent import (
+            VideoGenerator, VideoConfig, VideoModel, VideoStatus, VideoResult,
+            ImageGenerator, ImageConfig, ImageModel, ImageResult
+        )
+
+        # 비디오 생성
+        vconfig = VideoConfig(model=VideoModel.SORA_2_PRO, duration=10, resolution="4k")
+        vgen = VideoGenerator()
+        vresult = await vgen.generate("A sunrise over mountains", config=vconfig)
+        print(f"   VideoGenerator: status={vresult.status.value}, model={vconfig.model.value}")
+
+        # 이미지 생성
+        iconfig = ImageConfig(model=ImageModel.GPT_IMAGE_1_5, quality="hd")
+        igen = ImageGenerator()
+        iresult = await igen.generate("A futuristic cityscape", config=iconfig)
+        print(f"   ImageGenerator: urls={len(iresult.image_urls)}, model={iconfig.model.value}")
+
+        print("\n   ✅ 멀티모달 생성 데모 완료!")
+        return True
+
+    except Exception as e:
+        print(f"\n   ❌ 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+async def demo_open_weight():
+    """v4.0 오픈 웨이트 모델 데모"""
+    print("\n" + "="*60)
+    print("🏋️ v4.0 오픈 웨이트 모델 데모")
+    print("="*60)
+
+    try:
+        from unified_agent import (
+            OpenWeightAdapter, OSSModelConfig, OpenWeightRegistry,
+            OSSLicense, OSSModelInfo
+        )
+
+        # 레지스트리 조회
+        registry = OpenWeightRegistry()
+        models = registry.list_models()
+        print(f"   등록 모델: {len(models)}개")
+        for m in models:
+            print(f"     - {m.name}: {m.parameters}, {m.license.value}")
+
+        # 어댑터 생성 및 실행
+        config = OSSModelConfig(max_tokens=4096)
+        adapter = OpenWeightAdapter()
+        result = await adapter.generate(model="gpt-oss-120b", prompt="Hello, open-weight model!", config=config)
+        print(f"   adapter.generate(): model={result['model']}")
+
+        print("\n   ✅ 오픈 웨이트 모델 데모 완료!")
+        return True
+
+    except Exception as e:
+        print(f"\n   ❌ 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+async def demo_universal_bridge():
+    """v4.0 Universal Agent Bridge 데모"""
+    print("\n" + "="*60)
+    print("🌉 v4.0 Universal Agent Bridge 데모")
+    print("="*60)
+
+    try:
+        from unified_agent import (
+            UniversalAgentBridge, BridgeProtocol,
+            OpenAIAgentsBridge, GoogleADKBridge, CrewAIBridge,
+            A2ABridge, MicrosoftAgentBridge, AG2Bridge,
+            SemanticKernelAgentBridge, AgentCard, TaskMode
+        )
+
+        # 브릿지 생성 및 프레임워크 등록
+        bridge = UniversalAgentBridge()
+        frameworks = {
+            "openai_agents": OpenAIAgentsBridge(),
+            "google_adk": GoogleADKBridge(),
+            "crewai": CrewAIBridge(),
+            "a2a": A2ABridge(),
+            "microsoft": MicrosoftAgentBridge(),
+            "ag2": AG2Bridge(),
+            "semantic_kernel": SemanticKernelAgentBridge(),
+        }
+
+        for name, fw in frameworks.items():
+            bridge.register(name, fw)
+            print(f"   ✓ {name}: {type(fw).__name__} 등록")
+
+        print(f"   등록된 프레임워크: {len(bridge.registered_frameworks)}개")
+
+        # 실제 실행 테스트
+        for fw in ["openai_agents", "google_adk", "crewai"]:
+            result = await bridge.run(framework=fw, task="데이터 분석 수행")
+            print(f"   bridge.run('{fw}'): ✓ 성공")
+
+        print("\n   ✅ Universal Bridge 데모 완료!")
+        return True
+
+    except Exception as e:
+        print(f"\n   ❌ 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+async def demo_framework_v40_factories():
+    """v4.0 framework.py 팩토리 메서드 데모"""
+    print("\n" + "="*60)
+    print("🏭 v4.0 Framework 팩토리 메서드 데모")
+    print("="*60)
+
+    try:
+        from unified_agent.framework import UnifiedAgentFramework
+
+        # 팩토리 메서드 존재 확인
+        factory_methods = [
+            "create_responses_client",
+            "create_video_generator",
+            "create_image_generator",
+            "create_open_weight_adapter",
+            "create_universal_bridge",
+            "get_bridge",
+        ]
+
+        for method in factory_methods:
+            assert hasattr(UnifiedAgentFramework, method), f"Missing: {method}"
+            print(f"   ✓ UnifiedAgentFramework.{method}() 확인")
+
+        print("\n   ✅ Framework 팩토리 메서드 데모 완료!")
+        return True
+
+    except Exception as e:
+        print(f"\n   ❌ 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 async def main():
     """메인 실행 함수"""
     print("\n" + "="*60)
-    print("🧪 Unified Agent Framework - 실행 데모")
+    print("🧪 Unified Agent Framework v4.0 - 실행 데모")
     print("="*60)
 
     results = []
 
-    # 각 데모 실행
+    # Core 데모 (v3.x)
     results.append(("프레임워크 생성", await demo_framework_creation()))
     results.append(("팀 워크플로우", await demo_team_workflow()))
     results.append(("MPlan", await demo_mplan()))
     results.append(("Skills 시스템", await demo_skills()))
+
+    # v4.0 신규 데모
+    results.append(("v4.0 Responses API", await demo_responses_api()))
+    results.append(("v4.0 멀티모달 생성", await demo_multimodal_generation()))
+    results.append(("v4.0 오픈 웨이트", await demo_open_weight()))
+    results.append(("v4.0 Universal Bridge", await demo_universal_bridge()))
+    results.append(("v4.0 팩토리 메서드", await demo_framework_v40_factories()))
 
     # 결과 요약
     print("\n" + "="*60)

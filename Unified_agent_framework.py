@@ -601,6 +601,10 @@ from unified_agent import (
     ResponsesClient,
     ConversationState,
     BackgroundMode,
+    ResponseConfig,
+    ResponseObject,
+    ResponseStatus,
+    ToolType,
 
     # ─────────────────────────────────────────────────────────────────────────
     # Video Generation (unified_agent/video_generation.py) - v4.0 NEW!
@@ -609,6 +613,9 @@ from unified_agent import (
     VideoGenerator,
     Sora2Client,
     VideoConfig,
+    VideoResult,
+    VideoModel,
+    VideoStatus,
 
     # ─────────────────────────────────────────────────────────────────────────
     # Image Generation (unified_agent/image_generation.py) - v4.0 NEW!
@@ -617,6 +624,8 @@ from unified_agent import (
     ImageGenerator,
     GPTImage1_5Client,
     ImageConfig,
+    ImageResult,
+    ImageModel,
 
     # ─────────────────────────────────────────────────────────────────────────
     # Open Weight (unified_agent/open_weight.py) - v4.0 NEW!
@@ -625,18 +634,23 @@ from unified_agent import (
     OpenWeightAdapter,
     OSSModelConfig,
     OpenWeightRegistry,
+    OSSLicense,
+    OSSModelInfo,
 
     # ─────────────────────────────────────────────────────────────────────────
     # Universal Agent Bridge (unified_agent/) - v4.0 NEW!
     # 16개 프레임워크를 하나의 인터페이스로 통합
     # ─────────────────────────────────────────────────────────────────────────
     UniversalAgentBridge,
+    BridgeProtocol,
 
     # ─────────────────────────────────────────────────────────────────────────
     # OpenAI Agents SDK Bridge (unified_agent/openai_agents_bridge.py) - v4.0 NEW!
     # Handoff, Session, Human-in-the-Loop 통합
     # ─────────────────────────────────────────────────────────────────────────
     OpenAIAgentsBridge,
+    AgentHandoff,
+    SessionBackend,
 
     # ─────────────────────────────────────────────────────────────────────────
     # Google ADK Bridge (unified_agent/google_adk_bridge.py) - v4.0 NEW!
@@ -656,6 +670,7 @@ from unified_agent import (
     # ─────────────────────────────────────────────────────────────────────────
     A2ABridge,
     AgentCard,
+    TaskMode,
 
     # ─────────────────────────────────────────────────────────────────────────
     # Microsoft Agent Framework Bridge (unified_agent/ms_agent_bridge.py) - v4.0 NEW!
@@ -904,31 +919,46 @@ __all__ = [
     "ResponsesClient",
     "ConversationState",
     "BackgroundMode",
+    "ResponseConfig",
+    "ResponseObject",
+    "ResponseStatus",
+    "ToolType",
 
     # 비디오 생성 (unified_agent/video_generation.py)
     "VideoGenerator",
     "Sora2Client",
     "VideoConfig",
+    "VideoResult",
+    "VideoModel",
+    "VideoStatus",
 
     # 이미지 생성 (unified_agent/image_generation.py)
     "ImageGenerator",
     "GPTImage1_5Client",
     "ImageConfig",
+    "ImageResult",
+    "ImageModel",
 
     # 오픈 웨이트 모델 (unified_agent/open_weight.py)
     "OpenWeightAdapter",
     "OSSModelConfig",
     "OpenWeightRegistry",
+    "OSSLicense",
+    "OSSModelInfo",
 
-    # Universal Agent Bridge
+    # Universal Agent Bridge (unified_agent/universal_bridge.py)
     "UniversalAgentBridge",
+    "BridgeProtocol",
 
     # 프레임워크 브릿지 모듈
     "OpenAIAgentsBridge",
+    "AgentHandoff",
+    "SessionBackend",
     "GoogleADKBridge",
     "CrewAIBridge",
     "A2ABridge",
     "AgentCard",
+    "TaskMode",
     "MicrosoftAgentBridge",
     "AG2Bridge",
     "SemanticKernelAgentBridge",
