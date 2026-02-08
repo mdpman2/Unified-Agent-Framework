@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Unified Agent Framework - Enterprise Edition v3.5
+Unified Agent Framework - Enterprise Edition v4.0
 
 ================================================================================
 📋 프로젝트: 통합 AI 에이전트 프레임워크
-📅 버전: 3.5.0 (2026년 2월 4일 최신)
+📅 버전: 4.0.0 (2026년 2월 8일 최신)
 📦 Python: 3.11+
-👤 테스트: 14개 시나리오 100% 통과
+👤 테스트: 22개 시나리오 100% 통과
 ================================================================================
 
 🌟 프레임워크 특징:
     ★ Azure OpenAI + Semantic Kernel 통합
     ★ Microsoft Agent Framework MCP 패턴 완전 통합
     ★ Agent Lightning 패턴 통합 (Tracer, AgentStore, Reward, Adapter, Hooks)
-    ★ GPT-5.2, Claude Opus 4.5, Grok-4 등 2026년 최신 모델 지원 (54+)
+    ★ GPT-5.2, Claude Opus 4.6, Grok-4 등 2026년 최신 모델 지원 — Model-Agnostic
     ★ Human-in-the-loop 승인 시스템
     ★ MCP (Model Context Protocol) 네이티브 지원
     ★ Skills 시스템 (Anthropic 패턴)
@@ -31,11 +31,18 @@ Unified Agent Framework - Enterprise Edition v3.5
     ★ [v3.4] AgentTool Pattern - 에이전트 중첩
     ★ [v3.4] Extended Thinking - Reasoning 추적
     ★ [v3.4] MCP Workbench - 다중 MCP 관리
-    ★ [v3.5 NEW!] Security Guardrails - 프롬프트 보안
-    ★ [v3.5 NEW!] Structured Output - GPT-5.2 구조화된 출력
-    ★ [v3.5 NEW!] Evaluation - PDCA + LLM-as-Judge 평가
+    ★ [v3.5] Security Guardrails - 프롬프트 보안
+    ★ [v3.5] Structured Output - GPT-5.2 구조화된 출력
+    ★ [v3.5] Evaluation - PDCA + LLM-as-Judge 평가
+    ★ [v4.0 NEW!] Universal Agent Bridge - 16개 프레임워크 통합
+    ★ [v4.0 NEW!] Responses API - Stateful 대화 관리
+    ★ [v4.0 NEW!] Sora 2/2 Pro - 비디오 생성
+    ★ [v4.0 NEW!] GPT Image 1.5 - 이미지 생성
+    ★ [v4.0 NEW!] 오픈 웨이트 모델 - gpt-oss-120b/20b
+    ★ [v4.0 NEW!] 7개 프레임워크 브릿지 (OpenAI, Google, CrewAI, A2A, MS, AG2, SK)
+    ★ [v4.0 NEW!] A2A + MCP 이중 프로토콜
 
-📁 모듈 구조 (31개 모듈, 310개+ 공개 API):
+📁 모듈 구조 (43개 모듈, 380개+ 공개 API):
     unified_agent/
     ├── __init__.py          # 이 파일 - 패키지 진입점
     ├── interfaces.py        # 핵심 인터페이스 (IFramework, IOrchestrator)
@@ -65,7 +72,22 @@ Unified Agent Framework - Enterprise Edition v3.5
     ├── concurrent.py        # [v3.4 NEW!] Fan-out/Fan-in 병렬 실행
     ├── agent_tool.py        # [v3.4 NEW!] AgentTool 패턴
     ├── extended_thinking.py # [v3.4 NEW!] Extended Thinking
-    └── mcp_workbench.py     # [v3.4 NEW!] 다중 MCP 서버 관리
+    ├── mcp_workbench.py     # [v3.4 NEW!] 다중 MCP 서버 관리
+    ├── security_guardrails.py # [v3.5] 보안 가드레일 (PromptShield, PIIDetector)
+    ├── structured_output.py   # [v3.5] 구조화된 출력 (OutputSchema)
+    ├── evaluation.py          # [v3.5] PDCA 평가 (LLMJudge, CheckActIterator)
+    ├── responses_api.py       # [v4.0 NEW!] Responses API (Stateful 대화)
+    ├── video_generation.py    # [v4.0 NEW!] Sora 2/2 Pro 비디오 생성
+    ├── image_generation.py    # [v4.0 NEW!] GPT Image 1.5 이미지 생성
+    ├── open_weight.py         # [v4.0 NEW!] 오픈 웨이트 모델 (gpt-oss)
+    ├── universal_bridge.py    # [v4.0 NEW!] Universal Agent Bridge (16개 통합)
+    ├── openai_agents_bridge.py  # [v4.0 NEW!] OpenAI Agents SDK 브릿지
+    ├── google_adk_bridge.py     # [v4.0 NEW!] Google ADK 브릿지
+    ├── crewai_bridge.py         # [v4.0 NEW!] CrewAI 브릿지
+    ├── a2a_bridge.py            # [v4.0 NEW!] A2A Protocol 브릿지
+    ├── ms_agent_bridge.py       # [v4.0 NEW!] MS Agent Framework 브릿지
+    ├── ag2_bridge.py            # [v4.0 NEW!] AG2 AgentOS 브릿지
+    └── sk_agent_bridge.py       # [v4.0 NEW!] SK Agent Framework 브릿지
 
 📌 빠른 시작 가이드:
 
@@ -106,24 +128,24 @@ Unified Agent Framework - Enterprise Edition v3.5
 
     예제 4: 에이전트 저장소 (v3.3)
     ----------------------------------------
-    >>> from unified_agent import AgentStore, AgentStoreConfig, AgentEntry
+    >>> from unified_agent import AgentStore, Rollout, RolloutStatus
     >>>
-    >>> store = AgentStore(AgentStoreConfig(max_agents=100))
-    >>> store.register(AgentEntry(
+    >>> store = AgentStore()
+    >>> store.register(Rollout(
     ...     agent_id="researcher",
     ...     name="Research Agent",
-    ...     capabilities={AgentCapability.REASONING}
+    ...     status=RolloutStatus.ACTIVE
     ... ))
-    >>> agents = store.find_by_capability(AgentCapability.REASONING)
+    >>> agents = store.list_rollouts()
 
     예제 5: 보상 시스템 (v3.3)
     ----------------------------------------
-    >>> from unified_agent import RewardEngine, RewardConfig, RewardSignal
+    >>> from unified_agent import RewardManager, RewardDimension, RewardType
     >>>
-    >>> engine = RewardEngine(RewardConfig(discount_factor=0.99))
-    >>> engine.begin_episode("ep-1")
-    >>> engine.record(RewardSignal(reward=1.0, step=0))
-    >>> summary = engine.end_episode()
+    >>> manager = RewardManager()
+    >>> manager.emit_reward(RewardDimension(
+    ...     reward=1.0, reward_type=RewardType.INTRINSIC, step=0
+    ... ))
 
     예제 6: Prompt Caching 사용 (v3.4 NEW!)
     ----------------------------------------
@@ -217,7 +239,7 @@ Unified Agent Framework - Enterprise Edition v3.5
 📝 라이선스: MIT
 """
 
-__version__ = "3.5.0"
+__version__ = "4.0.0"
 __author__ = "Enterprise AI Team"
 
 # ============================================================================
@@ -763,6 +785,72 @@ from .evaluation import (
 )
 
 # ============================================================================
+# Responses API (v4.0 NEW! - OpenAI Stateful 대화)
+# ============================================================================
+from .responses_api import (
+    ResponsesClient,
+    ConversationState,
+    BackgroundMode,
+    ResponseConfig,
+    ResponseObject,
+    ResponseStatus,
+    ToolType,
+)
+
+# ============================================================================
+# Video Generation (v4.0 NEW! - Sora 2/2 Pro)
+# ============================================================================
+from .video_generation import (
+    VideoGenerator,
+    Sora2Client,
+    VideoConfig,
+    VideoResult,
+    VideoModel,
+    VideoStatus,
+)
+
+# ============================================================================
+# Image Generation (v4.0 NEW! - GPT Image 1.5)
+# ============================================================================
+from .image_generation import (
+    ImageModel,
+    ImageGenerator,
+    GPTImage1_5Client,
+    ImageConfig,
+    ImageResult,
+)
+
+# ============================================================================
+# Open Weight Models (v4.0 NEW! - gpt-oss, Llama, Mistral)
+# ============================================================================
+from .open_weight import (
+    OpenWeightAdapter,
+    OSSModelConfig,
+    OpenWeightRegistry,
+    OSSLicense,
+    OSSModelInfo,
+)
+
+# ============================================================================
+# Universal Agent Bridge (v4.0 NEW! - 16개 프레임워크 통합)
+# ============================================================================
+from .universal_bridge import (
+    UniversalAgentBridge,
+    BridgeProtocol,
+)
+
+# ============================================================================
+# Framework Bridges (v4.0 NEW! - 7개 프레임워크 브릿지)
+# ============================================================================
+from .openai_agents_bridge import OpenAIAgentsBridge, AgentHandoff, SessionBackend
+from .google_adk_bridge import GoogleADKBridge
+from .crewai_bridge import CrewAIBridge
+from .a2a_bridge import A2ABridge, AgentCard, TaskMode
+from .ms_agent_bridge import MicrosoftAgentBridge
+from .ag2_bridge import AG2Bridge
+from .sk_agent_bridge import SemanticKernelAgentBridge
+
+# ============================================================================
 # Public API
 # ============================================================================
 __all__ = [
@@ -1109,4 +1197,46 @@ __all__ = [
     "QualityMetrics",
     "Evaluator",
     "Optimizer",
+    # ── v4.0 NEW: Responses API ──
+    "ResponsesClient",
+    "ConversationState",
+    "BackgroundMode",
+    "ResponseConfig",
+    "ResponseObject",
+    "ResponseStatus",
+    "ToolType",
+    # ── v4.0 NEW: Video Generation ──
+    "VideoGenerator",
+    "Sora2Client",
+    "VideoConfig",
+    "VideoResult",
+    "VideoModel",
+    "VideoStatus",
+    # ── v4.0 NEW: Image Generation ──
+    "ImageModel",
+    "ImageGenerator",
+    "GPTImage1_5Client",
+    "ImageConfig",
+    "ImageResult",
+    # ── v4.0 NEW: Open Weight Models ──
+    "OpenWeightAdapter",
+    "OSSModelConfig",
+    "OpenWeightRegistry",
+    "OSSLicense",
+    "OSSModelInfo",
+    # ── v4.0 NEW: Universal Agent Bridge ──
+    "UniversalAgentBridge",
+    "BridgeProtocol",
+    # ── v4.0 NEW: Framework Bridges ──
+    "OpenAIAgentsBridge",
+    "AgentHandoff",
+    "SessionBackend",
+    "GoogleADKBridge",
+    "CrewAIBridge",
+    "A2ABridge",
+    "AgentCard",
+    "TaskMode",
+    "MicrosoftAgentBridge",
+    "AG2Bridge",
+    "SemanticKernelAgentBridge",
 ]

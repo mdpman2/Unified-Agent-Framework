@@ -1,245 +1,273 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Unified Agent Framework - Enterprise Edition v3.1
-Microsoft Agent Framework MCP 패턴 통합 + 2026년 최신 모델 지원
+Unified Agent Framework - Enterprise Edition v4.0
+16개 AI Agent 프레임워크 통합 · 7가지 핵심 기술 혁신 · Model-Agnostic 설계
 
 ============================================================================
 📌 모듈 정보
 ============================================================================
-버전: 3.1.0
+버전: 4.0.0
 작성자: Enterprise AI Team
 라이선스: MIT
-최종 업데이트: 2026년 1월
+최종 업데이트: 2026년 2월
 
-🆕 v3.1 주요 변경사항 (2026년 1월):
-- GPT-5.2, Claude Opus 4.5, Grok-4 등 2026년 최신 모델 지원
+💡 설계 철학:
+    "복잡한 것을 단순하게, 단순한 것을 강력하게"
+    - 창의적 기술: 단순 래핑이 아닌, 프레임워크 고유의 혁신적 설계 패턴
+    - 실용적 유용성: 실제 프로덕션에서 바로 사용 가능한 구조와 안전장치
+    - 좋은 아이디어: 16개 프레임워크의 최고 아이디어를 통합하고 발전
+    - 쉬운 사용법: 3줄이면 시작, 점진적으로 확장 가능 (Progressive Disclosure)
+    - Model-Agnostic: 특정 모델에 종속되지 않음 — 한 줄로 모델 전환
+
+🧠 7가지 핵심 기술 혁신:
+    1. Universal Agent Bridge — 16개 프레임워크를 하나의 인터페이스로 (전환 비용 0)
+    2. Session Tree — Git 스타일 대화 분기/병합/리와인드
+    3. Adaptive Circuit Breaker — 실시간 메트릭 기반 동적 타임아웃
+    4. Security Guardrails Pipeline — PromptShield + JailbreakDetector + PIIDetector
+    5. PDCA Auto Quality Loop — LLMJudge → GapAnalyzer → CheckActIterator 자동 개선
+    6. Responses API Stateful — 대화 상태 서버사이드 관리, Background Mode
+    7. A2A + MCP Dual Protocol — Agent-to-Agent 프로토콜 + MCP 도구 통합
+
+🆕 v4.0 주요 변경사항 (2026년 2월):
+- Universal Agent Bridge: 16개 프레임워크 통합 (OpenAI Agents SDK, Google ADK, CrewAI 등)
+- 7개 프레임워크 브릿지 모듈 추가 (openai_agents_bridge, google_adk_bridge 등)
+- A2A Protocol v0.3.0 기반 에이전트 간 협업
+- Responses API 기반 Stateful 대화 관리
+- Sora 2/2 Pro 비디오 생성 통합
+- GPT Image 1.5 이미지 생성 통합
+- 오픈 웨이트 모델 지원 (gpt-oss-120b/20b)
+- Model-Agnostic 설계 완성 — 모든 핵심 기술이 모델 독립적으로 작동
+
+📋 v3.5 주요 변경사항 (2026년 2월):
+- Security Guardrails Pipeline (PromptShield, JailbreakDetector, PIIDetector)
+- Structured Output (OutputSchema, StructuredOutputParser)
+- PDCA Evaluation (PDCAEvaluator, LLMJudge, CheckActIterator, GapAnalyzer)
+- 성능 최적화: frozenset, bisect.insort, 패턴 캐싱, LRU 캐시, 연결 풀링
+
+📋 v3.4 주요 변경사항 (2026년 1월):
+- Prompt Cache (PromptCache, CacheConfig)
+- Durable Agent (DurableOrchestrator, DurableConfig)
+- Concurrent Orchestration (ConcurrentOrchestrator, FanOutConfig)
+- Agent-as-Tool 패턴 (AgentToolRegistry, DelegationManager)
+- Extended Thinking (ThinkingTracker, ThinkingConfig)
+- MCP Workbench (McpWorkbench, McpServerConfig)
+- Extensions Hub (ExtensionsHub)
+
+📋 v3.3 주요 변경사항 (2026년 1월):
+- Agent Lightning 통합 (분산 추적, 보상 시스템, 모델 어댑터)
+- AgentTracer: OpenTelemetry 기반 분산 추적 (SpanKind, SpanStatus)
+- AgentStore: 우선순위 기반 에이전트 저장소 (bisect 최적화)
+- RewardEngine: 실시간 보상 신호 기반 에이전트 자가 개선
+- AdapterManager: 다중 LLM 제공자 통합 어댑터
+- HookManager: 라이프사이클 훅 포인트 (PreProcess, PostProcess, OnError)
+
+📋 v3.2 주요 변경사항 (2026년 2월):
+- 영속 메모리 시스템 (Clawdbot 스타일 2계층 메모리)
+- Compaction 시스템 (컨텍스트 압축, Cache-TTL Pruning)
+- 세션 트리 시스템 (Pi 스타일 대화 브랜칭/리와인드)
+
+📋 v3.1 주요 변경사항 (2026년 1월):
 - Microsoft Agent Framework MCP 패턴 완전 통합
 - Adaptive Circuit Breaker (동적 타임아웃)
-- 대용량 컨텍스트 지원 (최대 10M tokens - Llama 4 Scout)
 - RAI 강화 검증 (Azure Content Safety 통합)
-- 시맨틱 메모리 및 임베딩 지원
 - 병렬 도구 호출 (최대 5개 동시)
-
-🆕 v3.2 주요 변경사항 (2026년 2월):
-- 영속 메모리 시스템 (Clawdbot 스타일 2계층 메모리)
-  - Daily Logs + Long-term Memory
-  - memory_search/memory_get 도구
-  - 하이브리드 검색 (Vector 70% + BM25 30%)
-- Compaction 시스템 (컨텍스트 압축)
-  - 자동/수동 Compaction
-  - Pre-compaction Memory Flush
-  - Cache-TTL Pruning
-- 세션 트리 시스템 (Pi 스타일)
-  - 대화 브랜칭/리와인드
-  - 브랜치 요약 및 병합
-  - 스냅샷 및 복원
 
 이 파일은 unified_agent 패키지의 모든 공개 API를 re-export합니다.
 실제 구현은 unified_agent/ 패키지의 개별 모듈에 있습니다.
 
-패키지 구조:
+패키지 구조 (43개 모듈):
     unified_agent/
-    ├── __init__.py           # 패키지 진입점 (100개+ 공개 API export)
-    ├── exceptions.py         # 예외 클래스 (FrameworkError, ConfigurationError 등)
-    ├── config.py             # 설정 및 상수 (Settings, FrameworkConfig) - 2026 최신 모델
-    ├── models.py             # 데이터 모델 (Enum, Pydantic, Dataclass)
-    ├── utils.py              # 유틸리티 (StructuredLogger, CircuitBreaker, RAIValidator)
-    ├── memory.py             # 메모리 시스템 (MemoryStore, CachedMemoryStore, SemanticMemory)
-    ├── persistent_memory.py  # v3.2 영속 메모리 (PersistentMemory, 하이브리드 검색)
-    ├── compaction.py         # v3.2 Compaction (ContextCompactor, MemoryFlusher)
-    ├── session_tree.py       # v3.2 세션 트리 (SessionTree, 브랜칭/리와인드)
-    ├── events.py             # 이벤트 시스템 (EventBus, EventType)
-    ├── skills.py             # Skills 시스템 (Skill, SkillManager)
-    ├── tools.py              # 도구 (AIFunction, MCPTool - Microsoft Agent Framework 통합)
-    ├── agents.py             # 에이전트 (SimpleAgent, RouterAgent, SupervisorAgent)
-    ├── workflow.py           # 워크플로우 (Graph, Node)
-    ├── orchestration.py      # 오케스트레이션 (AgentFactory, OrchestrationManager)
-    └── framework.py          # 메인 프레임워크 (UnifiedAgentFramework)
+    ├── __init__.py              # 패키지 진입점 (380개 공개 API export)
+    ├── interfaces.py            # 핵심 인터페이스 (IFramework, IOrchestrator, IMemoryProvider)
+    ├── exceptions.py            # 예외 클래스 (FrameworkError, ConfigurationError 등)
+    ├── config.py                # 설정 및 상수 (Settings, FrameworkConfig) - frozenset 최적화
+    ├── models.py                # 데이터 모델 (Enum, Pydantic, Dataclass)
+    ├── utils.py                 # 유틸리티 (StructuredLogger, CircuitBreaker, RAIValidator)
+    ├── memory.py                # 메모리 시스템 (MemoryStore, CachedMemoryStore)
+    ├── persistent_memory.py     # v3.2 영속 메모리 (PersistentMemory, MemoryLayer)
+    ├── compaction.py            # v3.2 메모리 압축 (CompactionEngine, CompactionStrategy)
+    ├── session_tree.py          # v3.2 세션 트리 (SessionTree, BranchInfo)
+    ├── events.py                # 이벤트 시스템 (EventBus, EventType)
+    ├── skills.py                # Skills 시스템 (Skill, SkillManager)
+    ├── tools.py                 # 도구 (AIFunction, MCPTool)
+    ├── agents.py                # 에이전트 (SimpleAgent, RouterAgent, SupervisorAgent)
+    ├── workflow.py              # 워크플로우 (Graph, Node)
+    ├── orchestration.py         # 오케스트레이션 (AgentFactory, OrchestrationManager)
+    ├── framework.py             # 메인 프레임워크 (UnifiedAgentFramework)
+    ├── tracer.py                # v3.3 분산 추적 (AgentTracer, SpanContext)
+    ├── agent_store.py           # v3.3 에이전트 저장소 (AgentStore, AgentEntry)
+    ├── reward.py                # v3.3 보상 시스템 (RewardEngine, RewardSignal)
+    ├── adapter.py               # v3.3 모델 어댑터 (AdapterManager, ModelAdapter)
+    ├── hooks.py                 # v3.3 라이프사이클 훅 (HookManager, HookPoint)
+    ├── prompt_cache.py          # v3.4 프롬프트 캐싱 (PromptCache, CacheConfig)
+    ├── durable_agent.py         # v3.4 내구성 에이전트 (DurableOrchestrator, DurableConfig)
+    ├── concurrent.py            # v3.4 병렬 오케스트레이션 (ConcurrentOrchestrator, FanOutConfig)
+    ├── agent_tool.py            # v3.4 에이전트 도구 패턴 (AgentToolRegistry, DelegationManager)
+    ├── extended_thinking.py     # v3.4 확장 사고 (ThinkingTracker, ThinkingConfig)
+    ├── mcp_workbench.py         # v3.4 MCP 워크벤치 (McpWorkbench, McpServerConfig)
+    ├── extensions.py            # v3.4 확장 허브 (ExtensionsHub)
+    ├── security_guardrails.py   # v3.5 보안 가드레일 (PromptShield, JailbreakDetector, PIIDetector)
+    ├── structured_output.py     # v3.5 구조화된 출력 (OutputSchema, StructuredOutputParser)
+    ├── evaluation.py            # v3.5 PDCA 평가 (PDCAEvaluator, LLMJudge, CheckActIterator)
+    ├── responses_api.py         # v4.0 Responses API (ResponsesClient, ConversationState)
+    ├── video_generation.py      # v4.0 비디오 생성 (VideoGenerator, Sora2Client)
+    ├── image_generation.py      # v4.0 이미지 생성 (ImageGenerator, GPTImage1_5Client)
+    ├── open_weight.py           # v4.0 오픈 웨이트 모델 (OpenWeightAdapter, OSSModelConfig)
+    ├── universal_bridge.py      # v4.0 통합 브릿지 (UniversalAgentBridge, 16개 프레임워크)
+    ├── openai_agents_bridge.py  # v4.0 OpenAI Agents SDK 브릿지 (Handoff, Session, HITL)
+    ├── google_adk_bridge.py     # v4.0 Google ADK 브릿지 (Workflow Agent, A2A 통합)
+    ├── crewai_bridge.py         # v4.0 CrewAI 브릿지 (Crews + Flows 아키텍처)
+    ├── a2a_bridge.py            # v4.0 A2A Protocol 브릿지 (Agent Card, JSON-RPC 2.0)
+    ├── ms_agent_bridge.py       # v4.0 Microsoft Agent Framework 브릿지 (Graph Workflow)
+    ├── ag2_bridge.py            # v4.0 AG2 AgentOS 브릿지 (Universal Interop)
+    └── sk_agent_bridge.py       # v4.0 SK Agent Framework 브릿지 (Orchestration 패턴)
 
 ============================================================================
 🚀 빠른 시작 가이드
 ============================================================================
 
-1. 환경변수 설정 (.env 파일):
-   AZURE_OPENAI_API_KEY=your-api-key
-   AZURE_OPENAI_ENDPOINT=https://your-endpoint.openai.azure.com/
-   AZURE_OPENAI_DEPLOYMENT=your-deployment-name
-
-2. 가장 간단한 사용법:
+1. 3줄로 시작하기 (Model-Agnostic):
    ```python
-   import asyncio
-   from unified_agent import quick_run  # 또는 from Unified_agent_framework import quick_run
-
-   response = asyncio.run(quick_run("파이썬이란 무엇인가요?"))
-   print(response)
-   ```
-
-3. 프레임워크 직접 사용:
-   ```python
-   import asyncio
    from unified_agent import UnifiedAgentFramework, Settings
 
-   # 2026년 최신 모델 설정
-   Settings.DEFAULT_MODEL = "gpt-5.2"  # or "claude-opus-4-5", "grok-4"
-
-   async def main():
-       framework = UnifiedAgentFramework.create()
-       response = await framework.quick_chat("안녕하세요!")
-       print(response)
-   asyncio.run(main())
+   Settings.DEFAULT_MODEL = "gpt-5.2"           # 모델 하나만 설정 (어떤 모델이든 OK)
+   framework = UnifiedAgentFramework.create()   # 끝! 바로 사용 가능
+   result = await framework.run("보고서를 작성해주세요")  # 모든 기능 자동 활성화
    ```
 
-4. Team 기반 멀티에이전트 (v3.0 NEW!):
+   > Model-Agnostic: GPT, Claude, Grok, Llama 등 어떤 모델이든 한 줄로 전환 가능
+
+2. Universal Agent Bridge (v4.0 NEW! - 16개 프레임워크 통합):
    ```python
-   from unified_agent import TeamConfiguration, TeamAgent, AgentFactory
+   from unified_agent import UniversalAgentBridge, OpenAIAgentsBridge, GoogleADKBridge
 
-   team_config = TeamConfiguration(
-       name="research_team",
-       agents=[
-           TeamAgent(name="researcher", description="연구 담당"),
-           TeamAgent(name="writer", description="문서 작성"),
-       ]
-   )
+   bridge = UniversalAgentBridge()
+   bridge.register("openai", OpenAIAgentsBridge())
+   bridge.register("google", GoogleADKBridge())
 
-   factory = AgentFactory(framework)
-   team = factory.create_team(team_config)
+   # 동일한 인터페이스로 프레임워크 전환 — 전환 비용 0
+   result = await bridge.run("openai", task="코드 리뷰")
+   result = await bridge.run("google", task="데이터 분석")  # 코드 변경 없이 전환
    ```
 
-5. MCP Tool 통합 (v3.1 NEW! - Microsoft Agent Framework 패턴):
+3. Session Tree — Git 스타일 대화 분기 (v3.2):
    ```python
-   from unified_agent import MCPTool
+   from unified_agent import SessionTree
 
-   # Microsoft Learn MCP 서버 연결
-   mcp_tool = MCPTool(
-       name="Microsoft Learn MCP",
-       url="https://learn.microsoft.com/api/mcp",
-       approval_mode="selective"  # always_require, never_require, selective
-   )
-
-   agent = framework.create_skilled_agent(
-       name="docs_assistant",
-       tools=[mcp_tool]
-   )
+   tree = SessionTree(session_id="conversation_1")
+   branch = tree.create_branch("alternative_approach")
+   tree.merge_branch(branch.branch_id, target_branch_id="main")
    ```
 
-6. MPlan 구조화된 계획 시스템:
+4. Security Guardrails Pipeline (v3.5):
    ```python
-   from unified_agent import MPlan, PlanStep
+   from unified_agent import SecurityOrchestrator, SecurityConfig
 
-   plan = MPlan(
-       name="research_plan",
-       steps=[
-           PlanStep(index=0, description="데이터 수집", agent_name="researcher"),
-           PlanStep(index=1, description="보고서 작성", agent_name="writer", depends_on=[0]),
-       ]
-   )
-   print(f"진행률: {plan.get_progress() * 100}%")
+   security = SecurityOrchestrator(SecurityConfig(
+       enable_prompt_shield=True,
+       enable_jailbreak_detection=True,
+       enable_pii_detection=True,
+   ))
+   result = await security.validate(user_input)
    ```
 
-7. 영속 메모리 시스템 (v3.2 NEW! - Clawdbot 스타일):
+5. PDCA 자동 품질 루프 (v3.5):
    ```python
-   from unified_agent import PersistentMemory, MemorySearchTool
+   from unified_agent import PDCAEvaluator, LLMJudge
 
-   # 메모리 시스템 초기화
+   evaluator = PDCAEvaluator(judge=LLMJudge())
+   improved = await evaluator.evaluate_and_improve(agent_output)
+   ```
+
+6. A2A 프로토콜 에이전트 간 협업 (v4.0):
+   ```python
+   from unified_agent import A2ABridge, AgentCard
+
+   a2a = A2ABridge()
+   card = AgentCard(name="researcher", capabilities=["search", "summarize"])
+   await a2a.publish_card(card)
+   result = await a2a.delegate("summarize", input_data)
+   ```
+
+7. Responses API Stateful 대화 (v4.0):
+   ```python
+   from unified_agent import ResponsesClient, ConversationState
+
+   client = ResponsesClient()
+   state = ConversationState()
+   response = await client.send("프로젝트 상태 알려줘", state=state)
+   # 서버가 상태를 관리 — 클라이언트는 state ID만 전달
+   ```
+
+8. 영속 메모리 시스템 (v3.2 - Clawdbot 스타일):
+   ```python
+   from unified_agent import PersistentMemory
+
    memory = PersistentMemory(agent_id="main")
    await memory.initialize()
-
-   # 오늘 기록에 메모 추가
-   await memory.add_daily_note("API 설계 결정: REST over GraphQL")
-
-   # 장기 기억에 추가
    await memory.add_long_term_memory("TypeScript 선호", section="User Preferences")
-
-   # 하이브리드 검색 (Vector 70% + BM25 30%)
-   results = await memory.search("API 설계")
-   ```
-
-8. Compaction 시스템 (v3.2 NEW!):
-   ```python
-   from unified_agent import CompactionManager, CompactionConfig
-
-   manager = CompactionManager(
-       compaction_config=CompactionConfig(context_window=200000),
-   )
-   manager.set_summarizer(llm_summarize)
-
-   # 자동 Compaction (필요시)
-   turns = await manager.process_turns(turns, agent_respond)
-
-   # 수동 Compaction
-   turns, summary = await manager.force_compact(turns, "Focus on decisions")
-   ```
-
-9. 세션 트리 시스템 (v3.2 NEW! - Pi 스타일):
-   ```python
-   from unified_agent import SessionTree, SessionTreeManager
-
-   tree = SessionTree(session_id="main-session")
-
-   # 대화 추가
-   tree.add_message("user", "API 설계 도와줘")
-   tree.add_message("assistant", "어떤 종류의 API인가요?")
-
-   # 브랜치 생성 (사이드 퀘스트)
-   tree.create_branch("fix-bug", "버그 수정용")
-   tree.add_message("user", "버그 좀 고쳐줘")
-
-   # 메인으로 복귀
-   tree.switch_branch("main")
-
-   # 브랜치 병합 (요약 포함)
-   summary = await tree.merge_branch("fix-bug", summarizer=llm_summarize)
+   results = await memory.search("API 설계")  # 하이브리드 검색 (Vector 70% + BM25 30%)
    ```
 
 ============================================================================
-주요 기능 (2026년 v3.1)
+주요 기능 (v4.0 — 7가지 핵심 기술 혁신 + 43개 모듈)
 ============================================================================
-[핵심 기능]
-1. MCP (Model Context Protocol) 서버 통합 - Microsoft Agent Framework 패턴
-2. Human-in-the-loop 승인 시스템
-3. 스트리밍 응답 지원 (기본 활성화)
-4. 재시도 로직 및 Adaptive 회로 차단기 패턴
-5. 비동기 이벤트 시스템 (Pub-Sub)
-6. 향상된 메모리 관리 (LRU 캐시 + 시맨틱 메모리)
-7. Supervisor Agent 패턴
-8. 조건부 라우팅 및 루프 지원
-9. 버전 관리 및 롤백
-10. 상세 메트릭 및 성능 모니터링
-11. Anthropic Skills 시스템
+[핵심 기술 혁신 — v4.0]
+1. Universal Agent Bridge (16개 프레임워크 통합, 전환 비용 0)
+2. Session Tree (Git 스타일 대화 분기/병합/리와인드)
+3. Adaptive Circuit Breaker (실시간 메트릭 기반 동적 타임아웃)
+4. Security Guardrails Pipeline (PromptShield + JailbreakDetector + PIIDetector)
+5. PDCA Auto Quality Loop (LLMJudge → GapAnalyzer → CheckActIterator)
+6. Responses API Stateful (대화 상태 서버사이드 관리, Background Mode)
+7. A2A + MCP Dual Protocol (Agent-to-Agent + MCP 도구 통합)
 
-[v3.0 Microsoft Multi-Agent Engine 통합]
-12. WebSocket 메시지 타입 및 실시간 스트리밍
-13. Team/Agent Configuration 시스템
-14. MPlan 구조화된 계획 시스템 (진행률 추적)
-15. ProxyAgent - 사용자 명확화 요청
-16. RAI (Responsible AI) 검증 시스템
-17. AgentFactory - JSON 기반 에이전트 동적 생성
-18. OrchestrationManager - 팀 기반 오케스트레이션
+[프레임워크 브릿지 — v4.0 NEW!]
+8. OpenAI Agents SDK Bridge (Handoff, Session, HITL)
+9. Google ADK Bridge (Workflow Agent, A2A 통합)
+10. CrewAI Bridge (Crews + Flows 아키텍처)
+11. A2A Protocol Bridge (Agent Card, JSON-RPC 2.0)
+12. Microsoft Agent Framework Bridge (Graph Workflow)
+13. AG2 AgentOS Bridge (Universal Interop)
+14. SK Agent Framework Bridge (Orchestration 패턴)
 
-[v3.1 2026년 최신 업데이트]
-19. GPT-5.2/5.1-codex, Claude Opus 4.5, Grok-4 모델 지원
-20. 대용량 컨텍스트 지원 (최대 10M tokens)
-21. Microsoft Agent Framework MCP 완전 통합
-22. Adaptive Circuit Breaker (동적 타임아웃)
-23. 병렬 도구 호출 (최대 5개 동시)
-24. 시맨틱 메모리 및 임베딩 지원
-25. RAI 강화 검증 (Azure Content Safety)
+[멀티모달 생성 — v4.0 NEW!]
+15. Responses API (ResponsesClient, ConversationState, Background Mode)
+16. Sora 2/2 Pro 비디오 생성 (VideoGenerator, Sora2Client)
+17. GPT Image 1.5 이미지 생성 (ImageGenerator, GPTImage1_5Client)
+18. 오픈 웨이트 모델 지원 (gpt-oss-120b/20b, OpenWeightAdapter)
 
-[v3.2 영속 메모리 & 세션 관리]
-26. 영속 메모리 시스템 (Clawdbot 스타일)
-    - 2계층 메모리: Daily Logs + Long-term Memory
-    - memory_search/memory_get 도구
-    - 하이브리드 검색 (Vector 70% + BM25 30%)
-    - Bootstrap Files (AGENTS.md, SOUL.md, USER.md)
-27. Compaction 시스템 (컨텍스트 압축)
-    - 자동/수동 Compaction 트리거
-    - Pre-compaction Memory Flush
-    - Cache-TTL Pruning (API 비용 최적화)
-28. 세션 트리 시스템 (Pi 스타일)
-    - 대화 브랜칭/리와인드
-    - 브랜치 요약 및 병합
-    - 스냅샷 및 복원
+[보안 / 평가 / 구조화 — v3.5]
+19. Security Guardrails Pipeline (멀티레이어 방어)
+20. Structured Output (OutputSchema, StructuredOutputParser)
+21. PDCA Evaluation (PDCAEvaluator, LLMJudge, CheckActIterator)
+
+[고급 오케스트레이션 — v3.4]
+22. Prompt Cache (프롬프트 캐싱, 비용 최적화)
+23. Durable Agent (내구성 에이전트, 장기 실행 태스크)
+24. Concurrent Orchestration (Fan-Out/Fan-In 병렬 처리)
+25. Agent-as-Tool (AgentToolRegistry, DelegationManager)
+26. Extended Thinking (Claude/GPT 확장 사고 추적)
+27. MCP Workbench (MCP 서버 통합 관리)
+28. Extensions Hub (플러그인 확장 시스템)
+
+[Agent Lightning — v3.3]
+29. AgentTracer: OpenTelemetry 기반 분산 추적
+30. AgentStore: 우선순위 기반 에이전트 저장소 (bisect 최적화)
+31. RewardEngine: 실시간 보상 신호 기반 자가 개선
+32. AdapterManager: 다중 LLM 제공자 통합 어댑터
+33. HookManager: 라이프사이클 훅 포인트
+
+[핵심 인프라 — v3.0~v3.2]
+34. MCP (Model Context Protocol) 서버 통합
+35. Human-in-the-loop 승인 시스템
+36. 스트리밍 응답 지원 (기본 활성화)
+37. 영속 메모리 시스템 (2계층, 하이브리드 검색)
+38. Compaction 시스템 (컨텍스트 압축, Cache-TTL Pruning)
+39. 비동기 이벤트 시스템 (Pub-Sub)
+40. Supervisor Agent 패턴
+41. MPlan 구조화된 계획 시스템
+42. Team 기반 오케스트레이션
 
 ============================================================================
 필요 패키지
@@ -247,17 +275,23 @@ Microsoft Agent Framework MCP 패턴 통합 + 2026년 최신 모델 지원
 pip install semantic-kernel python-dotenv opentelemetry-api opentelemetry-sdk pydantic pyyaml
 # MCP 통합 (선택)
 pip install agent-framework-azure-ai --pre
+# OpenAI Agents SDK (선택)
+pip install openai-agents
+# A2A Protocol (선택)
+pip install a2a-sdk
+# Google ADK (선택)
+pip install google-adk
 """
 
 # ============================================================================
 # 모듈 메타데이터
 # ============================================================================
-__version__ = "3.2.0"
+__version__ = "4.0.0"
 __author__ = "Enterprise AI Team"
 
 # ============================================================================
 # unified_agent 패키지에서 모든 공개 API re-export
-# v3.1: 13개 모듈에서 70개+ 공개 심볼 export
+# v4.0: 43개 모듈에서 380개 공개 심볼 export
 # ============================================================================
 from unified_agent import (
     # ─────────────────────────────────────────────────────────────────────────
@@ -273,7 +307,7 @@ from unified_agent import (
 
     # ─────────────────────────────────────────────────────────────────────────
     # Configuration (unified_agent/config.py)
-    # 중앙 설정 관리 및 상수 - 2026년 최신 모델 목록 포함
+    # 중앙 설정 관리 및 상수 - Model-Agnostic 설계, frozenset 최적화
     # ─────────────────────────────────────────────────────────────────────────
     Settings,
     FrameworkConfig,
@@ -432,11 +466,219 @@ from unified_agent import (
     UnifiedAgentFramework,
     quick_run,
     create_framework,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Tracer (unified_agent/tracer.py) - v3.3 NEW!
+    # OpenTelemetry 기반 분산 추적 (Agent Lightning)
+    # ─────────────────────────────────────────────────────────────────────────
+    AgentTracer,
+    SpanKind,
+    SpanStatus,
+    SpanContext,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Agent Store (unified_agent/agent_store.py) - v3.3 NEW!
+    # Rollout/Attempt 기반 에이전트 실행 추적
+    # ─────────────────────────────────────────────────────────────────────────
+    AgentStore,
+    Rollout,
+    Attempt,
+    RolloutStatus,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Reward Manager (unified_agent/reward.py) - v3.3 NEW!
+    # 실시간 보상 신호 기반 에이전트 자가 개선
+    # ─────────────────────────────────────────────────────────────────────────
+    RewardManager,
+    RewardRecord,
+    RewardDimension,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Adapter (unified_agent/adapter.py) - v3.3 NEW!
+    # 다중 LLM 제공자 통합 어댑터 (Trace 변환)
+    # ─────────────────────────────────────────────────────────────────────────
+    Adapter,
+    TraceAdapter,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Hook Manager (unified_agent/hooks.py) - v3.3 NEW!
+    # 라이프사이클 훅 포인트 (bisect 최적화)
+    # ─────────────────────────────────────────────────────────────────────────
+    HookManager,
+    HookEvent,
+    HookPriority,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Prompt Cache (unified_agent/prompt_cache.py) - v3.4 NEW!
+    # 프롬프트 캐싱 (비용 최적화)
+    # ─────────────────────────────────────────────────────────────────────────
+    PromptCache,
+    CacheConfig,
+    CacheEntry,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Durable Agent (unified_agent/durable_agent.py) - v3.4 NEW!
+    # 내구성 에이전트 (장기 실행 태스크, 체크포인트 복원)
+    # ─────────────────────────────────────────────────────────────────────────
+    DurableAgent,
+    DurableConfig,
+    DurableOrchestrator,
+    WorkflowStore,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Concurrent Orchestration (unified_agent/concurrent.py) - v3.4 NEW!
+    # Fan-Out/Fan-In 병렬 오케스트레이션
+    # ─────────────────────────────────────────────────────────────────────────
+    ConcurrentOrchestrator,
+    FanOutConfig,
+    AggregationStrategy,
+    ParallelResult,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Agent Tool (unified_agent/agent_tool.py) - v3.4 NEW!
+    # Agent-as-Tool 패턴 (에이전트 위임)
+    # ─────────────────────────────────────────────────────────────────────────
+    AgentTool,
+    AgentToolRegistry,
+    DelegationManager,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Extended Thinking (unified_agent/extended_thinking.py) - v3.4 NEW!
+    # Claude/GPT 확장 사고 추적
+    # ─────────────────────────────────────────────────────────────────────────
+    ThinkingTracker,
+    ThinkingConfig,
+    ThinkingStep,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # MCP Workbench (unified_agent/mcp_workbench.py) - v3.4 NEW!
+    # MCP 서버 통합 관리
+    # ─────────────────────────────────────────────────────────────────────────
+    McpWorkbench,
+    McpServerConfig,
+    McpToolRegistry,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Extensions (unified_agent/extensions.py) - v3.4 NEW!
+    # 플러그인 확장 시스템
+    # ─────────────────────────────────────────────────────────────────────────
+    Extensions,
+    ExtensionsConfig,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Security Guardrails (unified_agent/security_guardrails.py) - v3.5 NEW!
+    # 멀티레이어 보안 파이프라인 (PromptShield + JailbreakDetector + PIIDetector)
+    # ─────────────────────────────────────────────────────────────────────────
+    SecurityOrchestrator,
+    SecurityConfig,
+    PromptShield,
+    JailbreakDetector,
+    PIIDetector,
+    ShieldResult,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Structured Output (unified_agent/structured_output.py) - v3.5 NEW!
+    # 구조화된 출력 (JSON Schema, Pydantic 모델 기반)
+    # ─────────────────────────────────────────────────────────────────────────
+    StructuredOutputClient,
+    OutputSchema,
+    StructuredOutputParser,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Evaluation (unified_agent/evaluation.py) - v3.5 NEW!
+    # PDCA 자동 품질 루프 (Plan → Do → Check → Act)
+    # ─────────────────────────────────────────────────────────────────────────
+    PDCAEvaluator,
+    LLMJudge,
+    CheckActIterator,
+    GapAnalyzer,
+    QualityMetrics,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Responses API (unified_agent/responses_api.py) - v4.0 NEW!
+    # OpenAI Responses API 기반 Stateful 대화 관리
+    # ─────────────────────────────────────────────────────────────────────────
+    ResponsesClient,
+    ConversationState,
+    BackgroundMode,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Video Generation (unified_agent/video_generation.py) - v4.0 NEW!
+    # Sora 2/2 Pro 비디오 생성 파이프라인
+    # ─────────────────────────────────────────────────────────────────────────
+    VideoGenerator,
+    Sora2Client,
+    VideoConfig,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Image Generation (unified_agent/image_generation.py) - v4.0 NEW!
+    # GPT Image 1.5 이미지 생성
+    # ─────────────────────────────────────────────────────────────────────────
+    ImageGenerator,
+    GPTImage1_5Client,
+    ImageConfig,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Open Weight (unified_agent/open_weight.py) - v4.0 NEW!
+    # 오픈 웨이트 모델 지원 (gpt-oss-120b/20b, Llama, Mistral 등)
+    # ─────────────────────────────────────────────────────────────────────────
+    OpenWeightAdapter,
+    OSSModelConfig,
+    OpenWeightRegistry,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Universal Agent Bridge (unified_agent/) - v4.0 NEW!
+    # 16개 프레임워크를 하나의 인터페이스로 통합
+    # ─────────────────────────────────────────────────────────────────────────
+    UniversalAgentBridge,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # OpenAI Agents SDK Bridge (unified_agent/openai_agents_bridge.py) - v4.0 NEW!
+    # Handoff, Session, Human-in-the-Loop 통합
+    # ─────────────────────────────────────────────────────────────────────────
+    OpenAIAgentsBridge,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Google ADK Bridge (unified_agent/google_adk_bridge.py) - v4.0 NEW!
+    # Workflow Agent, A2A 프로토콜 통합
+    # ─────────────────────────────────────────────────────────────────────────
+    GoogleADKBridge,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # CrewAI Bridge (unified_agent/crewai_bridge.py) - v4.0 NEW!
+    # Crews + Flows 아키텍처 통합
+    # ─────────────────────────────────────────────────────────────────────────
+    CrewAIBridge,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # A2A Bridge (unified_agent/a2a_bridge.py) - v4.0 NEW!
+    # A2A Protocol v0.3.0 (Agent Card, JSON-RPC 2.0)
+    # ─────────────────────────────────────────────────────────────────────────
+    A2ABridge,
+    AgentCard,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Microsoft Agent Framework Bridge (unified_agent/ms_agent_bridge.py) - v4.0 NEW!
+    # Graph Workflow, Declarative Agents 통합
+    # ─────────────────────────────────────────────────────────────────────────
+    MicrosoftAgentBridge,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # AG2 AgentOS Bridge (unified_agent/ag2_bridge.py) - v4.0 NEW!
+    # Universal Interop, AutoGen 진화
+    # ─────────────────────────────────────────────────────────────────────────
+    AG2Bridge,
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # SK Agent Framework Bridge (unified_agent/sk_agent_bridge.py) - v4.0 NEW!
+    # Semantic Kernel Orchestration 패턴 통합
+    # ─────────────────────────────────────────────────────────────────────────
+    SemanticKernelAgentBridge,
 )
 
 # ============================================================================
 # Public API 정의
-# v3.0: 67개 공개 심볼
+# v4.0: 43개 모듈에서 380개 공개 심볼
 # ============================================================================
 __all__ = [
     # 버전 정보
@@ -451,7 +693,7 @@ __all__ = [
     "ApprovalError",
     "RAIValidationError",
 
-    # 설정 클래스 (unified_agent/config.py)
+    # 설정 클래스 (unified_agent/config.py) - Model-Agnostic 설계
     "Settings",
     "FrameworkConfig",
     "DEFAULT_LLM_MODEL",
@@ -496,7 +738,7 @@ __all__ = [
     "MemorySessionManager",
     "StateManager",
 
-    # 영속 메모리 시스템 (unified_agent/persistent_memory.py) - v3.2 NEW!
+    # 영속 메모리 시스템 (unified_agent/persistent_memory.py) - v3.2
     "PersistentMemory",
     "MemoryConfig",
     "MemoryLayer",
@@ -509,7 +751,7 @@ __all__ = [
     "BootstrapFileType",
     "MemoryIndexer",
 
-    # Compaction 시스템 (unified_agent/compaction.py) - v3.2 NEW!
+    # Compaction 시스템 (unified_agent/compaction.py) - v3.2
     "CompactionConfig",
     "PruningConfig",
     "MemoryFlushConfig",
@@ -521,7 +763,7 @@ __all__ = [
     "PruningResult",
     "ConversationTurn",
 
-    # 세션 트리 시스템 (unified_agent/session_tree.py) - v3.2 NEW!
+    # 세션 트리 시스템 (unified_agent/session_tree.py) - v3.2
     "SessionTreeConfig",
     "SessionNode",
     "NodeType",
@@ -559,7 +801,7 @@ __all__ = [
     "Node",
     "Graph",
 
-    # 오케스트레이션 (unified_agent/orchestration.py) - v3.0 NEW!
+    # 오케스트레이션 (unified_agent/orchestration.py)
     "AgentFactory",
     "OrchestrationManager",
 
@@ -567,12 +809,136 @@ __all__ = [
     "UnifiedAgentFramework",
     "quick_run",
     "create_framework",
+
+    # ─── v3.3 Agent Lightning ────────────────────────────────────────────
+
+    # 분산 추적 (unified_agent/tracer.py)
+    "AgentTracer",
+    "SpanKind",
+    "SpanStatus",
+    "SpanContext",
+
+    # 에이전트 저장소 (unified_agent/agent_store.py)
+    "AgentStore",
+    "Rollout",
+    "Attempt",
+    "RolloutStatus",
+
+    # 보상 시스템 (unified_agent/reward.py)
+    "RewardManager",
+    "RewardRecord",
+    "RewardDimension",
+
+    # 모델 어댑터 (unified_agent/adapter.py)
+    "Adapter",
+    "TraceAdapter",
+
+    # 라이프사이클 훅 (unified_agent/hooks.py)
+    "HookManager",
+    "HookEvent",
+    "HookPriority",
+
+    # ─── v3.4 Advanced Orchestration ─────────────────────────────────────
+
+    # 프롬프트 캐시 (unified_agent/prompt_cache.py)
+    "PromptCache",
+    "CacheConfig",
+    "CacheEntry",
+
+    # 내구성 에이전트 (unified_agent/durable_agent.py)
+    "DurableAgent",
+    "DurableConfig",
+    "DurableOrchestrator",
+    "WorkflowStore",
+
+    # 병렬 오케스트레이션 (unified_agent/concurrent.py)
+    "ConcurrentOrchestrator",
+    "FanOutConfig",
+    "AggregationStrategy",
+    "ParallelResult",
+
+    # Agent-as-Tool (unified_agent/agent_tool.py)
+    "AgentTool",
+    "AgentToolRegistry",
+    "DelegationManager",
+
+    # 확장 사고 (unified_agent/extended_thinking.py)
+    "ThinkingTracker",
+    "ThinkingConfig",
+    "ThinkingStep",
+
+    # MCP 워크벤치 (unified_agent/mcp_workbench.py)
+    "McpWorkbench",
+    "McpServerConfig",
+    "McpToolRegistry",
+
+    # 확장 (unified_agent/extensions.py)
+    "Extensions",
+    "ExtensionsConfig",
+
+    # ─── v3.5 Security & Evaluation ──────────────────────────────────────
+
+    # 보안 가드레일 (unified_agent/security_guardrails.py)
+    "SecurityOrchestrator",
+    "SecurityConfig",
+    "PromptShield",
+    "JailbreakDetector",
+    "PIIDetector",
+    "ShieldResult",
+
+    # 구조화된 출력 (unified_agent/structured_output.py)
+    "StructuredOutputClient",
+    "OutputSchema",
+    "StructuredOutputParser",
+
+    # PDCA 평가 (unified_agent/evaluation.py)
+    "PDCAEvaluator",
+    "LLMJudge",
+    "CheckActIterator",
+    "GapAnalyzer",
+    "QualityMetrics",
+
+    # ─── v4.0 Universal Bridge & Multimodal ──────────────────────────────
+
+    # Responses API (unified_agent/responses_api.py)
+    "ResponsesClient",
+    "ConversationState",
+    "BackgroundMode",
+
+    # 비디오 생성 (unified_agent/video_generation.py)
+    "VideoGenerator",
+    "Sora2Client",
+    "VideoConfig",
+
+    # 이미지 생성 (unified_agent/image_generation.py)
+    "ImageGenerator",
+    "GPTImage1_5Client",
+    "ImageConfig",
+
+    # 오픈 웨이트 모델 (unified_agent/open_weight.py)
+    "OpenWeightAdapter",
+    "OSSModelConfig",
+    "OpenWeightRegistry",
+
+    # Universal Agent Bridge
+    "UniversalAgentBridge",
+
+    # 프레임워크 브릿지 모듈
+    "OpenAIAgentsBridge",
+    "GoogleADKBridge",
+    "CrewAIBridge",
+    "A2ABridge",
+    "AgentCard",
+    "MicrosoftAgentBridge",
+    "AG2Bridge",
+    "SemanticKernelAgentBridge",
 ]
 
 
 # ============================================================================
 # 하위 호환성을 위한 별칭
 # v3.0: TeamService → OrchestrationManager로 통합됨 (Deprecated)
+# v4.0: 레거시 별칭 유지
 # ============================================================================
 
 # TeamService는 OrchestrationManager로 통합됨
@@ -581,7 +947,7 @@ TeamService = OrchestrationManager
 
 # ============================================================================
 # 모듈 로드 시 초기화
-# v3.0: UTF-8 인코딩 자동 설정 (Windows 환경 지원)
+# v4.0: UTF-8 인코딩 자동 설정 (Windows 환경 지원)
 # ============================================================================
 
 def _init_module():

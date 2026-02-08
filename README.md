@@ -1,24 +1,227 @@
-# 🚀 Unified Agent Framework - Enterprise Edition v3.5
+# 🚀 Unified Agent Framework - Enterprise Edition v4.0
 
-**최고의 AI Agent 프레임워크들의 장점을 통합한 엔터프라이즈급 오케스트레이션 프레임워크**
+**16개 AI Agent 프레임워크의 핵심 아이디어를 하나의 쉬운 인터페이스로 — 창의적이고 유용한 엔터프라이즈급 오케스트레이션**
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Semantic Kernel](https://img.shields.io/badge/Semantic_Kernel-Latest-orange.svg)](https://github.com/microsoft/semantic-kernel)
-[![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-Enabled-purple.svg)](https://opentelemetry.io/)
-[![Agent Framework](https://img.shields.io/badge/MS_Agent_Framework-Integrated-red.svg)](https://github.com/microsoft/agent-framework)
-[![GPT-5.2](https://img.shields.io/badge/GPT--5.2-Supported-brightgreen.svg)](https://openai.com/)
-[![Claude 4.5](https://img.shields.io/badge/Claude_Opus_4.5-Supported-blueviolet.svg)](https://anthropic.com/)
-[![Grok-4](https://img.shields.io/badge/Grok--4-Supported-yellow.svg)](https://xai.com/)
+[![Model Agnostic](https://img.shields.io/badge/Model--Agnostic-Any_LLM-brightgreen.svg)](#-ai-모델-설정-model-agnostic-설계)
+[![Universal Bridge](https://img.shields.io/badge/Universal_Bridge-16_Frameworks-orange.svg)](#-7가지-핵심-기술-혁신)
+[![Session Tree](https://img.shields.io/badge/Session_Tree-Git_Style-green.svg)](#-7가지-핵심-기술-혁신)
+[![PDCA Loop](https://img.shields.io/badge/PDCA-Auto_Quality-blueviolet.svg)](#-7가지-핵심-기술-혁신)
+[![Security Pipeline](https://img.shields.io/badge/Security-Guardrails_Pipeline-red.svg)](#-7가지-핵심-기술-혁신)
 [![MCP](https://img.shields.io/badge/MCP-Native_Support-teal.svg)](https://modelcontextprotocol.io/)
-[![Agent Lightning](https://img.shields.io/badge/Agent_Lightning-Integrated-gold.svg)](https://github.com/microsoft/agent-lightning)
-[![bkit PDCA](https://img.shields.io/badge/bkit_PDCA-Evaluation-pink.svg)](https://www.bkit.ai/)
-[![Tests](https://img.shields.io/badge/Tests-14%2F14%20Scenarios%20Passed-success.svg)](#-테스트)
+[![A2A Protocol](https://img.shields.io/badge/A2A_Protocol-v0.3.0-00C853.svg)](https://github.com/a2aproject/A2A)
+[![OpenAI Agents SDK](https://img.shields.io/badge/OpenAI_Agents_SDK-v0.8.1-blue.svg)](https://github.com/openai/openai-agents-python)
+[![Google ADK](https://img.shields.io/badge/Google_ADK-v1.24.1-4285F4.svg)](https://github.com/google/adk-python)
+[![CrewAI](https://img.shields.io/badge/CrewAI-v1.9.3-FF6B6B.svg)](https://github.com/crewAIInc/crewAI)
+[![MS Agent Framework](https://img.shields.io/badge/MS_Agent_Framework-Preview-orange.svg)](https://github.com/microsoft/agent-framework)
+[![Tests](https://img.shields.io/badge/Tests-22%2F22%20Scenarios%20Passed-success.svg)](#-테스트)
 [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](#-테스트)
 
-> **v3.5.0** - 🆕 **2026년 2월 4일 최신 업데이트!** Security Guardrails, Structured Output, Evaluation (PDCA + LLM-as-Judge) 추가
+> **v4.0.0** - 🆕 **2026년 2월 8일** | **핵심 혁신**: Universal Agent Bridge (16개 프레임워크 통합), Session Tree (Git 스타일 대화 분기), PDCA 자동 품질 루프, Security Guardrails Pipeline, A2A+MCP 이중 프로토콜 | Model-Agnostic 설계
 
-## 🆕 v3.5 주요 업데이트 (2026년 2월)
+## 📖 목차
+
+- [v4.0 주요 업데이트](#-v40-주요-업데이트-2026년-2월) - 7가지 핵심 기술 혁신, Universal Agent Bridge, Session Tree, PDCA
+- [AI Agent Framework 생태계](#-ai-agent-framework-생태계-2026년-2월-최신) - OpenAI Agents SDK, Google ADK, CrewAI, A2A Protocol
+- [v3.5 주요 업데이트](#-v35-주요-업데이트-2026년-2월) - Security Guardrails, Structured Output, Evaluation
+- [v3.4 주요 업데이트](#-v34-주요-업데이트-2026년-1월) - Prompt Cache, Durable Agent, Concurrent Orchestration
+- [v3.3 주요 업데이트](#-v33-주요-업데이트-2026년-1월) - Agent Lightning 통합
+- [v3.2 영속 메모리 시스템](#️-v32-영속-메모리-시스템-clawdbot-스타일)
+- [모델 설정 참조](#-설정-가능한-모델-참조-테이블)
+- [모듈화 아키텍처](#-모듈화-아키텍처-v40)
+- [개요](#-개요)
+- [테스트](#-테스트)
+- [중앙 설정 (Settings)](#️-중앙-설정-settings)
+- [핵심 기능](#-핵심-기능)
+- [Microsoft Multi-Agent Engine](#-microsoft-multi-agent-engine-v30)
+- [Skills 시스템](#-skills-시스템-new)
+- [빠른 시작](#-빠른-시작)
+- [기여하기](#-기여하기)
+- [라이선스](#-라이선스)
+
+---
+
+## 🆕 v4.0 주요 업데이트 (2026년 2월)
+
+### 💡 설계 철학
+
+> **"복잡한 것을 단순하게, 단순한 것을 강력하게"**
+
+| 원칙 | 설명 |
+|------|------|
+| 🎨 **창의적 기술** | 단순 래핑이 아닌, 프레임워크 고유의 혁신적 설계 패턴 |
+| 🛠️ **실용적 유용성** | 실제 프로덕션에서 바로 사용 가능한 구조와 안전장치 |
+| ✨ **좋은 아이디어** | 16개 프레임워크의 최고 아이디어를 통합하고 발전 |
+| 🎯 **쉬운 사용법** | 3줄이면 시작, 점진적으로 확장 가능 (Progressive Disclosure) |
+
+### 🚀 3줄로 시작하기
+
+```python
+from unified_agent import UnifiedAgentFramework, Settings
+
+Settings.DEFAULT_MODEL = "gpt-5.2"           # 모델 하나만 설정
+framework = UnifiedAgentFramework.create()   # 끝! 바로 사용 가능
+result = await framework.run("보고서를 작성해주세요")  # 모든 기능 자동 활성화
+```
+
+> **Model-Agnostic 설계**: 프레임워크는 특정 모델에 종속되지 않습니다. `Settings.DEFAULT_MODEL` 한 줄로 GPT, Claude, Grok, Llama, Mistral 등 어떤 모델이든 전환할 수 있으며, 모든 핵심 기술이 동일하게 작동합니다.
+
+### 🧠 7가지 핵심 기술 혁신
+
+#### 1. 🌉 Universal Agent Bridge — 모든 프레임워크를 하나의 인터페이스로 ★
+
+16개 AI Agent 프레임워크를 **하나의 통합 인터페이스**로 사용합니다. 프레임워크 Lock-in 없이, 작업에 최적인 프레임워크를 동적으로 선택할 수 있습니다.
+
+```python
+from unified_agent import UniversalAgentBridge, OpenAIAgentsBridge, GoogleADKBridge, CrewAIBridge
+
+bridge = UniversalAgentBridge()
+bridge.register("openai", OpenAIAgentsBridge())    # OpenAI Agents SDK
+bridge.register("google", GoogleADKBridge())        # Google ADK
+bridge.register("crewai", CrewAIBridge())           # CrewAI
+
+# 동일한 인터페이스로 프레임워크 자유 전환 — 전환 비용 0
+result = await bridge.run("openai", task="코드 리뷰")
+result = await bridge.run("crewai", task="팀 리서치")  # 코드 변경 없이 전환
+
+# A2A 프로토콜로 외부 에이전트와도 협업
+bridge.enable_a2a_discovery()
+```
+
+> 💡 **아이디어**: "어떤 프레임워크를 선택할지 고민하지 마세요. 전부 쓰세요."
+
+#### 2. 🌳 Session Tree — Git 스타일 대화 분기/병합
+
+대화를 Git처럼 **분기(branch)**하고 **병합(merge)**할 수 있습니다. "만약 다른 선택을 했다면?"을 실험할 수 있습니다.
+
+```python
+from unified_agent import SessionTree
+
+tree = SessionTree(session_id="conversation_1")
+
+# 대화 중간에 분기 생성 — "다른 접근법을 시도해보자"
+branch = tree.create_branch("alternative_approach")
+# 분기에서 실험 → 결과가 좋으면 메인으로 병합
+tree.merge_branch(branch.branch_id, target_branch_id="main")
+# 결과가 나쁘면? 브랜치만 삭제하면 됨
+```
+
+> 💡 **아이디어**: "대화에서도 되돌리기(Ctrl+Z)와 다른 경로 탐색이 가능해야 한다"
+
+#### 3. 🔄 Adaptive Circuit Breaker — 지능형 자가 치유
+
+단순 on/off가 아닌, 실시간 메트릭 기반 **동적 타임아웃**으로 시스템이 스스로 최적 상태를 찾습니다.
+
+```python
+from unified_agent import CircuitBreaker
+
+breaker = CircuitBreaker(
+    failure_threshold=5,
+    success_threshold=3,
+    adaptive_timeout=True   # ← 핵심: 평균 응답시간 기반 동적 조절
+)
+# CLOSED → (연속 실패) → OPEN → (타임아웃) → HALF_OPEN → (연속 성공) → CLOSED
+metrics = breaker.get_metrics()
+print(f"성공률: {metrics['success_rate']:.2%}, 평균 응답: {metrics['avg_response_time_ms']:.0f}ms")
+```
+
+> 💡 **아이디어**: "장애는 피할 수 없지만, 회복 속도는 지능적으로 만들 수 있다"
+
+#### 4. 🛡️ Security Guardrails Pipeline — 오케스트레이션된 다층 보안
+
+Prompt Injection, Jailbreak, PII 누출을 **파이프라인으로 연결**하여 입출력 모두 방어합니다.
+
+```python
+from unified_agent import SecurityOrchestrator, SecurityConfig
+
+orchestrator = SecurityOrchestrator(SecurityConfig(
+    enable_prompt_shield=True,       # Prompt Injection 방어
+    enable_jailbreak_detection=True, # Jailbreak 탐지
+    enable_pii_detection=True        # PII 자동 마스킹
+))
+
+result = await orchestrator.validate_input(user_input)
+if not result.is_safe:
+    print(f"🚫 차단: {result.reason}")  # 다층 방어 자동 적용
+```
+
+> 💡 **아이디어**: "개별 보안 도구가 아닌, 보안 오케스트레이션 — 한 번 설정으로 전 구간 보호"
+
+#### 5. 🔁 PDCA 자동 품질 개선 루프
+
+Plan-Do-Check-Act 사이클을 자동화합니다. AI가 스스로 평가하고, 미달 시 피드백 반영 후 재시도합니다.
+
+```python
+from unified_agent import PDCAEvaluator
+
+evaluator = PDCAEvaluator(
+    min_score=0.8,            # 80% 미만이면 재시도
+    max_iterations=3,         # 최대 3회 반복
+    metrics=["accuracy", "relevance", "safety"]
+)
+result = await evaluator.run_with_improvement(agent, task="시장 분석 보고서 작성")
+# 1차: 72% → 피드백 반영 → 2차: 85% → 통과! (자동)
+```
+
+> 💡 **아이디어**: "한 번에 완벽할 필요 없다 — AI가 스스로 검토하고 개선하게 하자"
+
+#### 6. 💬 Responses API Stateful 대화
+
+OpenAI Responses API로 대화 상태를 서버 측에서 자동 관리합니다. 클라이언트가 히스토리를 관리할 필요가 없습니다.
+
+```python
+from unified_agent import ResponsesClient
+
+client = ResponsesClient()
+response = await client.create(
+    model="gpt-5.2",
+    input="AI 동향을 분석해주세요",
+    tools=[{"type": "web_search"}],
+    background=True                      # 백그라운드 실행 지원
+)
+# 대화 이어가기 — previous_response_id만 전달하면 상태 자동 연결
+next = await client.create(input="더 자세히", previous_response_id=response.id)
+```
+
+> 💡 **아이디어**: "대화 히스토리 관리는 프레임워크가, 개발자는 비즈니스 로직에만 집중"
+
+#### 7. 🌐 A2A + MCP 이중 프로토콜 — 에이전트 협업 + 도구 확장
+
+A2A(Agent-to-Agent)로 에이전트 간 협업, MCP(Model Context Protocol)로 도구 통합. 두 표준을 동시에 지원합니다.
+
+```python
+from unified_agent import A2ABridge, MCPTool
+
+# A2A: 외부 에이전트와 표준 프로토콜로 협업
+bridge = A2ABridge()
+remote = await bridge.discover("https://partner.example.com/.well-known/agent-card.json")
+result = await bridge.send_task(to=remote, task="데이터 분석", mode="streaming")
+
+# MCP: 표준 도구 통합
+mcp_tool = MCPTool(name="docs", server_config={"url": "https://learn.microsoft.com/api/mcp"})
+```
+
+> 💡 **아이디어**: "에이전트 협업(A2A) + 도구 확장(MCP) = 무한한 확장성"
+
+### 📋 AI 모델 설정 (Model-Agnostic 설계)
+
+> 프레임워크의 핵심 가치는 특정 모델이 아닌 **기술 아키텍처**에 있습니다.
+> `Settings.DEFAULT_MODEL` 한 줄로 어떤 OpenAI-compatible 모델이든 전환할 수 있습니다.
+
+```python
+from unified_agent import Settings
+
+Settings.DEFAULT_MODEL = "gpt-5.2"           # OpenAI
+Settings.DEFAULT_MODEL = "claude-opus-4-6"   # Anthropic (via Microsoft Foundry)
+Settings.DEFAULT_MODEL = "grok-4"            # xAI (via Microsoft Foundry)
+Settings.DEFAULT_MODEL = "gpt-oss-120b"      # OpenAI Open-Weight (Apache 2.0)
+# 위 모든 기술 혁신이 모델 변경 없이 동일하게 작동합니다
+```
+
+---
+
+## 📋 v3.5 주요 업데이트 (2026년 2월)
 
 ### 🔐 3가지 새로운 기능 (bkit 영감)
 
@@ -431,7 +634,7 @@ for span in spans:
 #### 2. AgentStore (우선순위 기반 에이전트 저장소)
 ```python
 from unified_agent import (
-    AgentStore, AgentStoreConfig, AgentEntry, AgentPriority,
+    AgentStore, AgentStoreConfig, Rollout, AgentPriority,
     AgentCapability, AgentSelectionStrategy
 )
 
@@ -442,7 +645,7 @@ store = AgentStore(AgentStoreConfig(
 ))
 
 # 에이전트 등록 (O(log n) 우선순위 삽입)
-entry = AgentEntry(
+entry = Rollout(
     agent_id="research-agent",
     name="Researcher",
     capabilities={AgentCapability.REASONING, AgentCapability.PLANNING},
@@ -461,12 +664,12 @@ top_agents = store.get_top_by_priority(n=5)
 #### 3. Reward (강화학습 보상 시스템)
 ```python
 from unified_agent import (
-    RewardEngine, RewardConfig, RewardSignal, RewardType,
+    RewardManager, RewardConfig, RewardDimension, RewardType,
     RewardAggregator, RewardNormalizer
 )
 
 # 보상 엔진 생성
-engine = RewardEngine(RewardConfig(
+engine = RewardManager(RewardConfig(
     discount_factor=0.99,
     normalize=True,
     clip_range=(-10.0, 10.0)
@@ -474,12 +677,12 @@ engine = RewardEngine(RewardConfig(
 
 # 에피소드 시작 및 보상 기록
 engine.begin_episode("episode-1")
-engine.record(RewardSignal(
+engine.record(RewardDimension(
     reward=1.0,
     reward_type=RewardType.INTRINSIC,
     step=0
 ))
-engine.record(RewardSignal(reward=0.5, reward_type=RewardType.EXTRINSIC, step=1))
+engine.record(RewardDimension(reward=0.5, reward_type=RewardType.EXTRINSIC, step=1))
 summary = engine.end_episode()
 
 print(f"총 보상: {summary.total_reward:.2f}")
@@ -490,19 +693,19 @@ print(f"할인 보상: {summary.discounted_reward:.2f}")
 #### 4. Adapter (모델 어댑터 시스템)
 ```python
 from unified_agent import (
-    AdapterManager, AdapterConfig, ModelAdapter,
+    Adapter, AdapterConfig, TraceAdapter,
     AdapterType, AdapterMergeStrategy
 )
 
 # 어댑터 매니저 생성
-manager = AdapterManager(AdapterConfig(
+manager = Adapter(AdapterConfig(
     base_model="gpt-5.2",
     adapter_type=AdapterType.LORA,
     merge_strategy=AdapterMergeStrategy.WEIGHTED
 ))
 
 # 어댑터 등록 및 활성화
-adapter = ModelAdapter(
+adapter = TraceAdapter(
     name="code-specialist",
     adapter_type=AdapterType.LORA,
     parameters={"rank": 8, "alpha": 16}
@@ -517,7 +720,7 @@ merged = manager.merge_adapters(["code-specialist", "reasoning-expert"])
 #### 5. Hooks (라이프사이클 훅 시스템)
 ```python
 from unified_agent import (
-    HookManager, HookConfig, HookPoint, HookPriority,
+    HookManager, HookConfig, HookEvent, HookPriority,
     hook, async_hook
 )
 
@@ -525,7 +728,7 @@ from unified_agent import (
 manager = HookManager(HookConfig(allow_async=True))
 
 # 데코레이터로 훅 등록
-@hook(point=HookPoint.PRE_INFERENCE, priority=HookPriority.HIGH)
+@hook(point=HookEvent.PRE_INFERENCE, priority=HookPriority.HIGH)
 def validate_input(context):
     if not context.get("input"):
         raise ValueError("Input required")
@@ -533,7 +736,7 @@ def validate_input(context):
 
 # 훅 실행
 context = {"input": "Hello", "model": "gpt-5.2"}
-result = await manager.execute_hooks(HookPoint.PRE_INFERENCE, context)
+result = await manager.execute_hooks(HookEvent.PRE_INFERENCE, context)
 ```
 
 ### 🗄️ v3.2 영속 메모리 시스템 (Clawdbot 스타일)
@@ -570,12 +773,12 @@ memory.close()
 #### Compaction - 메모리 압축 전략
 ```python
 from unified_agent import (
-    CompactionEngine, CompactionConfig, CompactionStrategy,
+    CompactionManager, CompactionConfig, CompactionStrategy,
     CompactionTrigger, CompactionStats
 )
 
 # 압축 엔진 설정
-compaction = CompactionEngine(CompactionConfig(
+compaction = CompactionManager(CompactionConfig(
     strategy=CompactionStrategy.SEMANTIC_CLUSTER,
     trigger=CompactionTrigger.SIZE_THRESHOLD,
     threshold_mb=100,
@@ -616,19 +819,9 @@ for b in branches:
 tree.merge_branch(branch.branch_id, target_branch_id="main")
 ```
 
-### 🤖 v3.1 최신 AI 모델 지원 (54+ 모델)
+### 📋 설정 가능한 모델 참조 테이블
 
-| 모델 계열 | 지원 모델 | 컨텍스트 | 비고 |
-|------------|-----------|---------|------|
-| **GPT-5.2** | gpt-5.2, gpt-5.2-chat, gpt-5.2-codex | 400K | 🆕 최신 |
-| **GPT-5.1 Codex** | gpt-5.1-codex, gpt-5.1-codex-mini, gpt-5.1-codex-max | 400K | 코드 특화 |
-| **Claude 4.5** | claude-opus-4-5, claude-sonnet-4-5, claude-haiku-4-5 | 200K | MS Foundry |
-| **Grok-4** | grok-4, grok-4-fast-reasoning, grok-4-fast-non-reasoning | 2M | MS Foundry |
-| **o-시리즈** | o3, o3-mini, o3-pro, o4-mini | 200K | Reasoning |
-| **DeepSeek** | deepseek-v3.2, deepseek-v3.2-speciale, deepseek-r1-0528 | - | Reasoning |
-| **Llama 4** | llama-4-maverick-17b, llama-4-scout-17b | **10M** | 최대 컨텍스트 |
-| **Phi-4** | phi-4, phi-4-reasoning, phi-4-multimodal-instruct | - | Microsoft |
-| **Mistral** | mistral-large-3, mistral-medium-2505, mistral-small-2503 | - | - |
+> ⚠️ **참고**: 프레임워크는 Model-Agnostic으로 설계되어 OpenAI-compatible API를 사용하는 모든 모델과 호환됩니다. GPT-5.x, Claude, Grok, Llama 4, Phi-4, Mistral 등 전체 모델 목록과 상세 설정은 [📋 모델 설정 가이드](#-모델-설정-가이드-상세)를 참조하세요.
 
 ### 📝 상세 한글 주석 추가 (🆕 NEW)
 
@@ -686,102 +879,262 @@ agent = framework.create_skilled_agent(
 )
 ```
 
-### 📦 모듈화 아키텍처 개선
+### 🌐 AI Agent Framework 생태계 (2026년 2월 최신)
 
-| 항목 | v2.x | v3.5 | 개선 |
-|------|------|------|------|
-| 메인 파일 | 6,040줄 | 325줄 | **93.5% 감소** |
-| 모듈 수 | 1개 | 31개 | **모듈화** |
-| 테스트 | 없음 | 14개 시나리오 | **100% 커버리지** |
-| 공개 API | - | 304개 | **정의됨** |
+2026년 2월 현재, AI Agent 프레임워크 생태계는 빠르게 진화하고 있습니다. 주요 프레임워크들의 최신 동향을 통합 지원합니다.
 
-### 🛡️ 성능 및 안정성 개선
+#### 1. Microsoft Agent Framework (신규 통합 프레임워크)
+Microsoft AutoGen + Semantic Kernel이 **Microsoft Agent Framework**으로 통합되었습니다. AutoGen은 유지보수 모드로 전환됩니다.
 
-#### Adaptive Circuit Breaker (2026년 개선)
 ```python
-from unified_agent import CircuitBreaker
+from unified_agent import MicrosoftAgentBridge
 
-breaker = CircuitBreaker(
-    failure_threshold=5,      # 5회 실패 시 OPEN
-    success_threshold=3,      # 3회 연속 성공 시 CLOSED 복귀
-    timeout=60.0,             # 60초 후 HALF_OPEN
-    adaptive_timeout=True     # 평균 응답시간 기반 동적 타임아웃
+# Microsoft Agent Framework 브릿지 (AutoGen → Agent Framework 마이그레이션)
+bridge = MicrosoftAgentBridge()
+
+# Graph-based Workflow 지원
+workflow = bridge.create_graph(
+    name="research_pipeline",
+    agents=["researcher", "writer", "reviewer"],
+    type="sequential"               # sequential, parallel, handoff, group_chat
 )
 
-# 메트릭 확인
-metrics = breaker.get_metrics()
-print(f"성공률: {metrics['success_rate']:.2%}")
-print(f"평균 응답시간: {metrics['avg_response_time_ms']:.1f}ms")
+# UniversalAgentBridge 통합 실행
+result = await bridge.run(workflow, input="연구 보고서 작성")
+
+# 또는 task kwarg로 실행 (UniversalAgentBridge 호환)
+result = await bridge.run(task="연구 보고서 작성")
 ```
 
-#### 대용량 컨텍스트 지원
+**주요 업데이트:**
+- `pip install agent-framework --pre` (Python & .NET 동시 지원)
+- Graph-based Workflow: streaming, checkpointing, time-travel
+- AF Labs: 벤치마킹, 강화학습, 실험적 기능
+- DevUI: 에이전트 개발/테스트/디버깅 UI
+- AutoGen/Semantic Kernel에서 마이그레이션 가이드 제공
+
+#### 2. OpenAI Agents SDK (v0.8.1)
+OpenAI의 공식 에이전트 프레임워크로, Swarm의 후속작입니다. Provider-agnostic으로 100+ LLM을 지원합니다.
+
 ```python
-from unified_agent.config import is_large_context_model, get_model_context_window
+from unified_agent import OpenAIAgentsBridge, AgentHandoff, SessionBackend
 
-# 모델별 컨텍스트 크기 확인
-print(get_model_context_window("gpt-5.2"))      # 400,000
-print(get_model_context_window("gpt-4.1"))      # 1,000,000
-print(get_model_context_window("grok-4-fast-reasoning"))  # 2,000,000
-print(get_model_context_window("llama-4-scout-17b-16e-instruct"))  # 10,000,000 (최대!)
+# OpenAI Agents SDK 브릿지
+bridge = OpenAIAgentsBridge(session_backend=SessionBackend.SQLITE)
 
-# 대용량 모델 확인
-is_large_context_model("gpt-5.2")  # True (100K+)
+# Handoff 패턴 (에이전트 간 제어 전환)
+triage_agent = bridge.create_agent(
+    name="Triage",
+    instructions="적절한 에이전트로 라우팅",
+    handoff_targets=["korean_agent", "english_agent"]
+)
+
+# Handoff 규칙 추가
+bridge.add_handoff(AgentHandoff(
+    source_agent="Triage",
+    target_agent="korean_agent",
+    condition="한국어 입력"
+))
+
+# 에이전트 실행
+result = await bridge.run(triage_agent, input="안녕하세요")
+
+# 또는 task kwarg로 실행 (UniversalAgentBridge 호환)
+result = await bridge.run(task="안녕하세요")
 ```
 
-#### 멀티모달 모델 지원
+**주요 기능:**
+- Agents, Handoffs, Guardrails, Sessions (핵심 4요소)
+- MCP 서버 도구 통합 (McpWorkbench 네이티브)
+- SQLite/Redis/SQLAlchemy Session 백엔드
+- Human-in-the-Loop 내장
+- Voice/Realtime Agent 지원
+- 내장 Tracing (OpenAI Dashboard + 외부 연동)
+
+#### 3. Google ADK (Agent Development Kit) v1.24.1
+Google의 코드 우선 에이전트 프레임워크로, Gemini에 최적화되었지만 모든 모델을 지원합니다.
+
 ```python
-from unified_agent.config import is_multimodal_model
+from unified_agent import GoogleADKBridge
 
-# 이미지/오디오 입력 지원 모델 확인
-is_multimodal_model("gpt-5.2")           # True
-is_multimodal_model("claude-opus-4-5")   # True
-is_multimodal_model("phi-4-multimodal-instruct")  # True
-is_multimodal_model("gpt-5.2-codex")     # False (코드 특화)
+# Google ADK 브릿지
+bridge = GoogleADKBridge(model="gemini-2.5-flash")
+
+# Workflow Agent (Sequential, Parallel, Loop)
+workflow = bridge.create_workflow_agent(
+    type="parallel",          # sequential, parallel, loop
+    sub_agents=["data_fetcher", "analyzer"],
+    name="coordinator"
+)
+
+# 에이전트 실행
+result = await bridge.run(workflow, input="데이터 분석")
+
+# 또는 task kwarg로 실행 (UniversalAgentBridge 호환)
+result = await bridge.run(task="데이터 분석")
 ```
 
-#### RAI (Responsible AI) 강화
+**주요 기능:**
+- Workflow Agents: Sequential, Parallel, Loop
+- A2A Protocol 네이티브 통합
+- Agent Config (코드 없이 에이전트 빌드)
+- Tool Confirmation (HITL) 플로우
+- Python, TypeScript, Go, Java 4개 언어 지원
+- Vertex AI Agent Engine / Cloud Run 배포
+
+#### 4. CrewAI (v1.9.3)
+독립 프레임워크로 LangChain 의존 없이 동작하며, Crews(자율) + Flows(제어) 아키텍처가 특징입니다.
+
 ```python
-from unified_agent import RAIValidator, RAICategory
+from unified_agent import CrewAIBridge
 
-validator = RAIValidator(strict_mode=True)
-result = validator.validate("사용자 입력 텍스트")
+# CrewAI 브릿지
+bridge = CrewAIBridge(process="sequential")
 
-if not result.is_safe:
-    print(f"⚠️ 카테고리: {result.category.value}")
-    print(f"⚠️ 사유: {result.reason}")
-    print(f"💡 제안: {result.suggestions}")
+# Crew (자율적 역할 기반 에이전트 팀)
+crew = bridge.create_crew(
+    agents=["Senior Researcher", "Report Writer"],
+    process="sequential",     # sequential, hierarchical
+    name="research_crew"
+)
+
+# Crew 실행
+result = await bridge.run(crew, task="최신 AI 동향 조사")
+
+# 또는 task kwarg로 실행 (UniversalAgentBridge 호환)
+result = await bridge.run(task="최신 AI 동향 조사")
 ```
 
-## 📖 목차
+**주요 기능:**
+- Crews: 자율적 역할 기반 협업
+- Flows: 이벤트 기반 정밀 제어 (`@start`, `@listen`, `@router`)
+- AMP Suite (Enterprise): Control Plane, 관찰성, 보안
+- 100,000+ 인증 개발자 커뮤니티
 
-- [v3.5 주요 업데이트](#-v35-주요-업데이트-2026년-2월) - Security Guardrails, Structured Output, Evaluation
-- [v3.4 주요 업데이트](#-v34-주요-업데이트-2026년-1월) - Prompt Cache, Durable Agent, Concurrent Orchestration
-- [v3.3 주요 업데이트](#-v33-주요-업데이트-2026년-1월) - Agent Lightning 통합
-- [v3.2 영속 메모리 시스템](#️-v32-영속-메모리-시스템-clawdbot-스타일)
-- [v3.1 최신 AI 모델 지원](#-v31-최신-ai-모델-지원-54-모델)
-- [모듈화 아키텍처](#-모듈화-아키텍처-v35)
-- [개요](#-개요)
-- [테스트](#-테스트)
-- [중앙 설정 (Settings)](#️-중앙-설정-settings)
-- [핵심 기능](#-핵심-기능)
-- [Microsoft Multi-Agent Engine](#-microsoft-multi-agent-engine-v30)
-- [Skills 시스템](#-skills-시스템-new)
-- [기여하기](#-기여하기)
-- [라이선스](#-라이선스)
-- [기여하기](#-기여하기)
-- [라이선스](#-라이선스)
+#### 5. A2A (Agent-to-Agent) Protocol v0.3.0
+Linux Foundation 산하 오픈 프로토콜로, 프레임워크 간 에이전트 상호 운용을 표준화합니다.
+
+```python
+from unified_agent import A2ABridge, AgentCard
+
+# A2A 프로토콜 브릿지
+bridge = A2ABridge()
+
+# Agent Card (에이전트 발견 및 역량 공개)
+card = AgentCard(
+    name="research_agent",
+    capabilities=["web_search", "summarization"],
+    protocols=["a2a-v0.3.0"],
+    endpoint="https://my-agent.example.com/a2a"
+)
+
+# 원격 에이전트 발견 및 협업
+remote_agent = await bridge.discover("https://partner.example.com/.well-known/agent-card.json")
+result = await bridge.send_task(
+    to=remote_agent,
+    task="최신 AI 뉴스를 요약해주세요",
+    mode="streaming"          # sync, streaming, async_push
+)
+
+# 다중 SDK 지원
+# Python: pip install a2a-sdk
+# .NET: dotnet add package A2A
+# Go: go get github.com/a2aproject/a2a-go
+# JS: npm install @a2a-js/sdk
+```
+
+**주요 특징:**
+- JSON-RPC 2.0 over HTTP(S) 표준 통신
+- Agent Card로 에이전트 발견/역량 공개
+- Sync, Streaming (SSE), Async Push 지원
+- 에이전트 내부 상태를 노출하지 않는 Opacity 원칙
+- Google ADK, AG2, Microsoft Agent Framework 등과 호환
+
+#### 6. Semantic Kernel Agent Framework (Python 1.39.3 / .NET 1.70.0)
+Microsoft Semantic Kernel의 에이전트 프레임워크가 Orchestration 패턴을 추가했습니다.
+
+```python
+from unified_agent import SemanticKernelAgentBridge
+
+# SK Agent Framework 브릿지
+bridge = SemanticKernelAgentBridge()
+
+# Orchestration 패턴
+orchestration = bridge.create_orchestration(
+    pattern="group_chat",     # concurrent, sequential, handoff, group_chat, magentic
+    agents=["agent_a", "agent_b", "agent_c"],
+    human_in_the_loop=True
+)
+
+# Agent Types
+# - ChatCompletionAgent, OpenAIAssistantAgent
+# - AzureAIAgent, OpenAIResponsesAgent, CopilotStudioAgent
+agent = bridge.create_agent(
+    type="OpenAIResponsesAgent",
+    plugins=["web_search", "code_interpreter"]
+)
+```
+
+**주요 업데이트:**
+- Orchestration: Concurrent, Sequential, Handoff, Group Chat, Magentic 패턴
+- OpenAIResponsesAgent 지원 (Responses API 네이티브)
+- CopilotStudioAgent 통합
+- Oracle DB 커넥터 추가
+- Google GenAI SDK 마이그레이션 완료
+
+#### 7. AutoGen → AG2 (AgentOS) 진화
+AutoGen은 AG2 AgentOS로 분기했으며, 프레임워크 상호 운용성에 집중합니다.
+
+```python
+from unified_agent import AG2Bridge
+
+# AG2 AgentOS 브릿지
+bridge = AG2Bridge()
+
+# Universal Framework Interoperability
+# AG2, Google ADK, OpenAI, LangChain 에이전트를 하나의 팀으로
+team = bridge.create_universal_team(
+    agents=[
+        {"framework": "ag2", "name": "analyst"},
+        {"framework": "google_adk", "name": "researcher"},
+        {"framework": "openai", "name": "writer"},
+    ],
+    protocols=["a2a", "mcp"]     # A2A + MCP 표준 지원
+)
+
+# 팀 실행
+result = await bridge.run(team, task="시장 분석 보고서 작성")
+
+# 또는 task kwarg로 실행 (UniversalAgentBridge 호환)
+result = await bridge.run(task="시장 분석 보고서 작성")
+```
 
 ---
 
-## 📦 모듈화 아키텍처 (v3.5)
+### 🔄 프레임워크 생태계 요약 (2026년 2월)
 
-v3.5에서 Security Guardrails, Structured Output, Evaluation 모듈을 포함한 완전한 모듈화 아키텍처로 재구성되었습니다:
+| 프레임워크 | Stars | 최신 버전 | 핵심 특징 | 언어 |
+|-----------|-------|----------|----------|------|
+| **LangGraph** | 24.4K | v1.0.8 | 상태 그래프, Durable Execution | Python, JS |
+| **CrewAI** | 43.8K | v1.9.3 | Crews + Flows, 역할 기반 | Python |
+| **AutoGen** | 54.4K | v0.7.5 | Multi-agent, Studio | Python, .NET |
+| **A2A Protocol** | 21.8K | v0.3.0 | Agent 간 표준 프로토콜 | 다중 SDK |
+| **OpenAI Agents SDK** | 18.8K | v0.8.1 | Handoff, HITL, Voice | Python |
+| **Google ADK** | 17.5K | v1.24.1 | Workflow Agent, A2A | Python, Go, Java, TS |
+| **Semantic Kernel** | 22K+ | Py 1.39.3 | Orchestration, SK 통합 | Python, .NET, Java |
+| **MS Agent Framework** | 7K | Preview | Graph Workflow, DevUI | Python, .NET |
+
+---
+
+## 📦 모듈화 아키텍처 (v4.0)
+
+v4.0에서 **7가지 핵심 기술 혁신** (Universal Bridge, Session Tree, PDCA 등)과 **16개 AI Agent Framework 브릿지**를 포함한 완전한 모듈화 아키텍처로 재구성되었습니다:
 
 ### 패키지 구조
 
 ```
 unified_agent/
-├── __init__.py          # 패키지 진입점 (304개 공개 API export)
+├── __init__.py          # 패키지 진입점 (380개 공개 API export)
 ├── interfaces.py        # 핵심 인터페이스 (IFramework, IOrchestrator, IMemoryProvider)
 ├── exceptions.py        # 예외 클래스 (FrameworkError, ConfigurationError 등)
 ├── config.py            # 설정 및 상수 (Settings, FrameworkConfig) - frozenset 최적화
@@ -789,7 +1142,7 @@ unified_agent/
 ├── utils.py             # 유틸리티 (StructuredLogger, CircuitBreaker, RAIValidator)
 ├── memory.py            # 메모리 시스템 (MemoryStore, CachedMemoryStore)
 ├── persistent_memory.py # v3.2 영속 메모리 (PersistentMemory, MemoryLayer)
-├── compaction.py        # v3.2 메모리 압축 (CompactionEngine, CompactionStrategy)
+├── compaction.py        # v3.2 메모리 압축 (CompactionManager, CompactionStrategy)
 ├── session_tree.py      # v3.2 세션 트리 (SessionTree, BranchInfo)
 ├── events.py            # 이벤트 시스템 (EventBus, EventType)
 ├── skills.py            # Skills 시스템 (Skill, SkillManager)
@@ -798,32 +1151,45 @@ unified_agent/
 ├── workflow.py          # 워크플로우 (Graph, Node)
 ├── orchestration.py     # 오케스트레이션 (AgentFactory, OrchestrationManager)
 ├── framework.py         # 메인 프레임워크 (UnifiedAgentFramework)
-├── extensions.py        # v3.4 확장 허브 (ExtensionsHub)
+├── extensions.py        # v3.4 확장 허브 (Extensions)
 ├── tracer.py            # v3.3 분산 추적 (AgentTracer, SpanContext) - Agent Lightning
-├── agent_store.py       # v3.3 에이전트 저장소 (AgentStore, AgentEntry) - bisect 최적화
-├── reward.py            # v3.3 보상 시스템 (RewardEngine, RewardSignal) - Agent Lightning
-├── adapter.py           # v3.3 모델 어댑터 (AdapterManager, ModelAdapter) - Agent Lightning
-├── hooks.py             # v3.3 라이프사이클 훅 (HookManager, HookPoint) - bisect 최적화
+├── agent_store.py       # v3.3 에이전트 저장소 (AgentStore, Rollout) - bisect 최적화
+├── reward.py            # v3.3 보상 시스템 (RewardManager, RewardDimension) - Agent Lightning
+├── adapter.py           # v3.3 모델 어댑터 (Adapter, TraceAdapter) - Agent Lightning
+├── hooks.py             # v3.3 라이프사이클 훅 (HookManager, HookEvent) - bisect 최적화
 ├── prompt_cache.py      # v3.4 프롬프트 캐싱 (PromptCache, CacheConfig)
 ├── durable_agent.py     # v3.4 내구성 에이전트 (DurableOrchestrator, DurableConfig)
 ├── concurrent.py        # v3.4 병렬 오케스트레이션 (ConcurrentOrchestrator, FanOutConfig)
 ├── agent_tool.py        # v3.4 에이전트 도구 패턴 (AgentToolRegistry, DelegationManager)
 ├── extended_thinking.py # v3.4 확장 사고 (ThinkingTracker, ThinkingConfig)
 ├── mcp_workbench.py     # v3.4 MCP 워크벤치 (McpWorkbench, McpServerConfig)
-├── security_guardrails.py # v3.5 NEW! 보안 가드레일 (PromptShield, JailbreakDetector, PIIDetector)
-├── structured_output.py   # v3.5 NEW! 구조화된 출력 (OutputSchema, StructuredOutputParser)
-└── evaluation.py          # v3.5 NEW! PDCA 평가 (PDCAEvaluator, LLMJudge, CheckActIterator)
+├── security_guardrails.py # v3.5 보안 가드레일 (PromptShield, JailbreakDetector, PIIDetector)
+├── structured_output.py   # v3.5 구조화된 출력 (OutputSchema, StructuredOutputParser)
+├── evaluation.py          # v3.5 PDCA 평가 (PDCAEvaluator, LLMJudge, CheckActIterator)
+├── responses_api.py       # v4.0 NEW! Responses API (ResponsesClient, ConversationState)
+├── video_generation.py    # v4.0 NEW! 비디오 생성 (VideoGenerator, Sora2Client)
+├── image_generation.py    # v4.0 NEW! 이미지 생성 (ImageGenerator, GPTImage1_5Client)
+├── open_weight.py         # v4.0 NEW! 오픈 웨이트 모델 (OpenWeightAdapter, OSSModelConfig)
+├── universal_bridge.py    # v4.0 NEW! 통합 브릿지 (UniversalAgentBridge, 16개 프레임워크)
+├── openai_agents_bridge.py # v4.0 NEW! OpenAI Agents SDK 브릿지 (Handoff, Session, HITL)
+├── google_adk_bridge.py   # v4.0 NEW! Google ADK 브릿지 (Workflow Agent, A2A 통합)
+├── crewai_bridge.py       # v4.0 NEW! CrewAI 브릿지 (Crews + Flows 아키텍처)
+├── a2a_bridge.py          # v4.0 NEW! A2A Protocol 브릿지 (Agent Card, JSON-RPC 2.0)
+├── ms_agent_bridge.py     # v4.0 NEW! Microsoft Agent Framework 브릿지 (Graph Workflow)
+├── ag2_bridge.py          # v4.0 NEW! AG2 AgentOS 브릿지 (Universal Interop)
+└── sk_agent_bridge.py     # v4.0 NEW! SK Agent Framework 브릿지 (Orchestration 패턴)
 ```
 
 ### 최적화 결과
 
-| 항목 | v2.x | v3.5 | 개선 |
+| 항목 | v2.x | v4.0 | 개선 |
 |------|------|------|------|
 | 메인 파일 | 6,040줄 | 325줄 | **93.5% 감소** |
-| 모듈 수 | 1개 | 31개 | **모듈화** |
-| 공개 API | - | 304개 | **정의됨** |
-| 지원 모델 | 20개 | 54개 | **170% 증가** |
-| 테스트 | 없음 | 14개 시나리오 | **100% 커버리지** |
+| 모듈 수 | 1개 | 43개 | **모듈화** |
+| 공개 API | - | 380개 | **정의됨** |
+| 지원 모델 | 20개 | Model-Agnostic | **모델 독립적** |
+| 통합 프레임워크 | - | 16개 | **에코시스템** |
+| 테스트 | 없음 | 22개 시나리오 | **100% 커버리지** |
 
 ### 성능 최적화 (v3.5)
 
@@ -834,6 +1200,8 @@ unified_agent/
 | import 정리 | tracer.py, adapter.py | 불필요한 의존성 제거 |
 | 패턴 캐싱 | security_guardrails.py | 컴파일된 정규식 재사용 |
 | LRU 캐시 | structured_output.py | 스키마 파싱 결과 캐싱 |
+| 연결 풀링 | responses_api.py | HTTP 연결 재사용 |
+| 비동기 스트리밍 | video_generation.py | Sora 2 비동기 생성 파이프라인 |
 
 ### Import 방식
 
@@ -853,10 +1221,10 @@ from unified_agent.session_tree import SessionTree, SessionConfig
 
 # 방법 4: v3.3 Agent Lightning 패턴
 from unified_agent.tracer import AgentTracer, SpanKind, SpanStatus
-from unified_agent.agent_store import AgentStore, AgentEntry
-from unified_agent.reward import RewardEngine, RewardSignal
-from unified_agent.adapter import AdapterManager, ModelAdapter
-from unified_agent.hooks import HookManager, HookPoint
+from unified_agent.agent_store import AgentStore, Rollout
+from unified_agent.reward import RewardManager, RewardDimension
+from unified_agent.adapter import Adapter, TraceAdapter
+from unified_agent.hooks import HookManager, HookEvent
 
 # 방법 5: v3.4 확장 모듈
 from unified_agent.prompt_cache import PromptCache, CacheConfig
@@ -865,70 +1233,84 @@ from unified_agent.concurrent import ConcurrentOrchestrator, FanOutConfig
 from unified_agent.agent_tool import AgentToolRegistry, DelegationManager
 from unified_agent.extended_thinking import ThinkingTracker, ThinkingConfig
 from unified_agent.mcp_workbench import McpWorkbench, McpServerConfig
-from unified_agent.extensions import ExtensionsHub
+from unified_agent.extensions import Extensions
 
 # 방법 6: v3.5 보안 및 평가 모듈
 from unified_agent.security_guardrails import PromptShield, JailbreakDetector, PIIDetector
 from unified_agent.structured_output import OutputSchema, StructuredOutputParser
 from unified_agent.evaluation import PDCAEvaluator, LLMJudge, CheckActIterator
+
+# 방법 7: v4.0 최신 모듈 (Responses API, Sora 2, 오픈 웨이트, 브릿지)
+from unified_agent.responses_api import ResponsesClient, ConversationState
+from unified_agent.video_generation import VideoGenerator, Sora2Client
+from unified_agent.image_generation import ImageGenerator, GPTImage1_5Client
+from unified_agent.open_weight import OpenWeightAdapter, OSSModelConfig
+from unified_agent.universal_bridge import UniversalAgentBridge
+from unified_agent.openai_agents_bridge import OpenAIAgentsBridge
+from unified_agent.google_adk_bridge import GoogleADKBridge
+from unified_agent.crewai_bridge import CrewAIBridge
+from unified_agent.a2a_bridge import A2ABridge, AgentCard
+from unified_agent.ms_agent_bridge import MicrosoftAgentBridge
+from unified_agent.ag2_bridge import AG2Bridge
+from unified_agent.sk_agent_bridge import SemanticKernelAgentBridge
 ```
 
 ---
 
 ## 🎯 개요
 
-Unified Agent Framework는 다음 9가지 최고의 AI Agent 프레임워크와 방법론의 핵심 장점을 통합했습니다:
+Unified Agent Framework는 다음 **16가지** 최고의 AI Agent 프레임워크와 방법론의 핵심 장점을 통합했습니다:
 
-| 프레임워크 | 통합된 기능 |
-|-----------|-----------|
-| **Microsoft AutoGen** | Multi-agent 협업 (GroupChat 패턴) |
-| **Semantic Kernel** | 플러그인 시스템 & 함수 호출 |
-| **LangGraph** | 상태 기반 그래프 & 조건부 라우팅 |
-| **Microsoft Agent Framework** | 체크포인팅, OpenTelemetry, 관찰성 |
-| **Anthropic Skills** | 모듈화된 전문 지식 & Progressive Disclosure |
-| **AWS AgentCore** | Memory Hook Provider, Session Manager, Investigation Plan |
-| **Microsoft Multi-Agent Engine** | WebSocket, MPlan, ProxyAgent, RAI, AgentFactory |
-| **Agent Lightning** | Tracer, AgentStore, Reward, Adapter, Hooks (v3.3) |
-| **bkit-claude-code** | 🆕 PDCA 평가, Evaluator-Optimizer, Check-Act Iteration (v3.5) |
+| 프레임워크 | 통합된 기능 | 최신 버전 |
+|-----------|-----------|----------|
+| **Microsoft Agent Framework** | 🆕 Graph-based Workflow, 체크포인팅, OpenTelemetry, DevUI, Middleware | Preview (2026.02) |
+| **Semantic Kernel** | Agent Framework (Orchestration), 플러그인, 함수 호출 | Python 1.39.3 / .NET 1.70.0 |
+| **Microsoft AutoGen → AG2** | Multi-agent 협업, AgentTool, McpWorkbench, AutoGen Studio | v0.7.5 (AG2 AgentOS) |
+| **OpenAI Agents SDK** | 🆕 Handoff, Guardrails, Session, HITL, Voice/Realtime Agent | v0.8.1 |
+| **Google ADK** | 🆕 Multi-agent 계층, A2A 통합, Workflow Agent, 평가 도구 | v1.24.1 |
+| **LangGraph** | 상태 기반 그래프, Durable Execution, Human-in-the-loop | v1.0.8 |
+| **CrewAI** | 🆕 Crews + Flows 아키텍처, 역할 기반 자율 에이전트, AMP Suite | v1.9.3 |
+| **A2A Protocol** | 🆕 Agent-to-Agent 표준 프로토콜, Agent Card, JSON-RPC 2.0 | v0.3.0 (Linux Foundation) |
+| **Anthropic Skills** | 모듈화된 전문 지식 & Progressive Disclosure | Latest |
+| **AWS AgentCore** | Memory Hook Provider, Session Manager, Investigation Plan | Latest |
+| **Microsoft Multi-Agent Engine** | WebSocket, MPlan, ProxyAgent, RAI, AgentFactory | v3.0 |
+| **Agent Lightning** | Tracer, AgentStore, Reward, Adapter, Hooks | v3.3 |
+| **bkit-claude-code** | PDCA 평가, Evaluator-Optimizer, Check-Act Iteration | v3.5 |
+| **OpenAI Responses API** | Stateful API, 대화 상태 관리, 백그라운드 실행 | v4.0 |
+| **Microsoft Foundry** | 통합 AI 플랫폼, 다수 모델 접근 (Claude, Grok, Llama) | v4.0 |
+| **MCP (Model Context Protocol)** | 도구 통합 표준, MCP Workbench, 다중 서버 관리 | v3.4+ |
 
 ### 왜 Unified Agent Framework인가?
 
+#### ❌ 기존의 문제점
+```
+1. 프레임워크마다 다른 API → 전환 비용 높음
+2. 보안/평가/메모리를 각각 따로 구현 → 코드 중복
+3. 프로덕션 배포 시 안정성 보장 어려움 → CircuitBreaker 직접 구현
+4. 모델 변경할 때마다 코드 수정 → 종속성 문제
+```
+
+#### ✅ Unified Agent Framework의 해결
 ```python
-# ❌ 기존 방식: 복잡하고 장황한 코드
-# - 각 프레임워크별 학습 필요
-# - 통합 어려움
-# - 프로덕션 준비 미흡
-
-# ✅ Unified Agent Framework v3.5: 간단하고 강력하며 모듈화됨
-from unified_agent import UnifiedAgentFramework, Settings, TeamConfiguration
-
-# 중앙 설정으로 모델 변경 (한 곳에서 관리)
+# 1️⃣ 3줄로 시작 — 복잡한 설정 없음
+from unified_agent import UnifiedAgentFramework, Settings
 Settings.DEFAULT_MODEL = "gpt-5.2"
+framework = UnifiedAgentFramework.create()  # 환경변수 자동 로드
 
-# 프레임워크 생성 (환경변수 자동 로드)
-framework = UnifiedAgentFramework.create()
+# 2️⃣ 프레임워크 자유 전환 — Lock-in 없음
+from unified_agent import UniversalAgentBridge, OpenAIAgentsBridge, CrewAIBridge
+bridge = UniversalAgentBridge()
+bridge.register("openai", OpenAIAgentsBridge())
+bridge.register("crewai", CrewAIBridge())
 
-# v3.5 NEW: Security Guardrails, Structured Output, Evaluation 통합
-from unified_agent import Tracer, TracerConfig, TracerBackend
-tracer = Tracer(TracerConfig(service_name="my-app", backend=TracerBackend.CONSOLE))
-tracer.start()
+# 3️⃣ 보안 + 메모리 + 평가가 내장 — 따로 구현 불필요
+from unified_agent import SecurityOrchestrator, PersistentMemory, PDCAEvaluator
+security = SecurityOrchestrator(config)          # 다층 보안 파이프라인
+memory = PersistentMemory(MemoryConfig())        # 영속 메모리 + Session Tree
+evaluator = PDCAEvaluator(min_score=0.8)         # 자동 품질 개선 루프
 
-# v3.2 NEW: 영속 메모리 시스템
-from unified_agent import PersistentMemory, MemoryConfig
-memory = PersistentMemory(MemoryConfig(storage_path="./memory"))
-await memory.initialize()
-
-# v3.0 NEW: 팀 기반 멀티에이전트
-team_config = TeamConfiguration(
-    name="research_team",
-    agents=[
-        TeamAgent(name="researcher", description="연구 담당"),
-        TeamAgent(name="writer", description="작성 담당"),
-    ]
-)
-
-# v3.0 NEW: MPlan으로 구조화된 실행 계획
-from unified_agent import MPlan, PlanStep
+# 4️⃣ 팀 기반 멀티에이전트 + 실행 계획
+from unified_agent import TeamConfiguration, MPlan, PlanStep
 plan = MPlan(
     name="research_plan",
     steps=[
@@ -938,6 +1320,14 @@ plan = MPlan(
 )
 print(f"진행률: {plan.get_progress() * 100}%")
 ```
+
+| 비교 항목 | 기존 방식 | Unified Agent Framework |
+|-----------|----------|------------------------|
+| 프레임워크 전환 | 코드 전면 재작성 | `bridge.run("crewai", task)` 한 줄 |
+| 보안 적용 | 직접 구현 (수백 줄) | `SecurityOrchestrator(config)` |
+| 대화 분기 실험 | 불가능 | `SessionTree.create_branch()` |
+| 품질 개선 | 수동 검토 | `PDCAEvaluator` 자동 루프 |
+| 모델 변경 | 코드 수정 필요 | `Settings.DEFAULT_MODEL = "X"` |
 
 ---
 
@@ -1132,12 +1522,12 @@ Settings.DEFAULT_MODEL = "o3"  # temperature 자동 비활성화
 
 ## 🧪 테스트
 
-v3.5에서는 14개 시나리오 기반의 포괄적인 테스트 스위트를 제공합니다.
+v4.0에서는 22개 시나리오 기반의 포괄적인 테스트 스위트를 제공합니다.
 
 ### 테스트 실행
 
 ```bash
-# 전체 시나리오 테스트 (14개 시나리오, 100% 커버리지)
+# 전체 시나리오 테스트 (22개 시나리오, 100% 커버리지)
 python test_v35_scenarios.py
 
 # v3.5 신규 모듈 테스트 (Structured Output, Evaluation)
@@ -1154,7 +1544,7 @@ python demo_unified_agent.py
 
 ```
 ======================================================================
-  UNIFIED AGENT FRAMEWORK v3.5 - 전체 시나리오별 테스트
+  UNIFIED AGENT FRAMEWORK v4.0 - 전체 시나리오별 테스트
 ======================================================================
   [PASS] Core Import
   [PASS] Security Guardrails
@@ -1170,9 +1560,17 @@ python demo_unified_agent.py
   [PASS] Persistent Memory
   [PASS] Core Framework
   [PASS] Utils & Interfaces
+  [PASS] Responses API
+  [PASS] Video Generation (Sora 2)
+  [PASS] Image Generation (GPT-image-1.5)
+  [PASS] Open Weight Models
+  [PASS] OpenAI Agents SDK Bridge
+  [PASS] Google ADK Bridge
+  [PASS] CrewAI Bridge
+  [PASS] A2A Protocol Bridge
 ----------------------------------------------------------------------
-  총 테스트: 14개
-  통과: 14개
+  총 테스트: 22개
+  통과: 22개
   실패: 0개
   성공률: 100.0%
 ======================================================================
@@ -1196,6 +1594,14 @@ python demo_unified_agent.py
 | Persistent Memory | v3.2 | PersistentMemory, CompactionManager, SessionTree | ✅ |
 | Core Framework | Core | SimpleAgent, Graph, EventBus, SkillManager | ✅ |
 | Utils & Interfaces | Core | CircuitBreaker, StructuredLogger, RAIValidator | ✅ |
+| Responses API | v4.0 | ResponsesClient, ConversationState, Background | ✅ |
+| Video Generation | v4.0 | VideoGenerator, Sora2Client, AudioSync | ✅ |
+| Image Generation | v4.0 | ImageGenerator, GPTImage1_5Client, Inpainting | ✅ |
+| Open Weight Models | v4.0 | OpenWeightAdapter, OSSModelConfig, gpt-oss | ✅ |
+| OpenAI Agents SDK Bridge | v4.0 | Handoff, Session, Guardrails, HITL, Voice | ✅ |
+| Google ADK Bridge | v4.0 | WorkflowAgent, A2A Integration, AgentConfig | ✅ |
+| CrewAI Bridge | v4.0 | Crews, Flows, Router, Sequential/Hierarchical | ✅ |
+| A2A Protocol Bridge | v4.0 | AgentCard, JSON-RPC 2.0, Discovery, Streaming | ✅ |
 
 ---
 
@@ -1210,34 +1616,43 @@ class Settings:
     """
     프레임워크 전역 설정 클래스 (Singleton-like Pattern)
 
-    2026년 1월 업데이트:
-    - 40+ 모델 지원 (GPT-5.2, Claude 4.5, Grok-4, Llama 4 등)
-    - MCP 설정 추가 (ENABLE_MCP, MCP_APPROVAL_MODE)
-    - Multi-Agent 오케스트레이션 설정
+    2026년 2월 업데이트:
+    - Model-Agnostic 설계 (OpenAI-compatible API 호환)
+    - 7가지 핵심 기술 혁신 (Universal Bridge, Session Tree, PDCA 등)
+    - 16개 AI Agent Framework 통합 브릿지
+    - Responses API 설정 추가
+    - Security Guardrails Pipeline
+    - MCP + A2A 이중 프로토콜 지원
     - RAI (Responsible AI) 설정
     """
 
     # ─────────────────────────────────────────────────────────────────────
-    # LLM 모델 설정 (2026년 최신)
+    # LLM 모델 설정 (2026년 2월 최신)
     # ─────────────────────────────────────────────────────────────────────
     DEFAULT_MODEL: str = "gpt-5.2"           # 기본 모델 (2026년 최신)
-    DEFAULT_API_VERSION: str = "2025-12-01-preview"  # API 버전 (최신)
+    DEFAULT_API_VERSION: str = "2026-01-01-preview"  # API 버전 (최신)
     DEFAULT_TEMPERATURE: float = 0.7         # GPT-4 계열만 적용
     DEFAULT_MAX_TOKENS: int = 4096           # 기본 최대 토큰 (증가)
     DEFAULT_CONTEXT_WINDOW: int = 200000     # 기본 컨텍스트 윈도우
 
     # ─────────────────────────────────────────────────────────────────────
-    # 지원 모델 목록 (2026년 1월 기준 - 40+ 모델)
+    # 설정 가능한 모델 목록 (2026년 2월 기준 - Model-Agnostic)
     # ─────────────────────────────────────────────────────────────────────
     SUPPORTED_MODELS: list = [
         # GPT-4 계열 (Legacy)
         "gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
         # GPT-5 계열
-        "gpt-5", "gpt-5.1", "gpt-5.2", "gpt-5.2-chat", "gpt-5.2-codex",
-        "gpt-5.1-codex", "gpt-5.1-codex-mini", "gpt-5.1-codex-max",
+        "gpt-5", "gpt-5-pro", "gpt-5-mini", "gpt-5-nano", "gpt-5-chat",
+        "gpt-5.1", "gpt-5.2", "gpt-5.2-pro", "gpt-5.2-chat", "gpt-5.2-codex",
+        # GPT-5 Codex 계열
+        "gpt-5-codex", "gpt-5.1-codex", "gpt-5.1-codex-mini", "gpt-5.1-codex-max",
+        "gpt-5.3-codex",  # 🆕 2026년 2월 5일 출시
         # o-시리즈 (Reasoning)
         "o1", "o1-mini", "o3", "o3-mini", "o3-pro", "o4-mini",
+        # OpenAI Open-Weight (Apache 2.0) 🆕
+        "gpt-oss-120b", "gpt-oss-20b",
         # Claude (Microsoft Foundry)
+        "claude-opus-4-6",  # 🆕 2026년 2월 4일 출시
         "claude-opus-4-5", "claude-sonnet-4-5", "claude-haiku-4-5",
         # Grok (Microsoft Foundry)
         "grok-4", "grok-4-fast-reasoning", "grok-4-fast-non-reasoning",
@@ -1248,12 +1663,19 @@ class Settings:
         # Phi-4
         "phi-4", "phi-4-reasoning", "phi-4-multimodal-instruct",
         # Mistral
-        "mistral-large-3", "mistral-medium-2505"
+        "mistral-large-3", "mistral-medium-2505",
+        # Sora 2 (비디오 생성) 🆕
+        "sora-2", "sora-2-pro",
+        # 이미지 생성 🆕
+        "gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini",
+        # 실시간/오디오 🆕
+        "gpt-realtime", "gpt-realtime-mini", "gpt-audio", "gpt-audio-mini",
     ]
 
     # Temperature 미지원 모델 (Reasoning 모델)
     MODELS_WITHOUT_TEMPERATURE: list = [
-        "gpt-5", "gpt-5.1", "gpt-5.2", "gpt-5.1-codex", "gpt-5.2-codex",
+        "gpt-5", "gpt-5-pro", "gpt-5.1", "gpt-5.2", "gpt-5.2-pro",
+        "gpt-5-codex", "gpt-5.1-codex", "gpt-5.2-codex", "gpt-5.3-codex",
         "o1", "o1-mini", "o3", "o3-mini", "o3-pro", "o4-mini",
         "deepseek-r1", "deepseek-r1-0528",
         "phi-4-reasoning", "phi-4-mini-reasoning"
@@ -1267,6 +1689,21 @@ class Settings:
     MCP_RECONNECT_ATTEMPTS: int = 3
     MCP_REQUEST_TIMEOUT: int = 30
     MCP_APPROVAL_MODE: str = "selective"  # always/never/selective
+
+    # ─────────────────────────────────────────────────────────────────────
+    # AI Agent Framework 브릿지 설정 - 2026.02 최신
+    # ─────────────────────────────────────────────────────────────────────
+    ENABLE_OPENAI_AGENTS_SDK: bool = True
+    OPENAI_AGENTS_SESSION_BACKEND: str = "sqlite"  # sqlite/redis/sqlalchemy
+    ENABLE_GOOGLE_ADK: bool = True
+    GOOGLE_ADK_MODEL: str = "gemini-2.5-flash"
+    ENABLE_CREWAI: bool = True
+    CREWAI_PROCESS: str = "sequential"  # sequential/hierarchical
+    ENABLE_A2A_PROTOCOL: bool = True
+    A2A_PROTOCOL_VERSION: str = "v0.3.0"
+    ENABLE_MS_AGENT_FRAMEWORK: bool = True
+    MS_AGENT_GRAPH_TYPE: str = "sequential"  # sequential/parallel/handoff/group_chat
+    ENABLE_AG2_INTEROP: bool = True
 
     # ─────────────────────────────────────────────────────────────────────
     # Multi-Agent 오케스트레이션 설정
@@ -1343,27 +1780,36 @@ framework = UnifiedAgentFramework.create()
 
 ---
 
-## 🤖 GPT-5 및 모델 지원 (NEW!)
+## 🤖 모델 설정 가이드 (Model-Agnostic)
 
-프레임워크는 2026년 1월 기준 최신 AI 모델을 완전히 지원합니다.
+프레임워크는 **모델에 독립적**으로 설계되어, `Settings.DEFAULT_MODEL` 한 줄로 어떤 모델이든 전환할 수 있습니다.
 
-### 지원 모델 (40+)
+> ⚠️ **참고**: 아래 모델들은 `Settings.DEFAULT_MODEL`로 **설정 가능한 목록**입니다. 실제 동작은 각 모델 제공업체의 API 가용성에 따라 달라집니다.
+
+### 설정 가능한 모델 목록
 
 | 모델 시리즈 | 모델 | Temperature | 컨텍스트 | 비고 |
 |------------|------|-------------|---------|------|
 | **GPT-4** | gpt-4, gpt-4o, gpt-4o-mini | ✅ 지원 | 128K | Legacy |
 | **GPT-4.1** | gpt-4.1, gpt-4.1-mini, gpt-4.1-nano | ✅ 지원 | **1M** | 개선된 성능 |
-| **GPT-5** | gpt-5, gpt-5-pro | ❌ 자동 생략 | 200K~400K | Reasoning |
+| **GPT-5** | gpt-5, gpt-5-pro, gpt-5-mini, gpt-5-nano | ❌ 자동 생략 | 200K~400K | Reasoning |
 | **GPT-5.1** | gpt-5.1, gpt-5.1-chat | ❌/✅ | 400K | 2025 |
 | **GPT-5.1 Codex** | gpt-5.1-codex, codex-mini, codex-max | ❌ 자동 생략 | 400K | 코드 특화 |
-| **GPT-5.2** | gpt-5.2, gpt-5.2-chat, gpt-5.2-codex | ❌/✅ | **400K** | 🆕 최신 |
+| **GPT-5.2** | gpt-5.2, gpt-5.2-pro, gpt-5.2-chat, gpt-5.2-codex | ❌/✅ | **400K** | 프론티어 |
+| **GPT-5.3 Codex** | gpt-5.3-codex | ❌ 자동 생략 | 400K | 🆕 **2/5 출시** |
+| **GPT-5-codex** | gpt-5-codex | ❌ 자동 생략 | 400K | 코드 특화 |
+| **OpenAI OSS** | gpt-oss-120b, gpt-oss-20b | ✅ 지원 | - | 🆕 **오픈 (Apache 2.0)** |
 | **o-series** | o1, o3, o3-mini, o3-pro, o4-mini | ❌ 자동 생략 | 200K | Reasoning |
+| **Claude 4.6** | claude-opus-4-6 | ✅ 지원 | 200K | 🆕 **MS Foundry (2/4)** |
 | **Claude 4.5** | claude-opus-4-5, sonnet-4-5, haiku-4-5 | ✅ 지원 | 200K | MS Foundry |
 | **Grok-4** | grok-4, grok-4-fast-reasoning | ✅ 지원 | **2M** | MS Foundry |
 | **DeepSeek** | deepseek-v3.2, r1-0528 | ❌/✅ | - | Reasoning |
 | **Llama 4** | maverick-17b, scout-17b | ✅ 지원 | **10M** | 최대 컨텍스트 |
 | **Phi-4** | phi-4, phi-4-reasoning, multimodal | ❌/✅ | - | Microsoft |
 | **Mistral** | large-3, medium-2505, small-2503 | ✅ 지원 | - | - |
+| **Sora 2** | sora-2, sora-2-pro | - | - | 🆕 비디오+오디오 |
+| **이미지** | gpt-image-1.5, gpt-image-1 | - | - | 🆕 이미지 생성 |
+| **실시간** | gpt-realtime, gpt-audio | - | - | 🆕 실시간 오디오 |
 
 ### 유틸리티 함수
 
@@ -1383,7 +1829,7 @@ print(supports_temperature("o4-mini"))     # False (Reasoning)
 
 # 멀티모달 지원 확인 (이미지/오디오 입력)
 print(is_multimodal_model("gpt-5.2"))      # True
-print(is_multimodal_model("claude-opus-4-5"))  # True
+print(is_multimodal_model("claude-opus-4-6"))  # True
 print(is_multimodal_model("gpt-5.2-codex"))  # False
 
 # 대용량 컨텍스트 확인 (100K+)
@@ -1727,7 +2173,7 @@ matched_skills = framework.skill_manager.match_skills(
 
 ```bash
 # 실행 (UTF-8 기본 인코딩)
-python Unified-agent_framework.py
+python Unified_agent_framework.py
 
 # 모델 명령어 (NEW!)
 model                  # 현재 모델 확인
@@ -1763,14 +2209,13 @@ exit
 ### CLI 사용 예시
 
 ```
-🚀 Unified Agent Framework CLI (v2.2)
+🚀 Unified Agent Framework CLI (v4.0)
 Commands: chat, smart, demo, skills, model, settings, workflow, exit
 Current Model: gpt-5.2
 
 > model
 📋 현재 모델: gpt-5.2
-📋 지원 모델: gpt-4, gpt-4o, gpt-4o-mini, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano,
-              gpt-5, gpt-5.1, gpt-5.2, o1, o1-mini, o1-preview, o3, o3-mini, o4-mini
+📋 Model-Agnostic 설계: Settings.DEFAULT_MODEL로 모델 전환 가능
 
 > model gpt-4.1
 🔄 모델 변경: gpt-5.2 → gpt-4.1
@@ -1813,6 +2258,10 @@ pip install unified-agent-framework
 # MCP 지원 포함
 pip install unified-agent-framework[mcp]
 
+# AI Agent 프레임워크 브릿지 포함
+pip install unified-agent-framework[agents]
+# (openai-agents, google-adk, crewai, a2a-sdk, agent-framework 포함)
+
 # 모든 기능 포함
 pip install unified-agent-framework[full]
 ```
@@ -1826,29 +2275,107 @@ pip install unified-agent-framework[full]
 #### 패키지 설치
 ```bash
 pip install semantic-kernel python-dotenv pydantic opentelemetry-api opentelemetry-sdk pyyaml aiohttp
+
+# AI Agent 프레임워크 브릿지 (선택)
+pip install openai-agents              # OpenAI Agents SDK v0.8.1
+pip install google-adk                 # Google ADK v1.24.1
+pip install crewai                     # CrewAI v1.9.3
+pip install a2a-sdk                    # A2A Protocol SDK
+pip install agent-framework --pre      # Microsoft Agent Framework (preview)
+pip install autogen-agentchat autogen-ext[openai]  # AutoGen/AG2 v0.7.5
 ```
 
 ### 환경 변수 설정
-`.env` 파일 생성:
+`.env` 파일을 프로젝트 루트에 생성하고, 아래 내용을 참고하여 실제 값으로 수정하세요:
 ```bash
-# Azure OpenAI (권장)
-AZURE_OPENAI_API_KEY=your_api_key_here
+# ================================================================================
+# Unified Agent Framework - Environment Variables
+# ================================================================================
+# 이 내용을 .env 파일로 복사하고 실제 값으로 수정하세요.
+# Copy this content to .env and update with your actual values.
+# ================================================================================
+
+# ─────────────────────────────────────────────────────────────────────────────────
+# Azure OpenAI Configuration (필수 / Required)
+# ─────────────────────────────────────────────────────────────────────────────────
+
+# Azure OpenAI API Key
+# Azure Portal > OpenAI Resource > Keys and Endpoint에서 확인
+AZURE_OPENAI_API_KEY=your-api-key-here
+
+# Azure OpenAI Endpoint URL
+# 예: https://your-resource-name.openai.azure.com/
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_DEPLOYMENT=gpt-4.1
-AZURE_OPENAI_API_VERSION=2025-05-01
+
+# Azure OpenAI Deployment Name
+# Azure OpenAI Studio에서 배포한 모델의 이름
+AZURE_OPENAI_DEPLOYMENT=gpt-5.2
+
+# ─────────────────────────────────────────────────────────────────────────────────
+# Optional: API Version (선택 / Optional)
+# ─────────────────────────────────────────────────────────────────────────────────
+
+# Azure OpenAI API Version (기본값: 2026-01-01-preview)
+# AZURE_OPENAI_API_VERSION=2026-01-01-preview
+
+# ─────────────────────────────────────────────────────────────────────────────────
+# Optional: Model Override (선택 / Optional)
+# ─────────────────────────────────────────────────────────────────────────────────
+
+# 기본 모델 오버라이드 (기본값: gpt-5.2)
+# AZURE_OPENAI_MODEL=gpt-5.2
+
+# ─────────────────────────────────────────────────────────────────────────────────
+# Optional: Observability (선택 / Optional)
+# ─────────────────────────────────────────────────────────────────────────────────
+
+# Application Insights Connection String
+# APPLICATION_INSIGHTS_CONNECTION_STRING=your-connection-string
+
+# OTLP Exporter Endpoint (OpenTelemetry)
+# OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+
+# ─────────────────────────────────────────────────────────────────────────────────
+# Optional: Azure Content Safety (선택 / Optional)
+# ─────────────────────────────────────────────────────────────────────────────────
+
+# Azure Content Safety Endpoint
+# AZURE_CONTENT_SAFETY_ENDPOINT=https://your-content-safety.cognitiveservices.azure.com/
+
+# Azure Content Safety API Key
+# AZURE_CONTENT_SAFETY_KEY=your-content-safety-key
+
+# ─────────────────────────────────────────────────────────────────────────────────
+# Optional: Redis (분산 메모리용 / For Distributed Memory)
+# ─────────────────────────────────────────────────────────────────────────────────
+
+# Redis Connection URL
+# REDIS_URL=redis://localhost:6379/0
+
+# ─────────────────────────────────────────────────────────────────────────────────
+# Optional: CosmosDB (영구 저장소용 / For Persistent Storage)
+# ─────────────────────────────────────────────────────────────────────────────────
+
+# CosmosDB Connection String
+# COSMOS_CONNECTION_STRING=your-cosmosdb-connection-string
+
+# CosmosDB Database Name
+# COSMOS_DATABASE_NAME=unified_agent
+
+# ─────────────────────────────────────────────────────────────────────────────────
+# Development Settings (개발 환경용)
+# ─────────────────────────────────────────────────────────────────────────────────
+
+# Debug Mode (True로 설정 시 상세 로깅)
+# DEBUG=False
+
+# Log Level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+# LOG_LEVEL=INFO
 ```
 
-### 지원 모델
+### Temperature 자동 처리
 
-| 모델 시리즈 | 모델 | Temperature | 비고 |
-|------------|------|-------------|------|
-| **GPT-4** | gpt-4, gpt-4o, gpt-4o-mini | ✅ 지원 | 범용 모델 |
-| **GPT-4.1** | gpt-4.1, gpt-4.1-mini, gpt-4.1-nano | ✅ 지원 | 성능 개선 |
-| **GPT-5** | gpt-5, gpt-5.1, gpt-5.2 | ❌ 자동 생략 | 최신 모델 |
-| **o1** | o1, o1-mini, o1-preview | ❌ 자동 생략 | Reasoning |
-| **o3/o4** | o3, o3-mini, o4-mini | ❌ 자동 생략 | 고급 추론 |
-
-> 💡 **자동 Temperature 처리**: GPT-5 및 o-series 모델은 temperature 파라미터를 지원하지 않습니다. 프레임워크가 자동으로 해당 파라미터를 생략하여 오류를 방지합니다.
+> 💡 **Model-Agnostic 설계**: `Settings.DEFAULT_MODEL` 한 줄로 어떤 모델이든 전환할 수 있습니다. GPT-5 및 o-series 모델은 temperature 파라미터를 지원하지 않으며, 프레임워크가 자동으로 해당 파라미터를 생략하여 오류를 방지합니다. 상세 모델 목록은 [모델 설정 가이드](#-모델-설정-가이드-model-agnostic)를 참조하세요.
 
 ### UTF-8 인코딩
 
@@ -1867,29 +2394,7 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
 
 ## 🚀 빠른 시작
 
-### 가장 간단한 방법 (권장)
-
-```python
-import asyncio
-from unified_agent import UnifiedAgentFramework, Settings
-
-# Settings에서 모델 설정 (선택적)
-Settings.DEFAULT_MODEL = "gpt-5.2"
-
-async def main():
-    # 환경변수 자동 로드하여 프레임워크 생성
-    framework = UnifiedAgentFramework.create()
-
-    # 빠른 질의응답
-    response = await framework.quick_chat("안녕하세요!")
-    print(response)
-
-    # 스마트 질의응답 (스킬 자동 감지)
-    response = await framework.smart_chat("파이썬으로 피보나치 함수 만들어줘")
-    print(response)
-
-asyncio.run(main())
-```
+> 💡 **가장 간단한 방법**은 상단의 [3줄로 시작하기](#-3줄로-시작하기) 섹션을 참조하세요.
 
 ### 커스텀 설정으로 시작
 
@@ -2357,7 +2862,7 @@ setup_telemetry("UnifiedAgentFramework", enable_console=False)
 ### Docker 배포
 
 ```dockerfile
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -2434,7 +2939,7 @@ assistant = SimpleAgent(
 **A**: CLI 또는 코드로 템플릿을 생성하고 SKILL.md를 수정하세요:
 ```bash
 # CLI
-python Semantic-agent_framework.py
+python Unified_agent_framework.py
 skills create my-custom-skill
 ```
 ```python
@@ -2548,9 +3053,9 @@ python test_v35_scenarios.py
 ```
 Unified-agent-framework/
 │
-├── 📦 unified_agent/              # 핵심 패키지 (31개 모듈, 310+ API)
-│   ├── __init__.py               # 패키지 진입점 (304개 export)
-│   ├── config.py                 # 설정 클래스 (54개 모델, MCP, RAI)
+├── 📦 unified_agent/              # 핵심 패키지 (43개 모듈, 380+ API)
+│   ├── __init__.py               # 패키지 진입점 (380개 export)
+│   ├── config.py                 # 설정 클래스 (Model-Agnostic, MCP, RAI)
 │   ├── models.py                 # Pydantic 데이터 모델
 │   ├── interfaces.py             # 핵심 인터페이스 (IFramework, IOrchestrator)
 │   ├── memory.py                 # 메모리 시스템
@@ -2580,15 +3085,26 @@ Unified-agent-framework/
 │   ├── mcp_workbench.py          # [v3.4] MCP 워크벤치
 │   ├── security_guardrails.py    # [v3.5 NEW!] 보안 가드레일
 │   ├── structured_output.py      # [v3.5 NEW!] 구조화된 출력
-│   └── evaluation.py             # [v3.5 NEW!] PDCA 평가
+│   ├── evaluation.py             # [v3.5 NEW!] PDCA 평가
+│   ├── responses_api.py          # [v4.0 NEW!] Responses API 통합
+│   ├── video_generation.py       # [v4.0 NEW!] Sora 2 비디오 생성
+│   ├── image_generation.py       # [v4.0 NEW!] GPT-image-1.5 이미지 생성
+│   ├── open_weight.py            # [v4.0 NEW!] OpenAI OSS 오픈 웨이트 모델
+│   ├── openai_agents_bridge.py   # [v4.0 NEW!] OpenAI Agents SDK 브릿지
+│   ├── google_adk_bridge.py      # [v4.0 NEW!] Google ADK 브릿지
+│   ├── crewai_bridge.py          # [v4.0 NEW!] CrewAI 브릿지
+│   ├── a2a_bridge.py             # [v4.0 NEW!] A2A Protocol 브릿지
+│   ├── ms_agent_bridge.py        # [v4.0 NEW!] MS Agent Framework 브릿지
+│   ├── ag2_bridge.py             # [v4.0 NEW!] AG2 AgentOS 브릿지
+│   └── sk_agent_bridge.py        # [v4.0 NEW!] SK Agent Framework 브릿지
 │
 ├── 📂 skills/                     # SKILL.md 기반 스킬 디렉토리
 │   ├── python-expert/
 │   ├── data-analyst/
 │   └── korean-writer/
 │
-├── 🧪 test_v35_scenarios.py       # 통합 테스트 (14개 시나리오, 100%)
-├── 🧪 test_new_modules.py         # v3.5 모듈 테스트
+├── 🧪 test_v35_scenarios.py       # 통합 테스트 (22개 시나리오, 100%)
+├── 🧪 test_new_modules.py         # v4.0 모듈 테스트
 ├── 🧪 test_security_guardrails.py # 보안 모듈 테스트
 ├── 🎮 demo_unified_agent.py       # 데모 코드
 ├── 📖 Unified_agent_framework.py  # 레거시 래퍼 (하위 호환성)
@@ -2601,8 +3117,7 @@ Unified-agent-framework/
 │
 ├── 📦 pyproject.toml              # Python 패키징 설정
 ├── 📦 requirements.txt            # 의존성 목록
-├── 🔧 .env.example                # 환경 변수 템플릿
-├── 🙈 .gitignore                  # Git 제외 파일
+├──  .gitignore                  # Git 제외 파일
 │
 └── 🔄 .github/                    # GitHub 설정
     ├── ISSUE_TEMPLATE/           # 이슈 템플릿
@@ -2638,7 +3153,9 @@ Unified-agent-framework/
 - [Microsoft Agent Framework](https://github.com/microsoft/agent-framework)
 - [Microsoft Multi-Agent-Custom-Automation-Engine](https://github.com/microsoft/multi-agent-custom-automation-engine) - MPlan, ProxyAgent, RAI 패턴
 - [Microsoft Agent Lightning](https://github.com/microsoft/agent-lightning) - Tracer, AgentStore, Reward, Hooks 패턴 (v3.3)
-- [bkit-claude-code](https://github.com/popup-studio-ai/bkit-claude-code) - PDCA 평가 방법론, Evaluator-Optimizer 패턴 (v3.5 NEW!)
+- [bkit-claude-code](https://github.com/popup-studio-ai/bkit-claude-code) - PDCA 평가 방법론, Evaluator-Optimizer 패턴 (v3.5)
+- [OpenAI Responses API](https://platform.openai.com/docs/guides/responses) - Stateful API, 대화 상태 관리 패턴 (v4.0 NEW!)
+- [Microsoft Foundry](https://ai.azure.com/) - 통합 AI 플랫폼, 다수 모델 접근 (v4.0 NEW!)
 - [LangGraph](https://github.com/langchain-ai/langgraph)
 - [Anthropic Skills](https://github.com/anthropics/skills) - Skills 시스템 패턴
 - [AWS AgentCore Samples](https://github.com/awslabs/amazon-bedrock-agentcore-samples) - Memory Hook, Session Manager, Investigation Plan 패턴
@@ -2651,7 +3168,9 @@ Unified-agent-framework/
 
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|-------------|
-| **3.5.0** | 2026-02-04 | 🆕 **Security Guardrails** (Prompt Injection 방어, Jailbreak 탐지, PII 마스킹), **Structured Output** (GPT-5.2 JSON Schema 강제), **Evaluation** (PDCA, LLM-as-Judge, Check-Act Iteration) - bkit 영감 |
+| **4.0.0** | 2026-02-08 | 🆕 **7가지 핵심 기술 혁신**: Universal Agent Bridge, Session Tree, Adaptive Circuit Breaker, Security Guardrails Pipeline, PDCA 자동 품질 루프, Responses API Stateful 대화, A2A+MCP 이중 프로토콜 | Model-Agnostic 설계, 16개 AI Agent Framework 통합 |
+| | | 🆕 **AI Agent Framework 에코시스템**: **OpenAI Agents SDK v0.8.1** (Handoff, Session, HITL, Voice), **Google ADK v1.24.1** (Workflow Agent, A2A), **CrewAI v1.9.3** (Crews+Flows), **A2A Protocol v0.3.0** (Linux Foundation), **MS Agent Framework Preview** (Graph Workflow, DevUI), **AG2 AgentOS**, **SK Agent Framework Orchestration** (16개 프레임워크, 43개 모듈, 380개 API) |
+| 3.5.0 | 2026-02-04 | Security Guardrails (Prompt Injection 방어, Jailbreak 탐지, PII 마스킹), Structured Output (GPT-5.2 JSON Schema 강제), Evaluation (PDCA, LLM-as-Judge, Check-Act Iteration) - bkit 영감 |
 | 3.4.0 | 2026-01-30 | Prompt Caching, Durable Agent, Concurrent Orchestration, AgentTool Pattern, Extended Thinking, MCP Workbench |
 | 3.3.0 | 2026-01-28 | Agent Lightning 통합 (Tracer, AgentStore, Reward, Adapter, Hooks) |
 | 3.2.0 | 2026-01-27 | Persistent Memory, Compaction, Session Tree |
@@ -2668,12 +3187,14 @@ Unified-agent-framework/
 
 **⭐ 이 프로젝트가 도움이 되었다면 Star를 눌러주세요! ⭐**
 
-[![GitHub Stars](https://img.shields.io/github/stars/unified-agent-framework/unified-agent-framework?style=social)](https://github.com/unified-agent-framework/unified-agent-framework)
-[![GitHub Forks](https://img.shields.io/github/forks/unified-agent-framework/unified-agent-framework?style=social)](https://github.com/unified-agent-framework/unified-agent-framework/fork)
+<!-- GitHub 저장소 배포 시 아래 링크를 활성화하세요
+[![GitHub Stars](https://img.shields.io/github/stars/YOUR_USERNAME/unified-agent-framework?style=social)](https://github.com/YOUR_USERNAME/unified-agent-framework)
+[![GitHub Forks](https://img.shields.io/github/forks/YOUR_USERNAME/unified-agent-framework?style=social)](https://github.com/YOUR_USERNAME/unified-agent-framework/fork)
 
-[🐛 버그 리포트](https://github.com/unified-agent-framework/unified-agent-framework/issues/new?template=bug_report.md) ·
-[✨ 기능 제안](https://github.com/unified-agent-framework/unified-agent-framework/issues/new?template=feature_request.md) ·
-[❓ 질문하기](https://github.com/unified-agent-framework/unified-agent-framework/issues/new?template=question.md)
+[🐛 버그 리포트](https://github.com/YOUR_USERNAME/unified-agent-framework/issues/new?template=bug_report.md) ·
+[✨ 기능 제안](https://github.com/YOUR_USERNAME/unified-agent-framework/issues/new?template=feature_request.md) ·
+[❓ 질문하기](https://github.com/YOUR_USERNAME/unified-agent-framework/issues/new?template=question.md)
+-->
 
 Made with ❤️ by the Unified Agent Framework Team
 
