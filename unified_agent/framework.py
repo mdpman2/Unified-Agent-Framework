@@ -12,7 +12,7 @@ import time
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Callable, TYPE_CHECKING
+from typing import Dict, List, Optional, Any, Callable
 
 from opentelemetry import trace
 
@@ -45,6 +45,22 @@ from .reward import emit_reward, RewardManager
 
 # v3.4 Extensions 통합
 from .extensions import Extensions, ExtensionsConfig
+
+# v4.0 핵심 모듈 (지연 임포트 아닌 직접 임포트 — TYPE_CHECKING 불필요)
+from .responses_api import ResponsesClient, ConversationState
+from .video_generation import VideoGenerator, VideoConfig
+from .image_generation import ImageGenerator, ImageConfig
+from .open_weight import OpenWeightAdapter, OSSModelConfig
+from .universal_bridge import UniversalAgentBridge, BridgeProtocol
+
+# v4.0 프레임워크 브릿지
+from .sk_agent_bridge import SemanticKernelAgentBridge
+from .openai_agents_bridge import OpenAIAgentsBridge
+from .google_adk_bridge import GoogleADKBridge
+from .crewai_bridge import CrewAIBridge
+from .ag2_bridge import AG2Bridge
+from .ms_agent_bridge import MicrosoftAgentBridge
+from .a2a_bridge import A2ABridge
 
 __all__ = [
     "UnifiedAgentFramework",
@@ -650,6 +666,90 @@ class UnifiedAgentFramework:
             await self.extensions.cleanup()
 
         logging.info("✅ 프레임워크 정리 완료")
+
+    # ========================================================================
+    # v4.0 팩토리 메서드 — 새로운 핵심 기능 편의 접근
+    # ========================================================================
+
+    def create_responses_client(self, config: Optional['ResponseConfig'] = None) -> ResponsesClient:
+        """
+        v4.0 Responses API 클라이언트 생성
+
+        사용법:
+            client = framework.create_responses_client()
+            response = await client.create("질문입니다")
+        """
+        from .responses_api import ResponseConfig as RC
+        return ResponsesClient(config=config)
+
+    def create_video_generator(self) -> VideoGenerator:
+        """
+        v4.0 비디오 생성기 생성
+
+        사용법:
+            gen = framework.create_video_generator()
+            result = await gen.generate("A sunset over the ocean")
+        """
+        return VideoGenerator()
+
+    def create_image_generator(self) -> ImageGenerator:
+        """
+        v4.0 이미지 생성기 생성
+
+        사용법:
+            gen = framework.create_image_generator()
+            result = await gen.generate("A futuristic city")
+        """
+        return ImageGenerator()
+
+    def create_open_weight_adapter(self, default_endpoint: Optional[str] = None) -> OpenWeightAdapter:
+        """
+        v4.0 오픈 가중치 모델 어댑터 생성
+
+        사용법:
+            adapter = framework.create_open_weight_adapter()
+            response = await adapter.generate(model="gpt-oss-120b", prompt="Hello!")
+        """
+        return OpenWeightAdapter(default_endpoint=default_endpoint)
+
+    def create_universal_bridge(self) -> UniversalAgentBridge:
+        """
+        v4.0 Universal Agent Bridge 생성
+
+        사용법:
+            bridge = framework.create_universal_bridge()
+            bridge.register("semantic-kernel", SemanticKernelAgentBridge())
+            result = await bridge.run(framework="semantic-kernel", task="분석해줘")
+        """
+        return UniversalAgentBridge()
+
+    def get_bridge(self, protocol: str) -> Any:
+        """
+        v4.0 프레임워크 브릿지 인스턴스 반환
+
+        지원 프로토콜: semantic-kernel, openai-agents,
+                      google-adk, crewai, ag2, ms-agent, a2a
+
+        사용법:
+            bridge = framework.get_bridge("crewai")
+            result = await bridge.run(task="데이터를 분석해줘")
+        """
+        bridge_map: Dict[str, type] = {
+            "semantic-kernel": SemanticKernelAgentBridge,
+            "openai-agents": OpenAIAgentsBridge,
+            "google-adk": GoogleADKBridge,
+            "crewai": CrewAIBridge,
+            "ag2": AG2Bridge,
+            "ms-agent": MicrosoftAgentBridge,
+            "a2a": A2ABridge,
+        }
+        cls = bridge_map.get(protocol)
+        if cls is None:
+            raise ConfigurationError(
+                f"지원하지 않는 브릿지 프로토콜: '{protocol}'. "
+                f"지원 목록: {', '.join(bridge_map)}"
+            )
+        return cls()
 
 
 # ============================================================================
