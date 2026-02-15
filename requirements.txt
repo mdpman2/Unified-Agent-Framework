@@ -1,44 +1,35 @@
 # ================================================================================
-# Unified Agent Framework - Dependencies
+# Unified Agent Framework v5 — Dependencies
 # ================================================================================
 # Python 3.11+ required
 
 # ─────────────────────────────────────────────────────────────────────────────────
-# Core Dependencies (필수)
-# ─────────────────────────────────────────────────────────────────────────────────
-semantic-kernel>=1.0.0
-python-dotenv>=1.0.0
-pydantic>=2.0.0
-pyyaml>=6.0
-
-# ─────────────────────────────────────────────────────────────────────────────────
-# Azure OpenAI
+# v5 Core (필수 — Direct 엔진만 사용 시 이것만 설치)
 # ─────────────────────────────────────────────────────────────────────────────────
 openai>=1.0.0
-azure-identity>=1.15.0
+python-dotenv>=1.0.0
 
 # ─────────────────────────────────────────────────────────────────────────────────
-# Observability (OpenTelemetry)
+# v5 Optional: LangChain 엔진
 # ─────────────────────────────────────────────────────────────────────────────────
-opentelemetry-api>=1.20.0
-opentelemetry-sdk>=1.20.0
-opentelemetry-exporter-otlp>=1.20.0
+# langchain>=0.2.0
+# langchain-openai>=0.1.0
+# langchain-core>=0.2.0
 
 # ─────────────────────────────────────────────────────────────────────────────────
-# Optional: Microsoft Agent Framework MCP Support
+# v5 Optional: CrewAI 엔진
 # ─────────────────────────────────────────────────────────────────────────────────
-# agent-framework-azure-ai --pre  # Uncomment for MCP support
+# crewai>=0.50.0
 
 # ─────────────────────────────────────────────────────────────────────────────────
-# Optional: Advanced Features
+# v5 Optional: OTEL 모니터링
 # ─────────────────────────────────────────────────────────────────────────────────
-aiohttp>=3.9.0                # For async HTTP requests (Security Guardrails)
-# websockets>=12.0            # For WebSocket streaming
-# redis>=5.0.0                # For distributed memory store
-# azure-cosmos>=4.5.0         # For CosmosDB memory store
+# opentelemetry-api>=1.20.0
+# opentelemetry-sdk>=1.20.0
+# opentelemetry-exporter-otlp>=1.20.0
 
 # ─────────────────────────────────────────────────────────────────────────────────
-# Development Dependencies (개발용)
+# Development
 # ─────────────────────────────────────────────────────────────────────────────────
 # pytest>=7.0.0
 # pytest-asyncio>=0.21.0

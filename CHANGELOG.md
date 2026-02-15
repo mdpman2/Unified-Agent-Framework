@@ -5,6 +5,107 @@ All notable changes to Unified Agent Framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] - 2026-02-15
+
+### 🔄 Breaking Changes — Runner-Centric Redesign
+
+v4.1의 49개 모듈을 **9개 모듈**로, 16개 프레임워크 브릿지를 **Top 3 엔진**으로 전면 재설계.
+
+#### 축소 (82% 모듈 감소)
+- 49개 모듈 → 9개 모듈 (`unified_agent_v5/` 패키지)
+- 380+ 공개 API → ~20개 공개 API
+- 16개 프레임워크 브릿지 → 3개 엔진 (Direct, LangChain, CrewAI)
+- 필수 의존성: 8개 (`semantic-kernel` 포함) → 2개 (`openai`, `python-dotenv`)
+
+#### 신규 모듈 (`unified_agent_v5/`)
+- `runner.py`: Runner 중심 설계 — `run_agent("질문")` 한 줄 진입점
+- `types.py`: OpenAI ChatCompletion 표준 통합 I/O (Message, AgentResult)
+- `config.py`: 최소 설정 (Settings, AgentConfig)
+- `memory.py`: List[Message] + 슬라이딩 윈도우 + JSON 직렬화
+- `tools.py`: MCP 표준 Tool + `@mcp_tool` 데코레이터
+- `callback.py`: OTEL 표준 어댑터 (CallbackHandler, OTelCallbackHandler)
+- `engines/direct.py`: OpenAI/Azure API 직접 호출 엔진
+- `engines/langchain_engine.py`: LangChain 체인/RAG 엔진
+- `engines/crewai_engine.py`: CrewAI 멀티 에이전트 엔진
+- `plugins/`: v4 비핵심 기능 마이그레이션 대상
+
+#### 설계 원칙 변경
+1. **Top 3 + Direct**: 16개 → 3개 엔진 (실무 사용 빈도 기준 선정)
+2. **OTEL 표준 어댑터**: 자체 Tracer/Dashboard 제거 → CallbackHandler 패턴
+3. **핵심 3기능 집중**: Unified I/O, Memory, Tool Use
+4. **Runner 중심**: "만드는 것"은 엔진이, "실행하는 것"은 Runner가
+
+#### v4.1 아카이브
+- `unified_agent/` 패키지는 `_legacy/` 디렉토리로 아카이브
+- `unified_agent_v5/`는 독립적으로 동작
+- v4.1 데모, 테스트, README도 `_legacy/`에 포함
+
+---
+
+## [4.1.0] - 2026-02-14
+
+### 🆕 Added
+
+#### Agent Identity (agent_identity.py)
+- `AgentIdentity`: Microsoft Entra ID 에이전트 전용 ID 관리
+- `AgentCredential`: 에이전트 자격 증명
+- `AgentRBACManager`: RBAC 기반 권한 관리 (최소 권한 원칙)
+- `AgentIdentityProvider`: ID 프로비저닝 및 라이프사이클 관리
+- `AgentDelegation`: 에이전트 간 위임 인증
+- `IdentityRegistry`, `ScopedPermission`, `PermissionScope`
+
+#### Browser Automation & CUA (browser_use.py)
+- `BrowserAutomation`: Playwright 기반 헤드리스 브라우저 자동화
+- `ComputerUseAgent`: OpenAI Computer Use Agent (CUA) 통합
+- `BrowserSession`, `SafetyChecker`, `ActionRecorder`
+- `BrowserConfig`, `CUAConfig`, `CUAEnvironment`
+
+#### Deep Research (deep_research.py)
+- `DeepResearchAgent`: 다단계 자율 연구 에이전트 (o3-deep-research)
+- `SourceCollector`: 다중 소스 문서 수집 (Web, Academic, API)
+- `SynthesisEngine`: 연구 결과 종합 엔진
+- `CitationManager`: 인용 관리 및 검증
+- `ResearchConfig`, `ResearchPlan`, `ResearchStep`
+
+#### Observability (observability.py)
+- `ObservabilityPipeline`: OpenTelemetry 네이티브 분산 추적/메트릭/로깅
+- `MetricsCollector`: 에이전트 메트릭 수집
+- `TraceExporter`: 분산 추적 익스포터 (Azure Monitor, Jaeger 등)
+- `AlertManager`, `AgentDashboard`
+- `ObservabilityConfig`, `TelemetrySpan`, `MetricRecord`
+
+#### Middleware Pipeline (middleware.py)
+- `MiddlewareManager`: 요청/응답 미들웨어 파이프라인
+- `MiddlewareChain`: 체인 패턴 미들웨어 실행
+- `AuthMiddleware`, `RateLimitMiddleware`, `RetryMiddleware`
+- `ContentFilterMiddleware`, `CacheMiddleware`, `LoggingMiddleware`
+- `MiddlewareConfig`, `MiddlewareContext`, `MiddlewareResult`
+
+#### Agent Triggers (agent_triggers.py)
+- `TriggerManager`: 이벤트 기반 에이전트 자동 호출
+- `EventTrigger`, `ScheduleTrigger`, `WebhookTrigger`
+- `QueueTrigger`, `FileChangeTrigger`, `AgentCompletionTrigger`
+- `TriggerConfig`, `TriggerEvent`, `TriggerCondition`
+
+#### framework.py v4.1 팩토리 메서드 추가
+- `create_agent_identity_provider()`: Agent Identity 프로바이더 생성
+- `create_browser_automation()`: 브라우저 자동화 인스턴스 생성
+- `create_deep_research_agent()`: Deep Research 에이전트 생성
+- `create_observability_pipeline()`: Observability 파이프라인 생성
+- `create_middleware_manager()`: 미들웨어 매니저 생성
+- `create_trigger_manager()`: 트리거 매니저 생성
+
+### 🔧 Changed
+- 49개 모듈, 380+ 공개 API로 확장 (v4.0: 43개 → v4.1: 49개)
+- 모든 v4.1 모듈 자체 완결형 (순환 참조 없음)
+- README.md v4.1 전면 개편 (6가지 최신 기술 통합)
+- 테스트 시나리오 22개 → 28개로 확장
+
+### ✅ Tests
+- `test_v41_all_scenarios.py`: 28개 시나리오, 49개 모듈, 100% 통과
+
+---
+
 ## [4.0.0] - 2026-02-08
 
 ### 🆕 Added

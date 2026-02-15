@@ -4,15 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "unified-agent-framework"
-version = "4.0.0"
-description = "Enterprise-grade AI Agent Orchestration Framework integrating best patterns from Microsoft AutoGen, Semantic Kernel, LangGraph, and more"
+version = "5.0.0"
+description = "Runner-Centric AI Agent Framework — run_agent() 한 줄로 끝. Top 3 엔진(Direct, LangChain, CrewAI) + OTEL 표준 모니터링."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
 authors = [
-    {name = "Unified Agent Framework Contributors"}
-]
-maintainers = [
     {name = "Unified Agent Framework Contributors"}
 ]
 keywords = [
@@ -21,12 +18,13 @@ keywords = [
     "llm",
     "openai",
     "azure",
-    "semantic-kernel",
+    "langchain",
+    "crewai",
     "multi-agent",
     "orchestration",
-    "gpt-5",
-    "claude",
-    "mcp"
+    "runner",
+    "mcp",
+    "opentelemetry",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -43,17 +41,24 @@ classifiers = [
 ]
 
 dependencies = [
-    "semantic-kernel>=1.0.0",
-    "python-dotenv>=1.0.0",
-    "pydantic>=2.0.0",
-    "pyyaml>=6.0",
     "openai>=1.0.0",
-    "azure-identity>=1.15.0",
-    "opentelemetry-api>=1.20.0",
-    "opentelemetry-sdk>=1.20.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]
+langchain = [
+    "langchain>=0.2.0",
+    "langchain-openai>=0.1.0",
+    "langchain-core>=0.2.0",
+]
+crewai = [
+    "crewai>=0.50.0",
+]
+otel = [
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-exporter-otlp>=1.20.0",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
@@ -63,15 +68,8 @@ dev = [
     "mypy>=1.5.0",
     "ruff>=0.1.0",
 ]
-mcp = [
-    "agent-framework-azure-ai",
-]
 full = [
-    "aiohttp>=3.9.0",
-    "websockets>=12.0",
-    "redis>=5.0.0",
-    "azure-cosmos>=4.5.0",
-    "opentelemetry-exporter-otlp>=1.20.0",
+    "unified-agent-framework[langchain,crewai,otel]",
 ]
 
 [project.urls]
@@ -81,15 +79,12 @@ Repository = "https://github.com/unified-agent-framework/unified-agent-framework
 Issues = "https://github.com/unified-agent-framework/unified-agent-framework/issues"
 Changelog = "https://github.com/unified-agent-framework/unified-agent-framework/blob/main/CHANGELOG.md"
 
-[project.scripts]
-unified-agent = "unified_agent.framework:main"
-
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["unified_agent*"]
+include = ["unified_agent_v5*"]
 
 [tool.setuptools.package-data]
-unified_agent = ["py.typed"]
+unified_agent_v5 = ["py.typed"]
 
 # ─────────────────────────────────────────────────────────────────────────────────
 # Black (Code Formatter)
@@ -114,7 +109,7 @@ extend-exclude = '''
 [tool.isort]
 profile = "black"
 line_length = 100
-known_first_party = ["unified_agent"]
+known_first_party = ["unified_agent_v5"]
 skip = [".venv", "build", "dist"]
 
 # ─────────────────────────────────────────────────────────────────────────────────
@@ -158,8 +153,8 @@ disallow_untyped_defs = false
 # pytest
 # ─────────────────────────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
+testpaths = ["tests", "."]
+python_files = ["test_*.py", "demo_*.py"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
 addopts = "-v --tb=short"
@@ -168,7 +163,7 @@ addopts = "-v --tb=short"
 # coverage
 # ─────────────────────────────────────────────────────────────────────────────────
 [tool.coverage.run]
-source = ["unified_agent"]
+source = ["unified_agent_v5"]
 branch = true
 
 [tool.coverage.report]
