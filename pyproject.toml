@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "unified-agent-framework"
-version = "5.0.0"
-description = "Runner-Centric AI Agent Framework — run_agent() 한 줄로 끝. Top 3 엔진(Direct, LangChain, CrewAI) + OTEL 표준 모니터링."
+version = "6.0.0"
+description = "Agent-Class AI Framework — Microsoft Agent Framework 1.0.0-rc1 호환. Agent(client, tools, instructions) 패턴 + Session + Middleware + OTEL."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
@@ -18,13 +18,13 @@ keywords = [
     "llm",
     "openai",
     "azure",
-    "langchain",
-    "crewai",
     "multi-agent",
     "orchestration",
-    "runner",
+    "agent-framework",
     "mcp",
     "opentelemetry",
+    "middleware",
+    "session",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -46,18 +46,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-langchain = [
-    "langchain>=0.2.0",
-    "langchain-openai>=0.1.0",
-    "langchain-core>=0.2.0",
-]
-crewai = [
-    "crewai>=0.50.0",
-]
 otel = [
     "opentelemetry-api>=1.20.0",
     "opentelemetry-sdk>=1.20.0",
     "opentelemetry-exporter-otlp>=1.20.0",
+]
+azure-monitor = [
+    "azure-monitor-opentelemetry-exporter>=1.0.0b21",
 ]
 dev = [
     "pytest>=7.0.0",
@@ -69,22 +64,22 @@ dev = [
     "ruff>=0.1.0",
 ]
 full = [
-    "unified-agent-framework[langchain,crewai,otel]",
+    "unified-agent-framework[otel,azure-monitor]",
 ]
 
 [project.urls]
-Homepage = "https://github.com/unified-agent-framework/unified-agent-framework"
-Documentation = "https://github.com/unified-agent-framework/unified-agent-framework#readme"
-Repository = "https://github.com/unified-agent-framework/unified-agent-framework.git"
-Issues = "https://github.com/unified-agent-framework/unified-agent-framework/issues"
+Homepage = "https://github.com/microsoft/agent-framework"
+Documentation = "https://github.com/microsoft/agent-framework#readme"
+Repository = "https://github.com/microsoft/agent-framework.git"
+Issues = "https://github.com/microsoft/agent-framework/issues"
 Changelog = "https://github.com/unified-agent-framework/unified-agent-framework/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["unified_agent_v5*"]
+include = ["unified_agent_v6*"]
 
 [tool.setuptools.package-data]
-unified_agent_v5 = ["py.typed"]
+unified_agent_v6 = ["py.typed"]
 
 # ─────────────────────────────────────────────────────────────────────────────────
 # Black (Code Formatter)
@@ -109,7 +104,7 @@ extend-exclude = '''
 [tool.isort]
 profile = "black"
 line_length = 100
-known_first_party = ["unified_agent_v5"]
+known_first_party = ["unified_agent_v6"]
 skip = [".venv", "build", "dist"]
 
 # ─────────────────────────────────────────────────────────────────────────────────
@@ -163,7 +158,7 @@ addopts = "-v --tb=short"
 # coverage
 # ─────────────────────────────────────────────────────────────────────────────────
 [tool.coverage.run]
-source = ["unified_agent_v5"]
+source = ["unified_agent_v6"]
 branch = true
 
 [tool.coverage.report]

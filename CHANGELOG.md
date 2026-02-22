@@ -5,6 +5,56 @@ All notable changes to Unified Agent Framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.0] - 2026-02-22
+
+### 🔄 Breaking Changes — Agent-Class Redesign (Microsoft Agent Framework 1.0.0-rc1 호환)
+
+v5의 Runner 중심 설계를 **Agent 클래스 기반**으로 전면 재설계. Microsoft의 공식
+[agent-framework 1.0.0-rc1](https://github.com/microsoft/agent-framework) API 패턴을 따릅니다.
+
+#### 핵심 변경
+
+| v5 | v6 | 비고 |
+|----|----|----|
+| `run_agent("질문")` | `Agent(client=...).run("질문")` | 클래스 기반 진입점 |
+| `Memory` 클래스 | `AgentSession` + `ContextProvider` | 프로바이더 패턴 |
+| `@mcp_tool` 데코레이터 | `@tool` 데코레이터 | 자동 스키마 생성 |
+| 3개 엔진 (Direct/LangChain/CrewAI) | `ChatClient` 주입 | OpenAI/Azure 클라이언트 |
+| `AgentResult` | `AgentResponse` (Content 기반) | `Message(role, [Content])` |
+| `OTelCallbackHandler` | `configure_tracing()` | 직접 OTEL 연동 |
+| 없음 | **미들웨어 파이프라인** | AgentMiddleware/ChatMiddleware |
+| CrewAI 엔진 | `agent.as_tool()` | 네이티브 멀티에이전트 |
+
+#### 신규 모듈 (`unified_agent_v6/`)
+- `agents.py`: Agent 클래스, AgentSession, ChatClient, ContextProvider
+- `types.py`: Content 기반 Message, AgentResponse, AgentResponseUpdate
+- `tools.py`: `@tool` 데코레이터, FunctionTool (자동 OpenAI 스키마)
+- `middleware.py`: 미들웨어 파이프라인 (Logging, Retry 등)
+- `config.py`: AgentConfig TypedDict, `load_config()`
+- `observability.py`: OpenTelemetry 직접 연동, Azure Monitor 지원
+
+#### 성능 최적화
+- `__slots__` 적용: Content, Message, AgentResponse, AgentResponseUpdate (메모리 절약 + 속성 접근 속도 향상)
+- `_SERIALIZE_FIELDS` 튜플: Content.to_dict() 직렬화 시 동적 필드 탐색 제거
+- `{*usage1, *usage2}` 셋 언패킹: add_usage_details() 키 합산 최적화
+- 모듈 레벨 임포트: agents.py에서 json, os, re를 상단에서 로드
+- 모듈 레벨 `_env()`: 클래스 내부 → 모듈 수준으로 승격
+- `asyncio.to_thread()`: tools.py에서 deprecated `get_event_loop()` 대체
+- `types.UnionType` 지원: Python 3.10+ 파이프 문법 (X | Y) 스키마 변환
+- `_bind_middleware()`: 루프 내 async 클로저 캡처 버그 방지를 위한 모듈 함수 분리
+- 로컬 복사본 사용: auto-inject 시 Agent 인스턴스 상태 오염 방지
+
+#### 하위 호환
+- `run_agent()` 함수는 v5 호환으로 유지 (내부적으로 Agent 클래스 사용)
+- `AgentResult = AgentResponse`, `StreamChunk = AgentResponseUpdate` 별칭 제공
+
+#### v5 아카이브
+- `unified_agent_v5/` → `_legacy/unified_agent_v5/`
+- `demo_v5.py` → `_legacy/demo_v5.py`
+- `test_v5_all_scenarios.py` → `_legacy/test_v5_all_scenarios.py`
+
+---
+
 ## [5.0.0] - 2026-02-15
 
 ### 🔄 Breaking Changes — Runner-Centric Redesign
